@@ -1,0 +1,25 @@
+/* Q sealfs log and key types */
+#ifndef SHA1_DIGEST_SIZE
+#define SHA1_DIGEST_SIZE 20
+#endif
+
+// HMAC keylen is also FPR_SIZE
+#define FPR_SIZE SHA1_DIGEST_SIZE
+#define DEFAULTLNAME ".SEALFS.LOG"
+
+struct sealfs_keyfile_header {
+	uint64_t magic;
+	uint64_t burnt; //absolute offset, must start at 0+sizeof(header)
+};
+
+struct sealfs_logfile_header {
+	uint64_t magic;
+};
+
+struct sealfs_logfile_entry {
+	uint64_t inode;				// file
+	uint64_t offset;  			// in the file
+	uint64_t count;   			// len of this write
+	uint64_t koffset;			// offset in keyfile
+	unsigned char fpr[FPR_SIZE];  // fingerprint
+};

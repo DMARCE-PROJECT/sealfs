@@ -1,0 +1,5 @@
+config SEALFS_FS
+	tristate "Sealfs stackable file system (EXPERIMENTAL)"
+	help
+	  Sealfs is a stackable file system that seals all the logs in
+	  a directory.
