@@ -410,10 +410,10 @@ main(int argc, char *argv[])
 
 	alphaf = fopen(kalpha, "r");
 	if(alphaf == NULL)
-		err(1, "can't open %s", dir);
+		err(1, "can't open %s", kalpha);
 	betaf = fopen(kbeta, "r");
 	if(betaf == NULL)
-		err(1, "can't open %s", dir);
+		err(1, "can't open %s", kbeta);
 	lf = fopen(lpath, "r");
 	if(lf == NULL)
 		err(1, "can't open %s", lpath);
