@@ -78,6 +78,11 @@ do
 			                exit 1
 			        fi
 			        umount $r/sealfs
+				if ! ./verify $r/sealfs $r/k1 $r/k2
+				then
+					echo BUG: verification failed >&2
+					exit 1
+				fi
 			done
 		done
 	done
