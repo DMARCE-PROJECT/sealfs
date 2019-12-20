@@ -121,15 +121,14 @@ static int read_key(struct sealfs_sb_info *sb, unsigned char *k)
 {
 	int nr;
 	int t;
-	uint64_t oldoff;
+	loff_t oldoff;
 	unsigned char buf[FPR_SIZE];
 	size_t x;
 
 	oldoff = sb->kheader.burnt;
 	t = 0;
 	while(t < FPR_SIZE){
-		nr = kernel_read(sb->kfile, sb->kheader.burnt, k+t,
-			FPR_SIZE-t);
+		nr = kernel_read(sb->kfile, k+t, FPR_SIZE-t, &sb->kheader.burnt);
 		if(nr < 0) {
 			printk(KERN_ERR "sealfs: error while reading\n");
 			return -1;
@@ -138,17 +137,16 @@ static int read_key(struct sealfs_sb_info *sb, unsigned char *k)
 			printk(KERN_ERR "sealfs: key file is burnt\n");
 			return -1;
 		}
-		sb->kheader.burnt += nr;
- 		t += nr;
+  		t += nr;
 	}
  	get_random_bytes(buf, FPR_SIZE);
-	if(kernel_write(sb->kfile, buf,
-			FPR_SIZE, oldoff) != FPR_SIZE){
+	if(kernel_write(sb->kfile, buf, FPR_SIZE, &oldoff) != FPR_SIZE){
 		printk(KERN_ERR "sealfs: can't write key file\n");
 		return -1;
 	}
 	x = sizeof(struct sealfs_keyfile_header);
-	if(kernel_write(sb->kfile, (void*)&sb->kheader, x, 0) != x){
+	oldoff = 0;
+	if(kernel_write(sb->kfile, (void*)&sb->kheader, x, &oldoff) != x){
 		printk(KERN_ERR "sealfs: can't write key file header\n");
 		return -1;
 	}
@@ -162,6 +160,7 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 	struct kstat kst;
 	int  sz, err;
 	struct sealfs_logfile_entry lentry;
+	loff_t o;
 
 	lentry.inode = (uint64_t) file_inode(f)->i_ino;
 	lentry.offset = (uint64_t) offset;
@@ -176,14 +175,23 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 	       printk(KERN_ERR "sealfs: do_hash failed\n");
 	       return -1;
       	}
-	err = file_inode(sb->lfile)->i_op->getattr(sb->lfile->f_path.mnt,
-		sb->lfile->f_path.dentry, &kst);
+	/*
+	 * Ported: now it accepts a path* instead of a vfsmount*mnt and a dentry *
+	 * The new two args are for the new statx syscall (stat on steroids)
+	 *   a mask stx_mask bits for the metadata we want/got
+	 *       STATX_BASIC_STATS means "the stuff in the normal stat struct"
+	 *   type of notification
+	 *       AT_STATX_SYNC_AS_STAT means "do whatever stat() does"
+	 */
+	err = file_inode(sb->lfile)->i_op->getattr(&sb->lfile->f_path, &kst,
+			STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT);
 	if(err){
 		printk(KERN_ERR "sealfs: can't get attr from log file\n");
 		return -1;
 	}
 	sz = sizeof(struct sealfs_logfile_entry);
-	if(kernel_write(sb->lfile, (void*)&lentry, sz, kst.size) != sz){
+	o = kst.size;
+	if(kernel_write(sb->lfile, (void*)&lentry, sz, &o) != sz){
 		printk(KERN_ERR "sealfs: can't write log file\n");
 		return -1;
 	}
@@ -238,7 +246,7 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 		/*
 		 * BUG: here, a write with a greater offset can overtake
 		 * a write with a smaller offset FOR THE SAME FILE. Not
-		 * probable, but possible. Fix. 
+		 * probable, but possible. Fix.
 		 */
 		if(wr >= 0){
 			mutex_lock(&sbinfo->bbmutex);
@@ -334,7 +342,6 @@ out:
 static int sealfs_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	return -EPERM;
-
 }
 
 static int sealfs_open(struct inode *inode, struct file *file)

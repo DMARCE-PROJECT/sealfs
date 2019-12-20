@@ -52,7 +52,7 @@ int new_dentry_private_data(struct dentry *dentry)
 		return -ENOMEM;
 
 	spin_lock_init(&info->lock);
-	mutex_init(&info->imutex); 
+	mutex_init(&info->imutex);
 	dentry->d_fsdata = info;
 
 	return 0;
@@ -203,6 +203,14 @@ int sealfs_interpose(struct dentry *dentry, struct super_block *sb,
 }
 
 /*
+ * Now the prototype is not in include/linux/namei.h
+ * FIX ME: Look for alternatives.
+ */
+extern int vfs_path_lookup(struct dentry *dentry, struct vfsmount *mnt,
+		    const char *name, unsigned int flags,
+		    struct path *path);
+
+/*
  * Main driver function for sealfs's lookup.
  *
  * Returns: NULL (ok), ERR_PTR if an error occurred.
@@ -217,9 +225,10 @@ static struct dentry *__sealfs_lookup(struct dentry *dentry,
 	struct dentry *lower_dir_dentry = NULL;
 	struct dentry *lower_dentry;
 	const char *name;
-	struct path lower_path;
 	struct qstr this;
 	struct dentry *ret_dentry = NULL;
+	struct path lower_path;
+
 
 	/* must initialize dentry operations */
 	d_set_d_op(dentry, &sealfs_dops);
@@ -234,6 +243,7 @@ static struct dentry *__sealfs_lookup(struct dentry *dentry,
 	lower_dir_mnt = lower_parent_path->mnt;
 
 	/* Use vfs_path_lookup to check if the dentry exists or not */
+
 	err = vfs_path_lookup(lower_dir_dentry, lower_dir_mnt, name, 0,
 			      &lower_path);
 

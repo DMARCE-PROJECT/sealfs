@@ -21,6 +21,7 @@
 #include <linux/file.h>
 #include <linux/fs.h>
 #include <linux/parser.h>
+#include <linux/sched/signal.h>
 
 /*
  * check only dentries of the lower path
@@ -101,14 +102,17 @@ static int read_headers(struct sealfs_sb_info *info)
 	int nr;
 	size_t lsz = sizeof(struct sealfs_logfile_header);
 	size_t ksz = sizeof(struct sealfs_keyfile_header);
+	loff_t o;
 
-	nr = kernel_read(info->kfile, 0, (char*) &info->kheader, ksz);
+	o = 0;
+	nr = kernel_read(info->kfile, (char*) &info->kheader, ksz, &o);
 	if(nr != ksz){
 		printk(KERN_ERR	"sealfs: error reading"
 		" kheader: %d bytes\n", nr);
 		return -1;
 	}
- 	nr = kernel_read(info->lfile, 0, (char*) &info->lheader, lsz);
+	o = 0;
+ 	nr = kernel_read(info->lfile, (char*) &info->lheader, lsz, &o);
 	if(nr != lsz){
 		printk(KERN_ERR	"sealfs: error reading "
 		"lheader: %d\n", nr);

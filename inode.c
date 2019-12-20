@@ -85,9 +85,11 @@ static int sealfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode,
 /*
  * Needed for rotating logs
  * unmodified wrapfs version
+ * ported, now it needs a new parameter: flags
  */
-static int sealfs_rename(struct inode *old_dir, struct dentry *old_dentry,
-			 struct inode *new_dir, struct dentry *new_dentry)
+static int sealfs_rename (struct inode *old_dir, struct dentry *old_dentry,
+                        struct inode *new_dir, struct dentry *new_dentry,
+                        unsigned int flags)
 {
 	int err = 0;
         struct dentry *lower_old_dentry = NULL;
@@ -103,7 +105,7 @@ static int sealfs_rename(struct inode *old_dir, struct dentry *old_dentry,
         lower_new_dentry = lower_new_path.dentry;
         lower_old_dir_dentry = dget_parent(lower_old_dentry);
         lower_new_dir_dentry = dget_parent(lower_new_dentry);
- 
+
         trap = lock_rename(lower_old_dir_dentry, lower_new_dir_dentry);
         /* source should not be ancestor of target */
         if (trap == lower_old_dentry) {
@@ -118,7 +120,7 @@ static int sealfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 
         err = vfs_rename(d_inode(lower_old_dir_dentry), lower_old_dentry,
                          d_inode(lower_new_dir_dentry), lower_new_dentry,
-                         NULL, 0);
+                         NULL, flags);
         if (err)
                 goto out;
 
@@ -222,8 +224,10 @@ static int sealfs_setattr(struct dentry *dentry, struct iattr *ia)
 	 * Check if user has permission to change inode.  We don't check if
 	 * this user can change the lower inode: that should happen when
 	 * calling notify_change on the lower inode.
+	 * Ported: inode_change_ok was removed, now it's setattr_prepare()
+	 * and the first parameter is a dentry* (it was an inode*)
 	 */
-	err = inode_change_ok(inode, ia);
+	err = setattr_prepare(dentry, ia);
 	if (err)
 		goto out_err;
 
@@ -285,72 +289,28 @@ out_err:
 	return err;
 }
 
-static int sealfs_getattr(struct vfsmount *mnt, struct dentry *dentry,
-			  struct kstat *stat)
+/*
+ * Ported for the new statx() syscall
+ */
+static int sealfs_getattr(const struct path *path, struct kstat *stat,
+                 u32 request_mask, unsigned int query_flags)
 {
 	int err;
 	struct kstat lower_stat;
 	struct path lower_path;
 
-	sealfs_get_lower_path(dentry, &lower_path);
-	err = vfs_getattr(&lower_path, &lower_stat);
+	sealfs_get_lower_path(path->dentry, &lower_path);
+
+	err = vfs_getattr(&lower_path, &lower_stat,
+		request_mask, query_flags);
 	if (err)
 		goto out;
-	fsstack_copy_attr_all(d_inode(dentry),
+	fsstack_copy_attr_all(d_inode(path->dentry),
 			      d_inode(lower_path.dentry));
-	generic_fillattr(d_inode(dentry), stat);
+	generic_fillattr(d_inode(path->dentry), stat);
 	stat->blocks = lower_stat.blocks;
 out:
-	sealfs_put_lower_path(dentry, &lower_path);
-	return err;
-}
-
-static int
-sealfs_setxattr(struct dentry *dentry, struct inode *inode, const char *name, const void *value,
-		size_t size, int flags)
-{
-	int err; struct dentry *lower_dentry;
-	struct path lower_path;
-
-	sealfs_get_lower_path(dentry, &lower_path);
-	lower_dentry = lower_path.dentry;
-	if (!d_inode(lower_dentry)->i_op->setxattr) {
-		err = -EOPNOTSUPP;
-		goto out;
-	}
-	err = vfs_setxattr(lower_dentry, name, value, size, flags);
-	if (err)
-		goto out;
-	fsstack_copy_attr_all(d_inode(dentry),
-			      d_inode(lower_path.dentry));
-out:
-	sealfs_put_lower_path(dentry, &lower_path);
-	return err;
-}
-
-static ssize_t
-sealfs_getxattr(struct dentry *dentry, struct inode *inode,
-		const char *name, void *buffer, size_t size)
-{
-	int err;
-	struct dentry *lower_dentry;
-	struct inode *lower_inode;
-	struct path lower_path;
-
-	sealfs_get_lower_path(dentry, &lower_path);
-	lower_dentry = lower_path.dentry;
-	lower_inode = sealfs_lower_inode(inode);
-	if (!lower_inode->i_op->getxattr) {
-		err = -EOPNOTSUPP;
-		goto out;
-	}
-	err = vfs_getxattr(lower_dentry, name, buffer, size);
-	if (err)
-		goto out;
-	fsstack_copy_attr_atime(d_inode(dentry),
-				d_inode(lower_path.dentry));
-out:
-	sealfs_put_lower_path(dentry, &lower_path);
+	sealfs_put_lower_path(path->dentry, &lower_path);
 	return err;
 }
 
@@ -377,39 +337,34 @@ out:
 	return err;
 }
 
-static int
-sealfs_removexattr(struct dentry *dentry, const char *name)
-{
-	int err;
-	struct dentry *lower_dentry;
-	struct path lower_path;
+/*
+	Ported:
+	see: https://patchwork.kernel.org/patch/9140641/
+	All filesystems that support xattrs by now do so via xattr handlers.
+	They all define sb->s_xattr, and their getxattr, setxattr, and
+	removexattr inode operations use the generic inode operations.  On
+	filesystems that don't support xattrs, the xattr inode operations are
+	all NULL, and sb->s_xattr is also NULL.
 
-	sealfs_get_lower_path(dentry, &lower_path);
-	lower_dentry = lower_path.dentry;
-	if (!d_inode(lower_dentry)->i_op ||
-	    !d_inode(lower_dentry)->i_op->removexattr) {
-		err = -EINVAL;
-		goto out;
-	}
-	err = vfs_removexattr(lower_dentry, name);
-	if (err)
-		goto out;
-	fsstack_copy_attr_all(d_inode(dentry),
-			      d_inode(lower_path.dentry));
-out:
-	sealfs_put_lower_path(dentry, &lower_path);
-	return err;
-}
+	This means that we can remove the getxattr, setxattr, and removexattr
+	inode operations and directly call the generic handlers, or better,
+	inline expand those handlers into fs/xattr.c.
+
+	Filesystems that do not support xattrs on some inodes should clear the
+	IOP_XATTR i_opflags flag in those inodes.  (Right now, some filesystems
+	have checks to disable xattrs on some inodes in the ->list, ->get, and
+	->set xattr handler operations instead.)  The IOP_XATTR flag is
+	automatically cleared in inodes of filesystems that don't have xattr
+	support
+ */
+
 const struct inode_operations sealfs_symlink_iops = {
 	.readlink	= sealfs_readlink,
 	.permission	= sealfs_permission,
 	.setattr	= sealfs_setattr,
 	.getattr	= sealfs_getattr,
 	.get_link	= sealfs_get_link,
-	.setxattr	= sealfs_setxattr,
-	.getxattr	= sealfs_getxattr,
-	.listxattr	= sealfs_listxattr,
-	.removexattr	= sealfs_removexattr,
+ 	.listxattr	= sealfs_listxattr,
 };
 
 const struct inode_operations sealfs_dir_iops = {
@@ -425,18 +380,12 @@ const struct inode_operations sealfs_dir_iops = {
 	.permission	= sealfs_permission,
 	.setattr	= sealfs_setattr,
 	.getattr	= sealfs_getattr,
-	.setxattr	= sealfs_setxattr,
-	.getxattr	= sealfs_getxattr,
-	.listxattr	= sealfs_listxattr,
-	.removexattr	= sealfs_removexattr,
+ 	.listxattr	= sealfs_listxattr,
 };
 
 const struct inode_operations sealfs_main_iops = {
 	.permission	= sealfs_permission,
 	.setattr	= sealfs_setattr,
 	.getattr	= sealfs_getattr,
-	.setxattr	= sealfs_setxattr,
-	.getxattr	= sealfs_getxattr,
-	.listxattr	= sealfs_listxattr,
-	.removexattr	= sealfs_removexattr,
+ 	.listxattr	= sealfs_listxattr,
 };

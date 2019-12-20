@@ -181,13 +181,26 @@ static void sealfs_umount_begin(struct super_block *sb)
 		lower_sb->s_op->umount_begin(lower_sb);
 }
 
+/*
+ * Display the mount options in /proc/mounts.
+ */
+static int sealfs_show_options(struct seq_file *m, struct dentry *root)
+{
+	struct sealfs_sb_info *sbi = root->d_sb->s_fs_info;
+
+	seq_printf(m, ",kpath=%s", sbi->kpathname);
+	if (sbi->sync)
+		seq_printf(m, ",syncio");
+	return 0;
+}
+
 const struct super_operations sealfs_sops = {
 	.put_super	= sealfs_put_super,
 	.statfs		= sealfs_statfs,
 	.remount_fs	= sealfs_remount_fs,
 	.evict_inode	= sealfs_evict_inode,
 	.umount_begin	= sealfs_umount_begin,
-	.show_options	= generic_show_options,
+	.show_options	= sealfs_show_options,
 	.alloc_inode	= sealfs_alloc_inode,
 	.destroy_inode	= sealfs_destroy_inode,
 	.drop_inode	= generic_delete_inode,
