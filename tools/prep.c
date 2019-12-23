@@ -22,8 +22,9 @@ usage(void)
 }
 
 /*
- * by default it's /dev/urandom but...
- * https://research.nccgroup.com/2019/12/19/on-linuxs-random-number-generation/
+ * Note that /dev/urandom never blocks but provides bytes when there is
+ * no entropy. /dev/random blocks if there is no entropy in the generator
+ * and this may be a problem... 
  */
 char *source = "/dev/urandom";
 
