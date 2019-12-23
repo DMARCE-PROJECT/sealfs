@@ -18,8 +18,14 @@ enum{
 void
 usage(void)
 {
-	errx(1, "usage: prep lfile kfile1 kfile2 kfile_size");
+	errx(1, "usage: prep [-s rndsource] lfile kfile1 kfile2 kfile_size");
 }
+
+/*
+ * by default it's /dev/urandom but...
+ * https://research.nccgroup.com/2019/12/19/on-linuxs-random-number-generation/
+ */
+char *source = "/dev/urandom";
 
 static void
 createkfile(int kfd1, int kfd2,
@@ -36,9 +42,9 @@ createkfile(int kfd1, int kfd2,
 	w = write(kfd2, kheader, sizeof(struct sealfs_keyfile_header));
 	if(w != sizeof(struct sealfs_keyfile_header))
 		err(1, "can't write kheader in kfile2");
-	rfd = open("/dev/urandom", O_RDONLY);
+	rfd = open(source, O_RDONLY);
 	if(rfd < 0)
-		errx(1, "can't open urandom file");
+		errx(1, "can't open source file: %s", source);
 	t = 0;
 	while(t < sz){
 		if(sz - t < Bsz)
@@ -47,7 +53,7 @@ createkfile(int kfd1, int kfd2,
 			tr = Bsz;
 		nr = read(rfd, buf, tr);
 		if(nr < 0)
-			err(1, "can't read from /dev/urandom");
+			err(1, "can't read from source file");
 		if(nr == 0)
 			err(1, "eof? bug");
 		if(write(kfd1, buf, nr) != nr)
@@ -77,20 +83,27 @@ main(int argc, char *argv[])
 	struct sealfs_keyfile_header kheader;
 	struct sealfs_logfile_header lheader;
 
-	if(argc != 5)
+ 	if(argc == 7){
+		if(strcmp(argv[1], "-s") != 0)
+			usage();
+		source = argv[2];
+		argv += 3;
+		argc -= 3;
+	}
+	if(argc != 4)
 		usage();
-	sz = atoll(argv[4]);
+	sz = atoll(argv[3]);
 	if(sz <= 0)
 		usage();
-	lfd = open(argv[1], O_WRONLY|O_CREAT|O_TRUNC, 0600);
+	lfd = open(argv[0], O_WRONLY|O_CREAT|O_TRUNC, 0600);
 	if(lfd<0)
-		err(1, "can't create %s", argv[1]);
-	kfd1 = open(argv[2], O_WRONLY|O_CREAT|O_TRUNC, 0600);
+		err(1, "can't create %s", argv[0]);
+	kfd1 = open(argv[1], O_WRONLY|O_CREAT|O_TRUNC, 0600);
 	if(kfd1<0)
-		err(1, "can't create %s", argv[2]);
-	kfd2 = open(argv[3], O_WRONLY|O_CREAT|O_TRUNC, 0600);
+		err(1, "can't create %s", argv[1]);
+	kfd2 = open(argv[2], O_WRONLY|O_CREAT|O_TRUNC, 0600);
 	if(kfd2<0)
-		err(1, "can't create %s", argv[3]);
+		err(1, "can't create %s", argv[2]);
 
 	if(getrandom(&kheader.magic, 8, 0) != 8)
 		err(1, "can't generate magic");
