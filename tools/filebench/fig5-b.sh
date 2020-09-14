@@ -17,14 +17,14 @@ then
 	exit 1
 fi
 
-for r in $nossd #$ssd
+for r in $nossd $ssd
 do
-	for nthreads in 1 #2 4 8 16 32 64
+	for nthreads in 1 2 4 8 16 32 64
 	do
 		disk=SSD
 		test $r = $nossd && disk=NOSSD
 
-		echo '#running without sealfs:' disk:$disk nprocs:$nprocs
+		echo '#running without sealfs:' disk:$disk nprocs:$nprocs nthreads:$nthreads
 		rm $r/sealfs/* 2> /dev/null
 		rm -rf $linksdir/* 2>/dev/null
 		./createbenchfiles.sh $r/sealfs $linksdir $nprocs
@@ -38,7 +38,7 @@ do
 			exit 1
 		fi	
 
-		echo '#running with sealfs:' disk:$disk nprocs:$nprocs 
+		echo '#running with sealfs:' disk:$disk nprocs:$nprocs nthreads:$nthreads 
 		rm $r/sealfs/* 2> /dev/null
                 rm -rf $linksdir/*  2>/dev/null
 		cp $once/.SEALFS.LOG  $r/sealfs
