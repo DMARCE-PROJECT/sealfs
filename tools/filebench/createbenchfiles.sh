@@ -18,7 +18,7 @@ fi
 SEALPATH=$1
 shift
 
-if ! test -d $1; then ]
+if ! test -d $1; then
 	echo $1 is not a directory 1>&2
 	usage
 fi

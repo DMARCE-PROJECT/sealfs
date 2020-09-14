@@ -35,8 +35,8 @@ set $cached=false
 set $count=9000
 set $iosize=100
 set $sync=false
-set $nproc=SEALFSNPROCS
-set $nthreads=SEALFSNTHREADS
+set $nproc=1
+set $nthreads=1
 
 define fileset name="testF",entries=$nproc,prealloc,size=0,path=$dir,dirwidth="0",reuse
 

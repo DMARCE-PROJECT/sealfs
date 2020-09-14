@@ -6,7 +6,7 @@ ssd=/mnt/ssd
 once=/home/esoriano/once
 ksize=$((1024 * 1024 * 1024))
 linksdir=/tmp/links/
-nthreads=1
+nprocs=1
 
 echo 0 > /proc/sys/kernel/randomize_va_space
 rm $datadir/* 2> /dev/null
@@ -19,7 +19,7 @@ fi
 
 for r in $nossd #$ssd
 do
-	for nprocs in 1 #2 4 8 16 32 64
+	for nthreads in 1 #2 4 8 16 32 64
 	do
 		disk=SSD
 		test $r = $nossd && disk=NOSSD
