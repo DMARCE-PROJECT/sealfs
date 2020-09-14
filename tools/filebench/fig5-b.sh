@@ -30,7 +30,7 @@ do
 		./createbenchfiles.sh $r/sealfs $linksdir $nprocs
 		rm x.f 2> /dev/null
 		sed -e "s/SEALFSNPROCS/$nprocs/" -e "s/SEALFSNTHREADS/$nthreads/" < fig2-b.f > x.f
-		outputf=$datadir/fig2-b-ext4-$disk-NP$nprocs-NT$nthreads
+		outputf=$datadir/fig5-b-ext4-$disk-NP$nprocs-NT$nthreads
 		filebench -f x.f > $outputf  2>&1
 		if test $? -ne 0 || ! grep -q 'IO Summary' $outputf
 		then
@@ -57,7 +57,7 @@ do
 		./createbenchfiles.sh $r/sealfs $linksdir  $nprocs
 		rm x.f 2> /dev/null
 		sed -e "s/SEALFSNPROCS/$nprocs/" -e "s/SEALFSNTHREADS/$nthreads/" < fig2-b.f > x.f
-		outputf=$datadir/fig2-b-sealfs-$disk-NP$nprocs-NT$nthreads
+		outputf=$datadir/fig5-b-sealfs-$disk-NP$nprocs-NT$nthreads
 		filebench -f x.f > $outputf  2>&1
 		umount $r/sealfs
                 if test $? -ne 0 || ! grep -q 'IO Summary' $outputf
