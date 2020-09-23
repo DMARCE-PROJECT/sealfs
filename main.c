@@ -84,9 +84,9 @@ static struct file * _openfile(char *s, char sync) {
 		return NULL;
 	}
  	if(sync){
-		f = dentry_open(&p, O_RDWR|O_SYNC, cred);
+		f = dentry_open(&p, O_LARGEFILE|O_RDWR|O_SYNC, cred);
 	}else{
-		f = dentry_open(&p, O_RDWR, cred);
+		f = dentry_open(&p, O_LARGEFILE|O_RDWR, cred);
 	}
 	err = PTR_ERR(f);
 	if (IS_ERR(f)){
@@ -99,7 +99,7 @@ static struct file * _openfile(char *s, char sync) {
 
 static int read_headers(struct sealfs_sb_info *info)
 {
-	int nr;
+	loff_t nr;
 	size_t lsz = sizeof(struct sealfs_logfile_header);
 	size_t ksz = sizeof(struct sealfs_keyfile_header);
 	loff_t o;
@@ -108,14 +108,14 @@ static int read_headers(struct sealfs_sb_info *info)
 	nr = kernel_read(info->kfile, (char*) &info->kheader, ksz, &o);
 	if(nr != ksz){
 		printk(KERN_ERR	"sealfs: error reading"
-		" kheader: %d bytes\n", nr);
+		" kheader: %lld bytes\n", nr);
 		return -1;
 	}
 	o = 0;
  	nr = kernel_read(info->lfile, (char*) &info->lheader, lsz, &o);
 	if(nr != lsz){
 		printk(KERN_ERR	"sealfs: error reading "
-		"lheader: %d\n", nr);
+		"lheader: %lld\n", nr);
 		return -1;
 	}
 

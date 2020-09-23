@@ -16,6 +16,13 @@ then
 	echo sealfs module not loaded >&2
 	exit 1
 fi
+if mount|grep sealfs
+then
+	echo sealfs is mounted 1>&2
+	exit 1
+fi
+
+mkdir -p $linksdir
 
 for r in $nossd $ssd
 do
@@ -40,11 +47,14 @@ do
 
 		echo '#running with sealfs:' disk:$disk nprocs:$nprocs nthreads:$nthreads
 		rm $r/sealfs/* 2> /dev/null
+		rm $r/k1x 2>/dev/null
                 rm -rf $linksdir/*  2>/dev/null
 		cp $once/.SEALFS.LOG  $r/sealfs
-		cp $once/k1 $r
-
-		if ! mount -t sealfs $r/sealfs $r/sealfs -o kpath=$r/k1
+		cp $once/k1x $r
+		sleep 2
+		sync
+		sync
+		if ! mount -t sealfs $r/sealfs $r/sealfs -o kpath=$r/k1x
 		then
 			echo cant mount >&2
 			exit 1
@@ -60,6 +70,11 @@ do
 		outputf=$datadir/fig2-b-sealfs-$disk-NP$nprocs-NT$nthreads
 		filebench -f x.f > $outputf  2>&1
 		umount $r/sealfs
+		if mount|grep sealfs
+		then
+			echo sealfs is mounted 1>&2
+			exit 1
+		fi
                 if test $? -ne 0 || ! grep -q 'IO Summary' $outputf
                 then
                         echo filebench failed >&2
@@ -68,4 +83,5 @@ do
 	done
 done
 
+cp -a $datadir /home/esoriano/fig2
 

@@ -32,7 +32,7 @@
 
 set $dir=/tmp/links
 set $cached=false
-set $count=9000
+#set $count=9000
 set $iosize=100
 set $sync=false
 set $nproc=SEALFSNPROCS
@@ -44,7 +44,7 @@ define process name=filewriter,instances=$nproc
 {
   thread name=filewriterthread,memsize=10m,instances=$nthreads
   {
-    flowop appendfile name=write-file,dsync=$sync,filesetname="testF",iosize=$iosize,iters=$count
+    flowop appendfile name=write-file,dsync=$sync,filesetname="testF",iosize=$iosize  #,iters=$count
 #    flowop finishoncount name=finish,value=0
   }
 }

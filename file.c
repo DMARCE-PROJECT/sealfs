@@ -13,6 +13,8 @@
  * published by the Free Software Foundation.
  */
 
+
+
 #include "sealfs.h"
 
 static ssize_t sealfs_read(struct file *file, char __user *buf,
@@ -119,16 +121,16 @@ static int do_hmac(struct sealfs_sb_info *sb,
 
 static int read_key(struct sealfs_sb_info *sb, unsigned char *k)
 {
-	int nr;
-	int t;
+	loff_t nr;
+	loff_t t;
 	loff_t oldoff;
 	unsigned char buf[FPR_SIZE];
 	size_t x;
 
 	oldoff = sb->kheader.burnt;
-	t = 0;
+	t = 0ULL;
 	while(t < FPR_SIZE){
-		nr = kernel_read(sb->kfile, k+t, FPR_SIZE-t, &sb->kheader.burnt);
+		nr = kernel_read(sb->kfile, k+t, ((loff_t)FPR_SIZE)-t, &sb->kheader.burnt);
 		if(nr < 0) {
 			printk(KERN_ERR "sealfs: error while reading\n");
 			return -1;
@@ -140,7 +142,7 @@ static int read_key(struct sealfs_sb_info *sb, unsigned char *k)
   		t += nr;
 	}
  	get_random_bytes(buf, FPR_SIZE);
-	if(kernel_write(sb->kfile, buf, FPR_SIZE, &oldoff) != FPR_SIZE){
+	if(kernel_write(sb->kfile, buf, FPR_SIZE, &oldoff) != (size_t)FPR_SIZE){
 		printk(KERN_ERR "sealfs: can't write key file\n");
 		return -1;
 	}
@@ -216,7 +218,7 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 
 	lower_file = sealfs_lower_file(file);
 
-	if(file->f_flags & O_APPEND){
+	if(1){ //file->f_flags & O_APPEND){
 		sbinfo = (struct sealfs_sb_info*)
 			file->f_path.mnt->mnt_sb->s_fs_info;
 		/*

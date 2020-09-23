@@ -57,7 +57,6 @@ do
 				rm $r/sealfs/* 2> /dev/null
 				cp $once/.SEALFS.LOG  $r/sealfs/
 				cp $once/k1 $r
-				cp $once/k1 $r/k2
 
 			        if ! mount -t sealfs $r/sealfs $r/sealfs -o kpath=$r/k1
 			        then
@@ -79,11 +78,6 @@ do
 			                exit 1
 			        fi
 			        umount $r/sealfs
-				if ! ./verify $r/sealfs $r/k1 $r/k2
-				then
-					echo buggy: verification failed >&2
-					exit 2
-				fi
 			done
 		done
 	done

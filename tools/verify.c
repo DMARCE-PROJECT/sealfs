@@ -410,10 +410,10 @@ main(int argc, char *argv[])
 
 	alphaf = fopen(kalpha, "r");
 	if(alphaf == NULL)
-		err(1, "can't open %s", kalpha);
+		err(1, "can't open %s", dir);
 	betaf = fopen(kbeta, "r");
 	if(betaf == NULL)
-		err(1, "can't open %s", kbeta);
+		err(1, "can't open %s", dir);
 	lf = fopen(lpath, "r");
 	if(lf == NULL)
 		err(1, "can't open %s", lpath);
@@ -425,6 +425,7 @@ main(int argc, char *argv[])
 		err(1, "can't read lheader");
 	if(lheader.magic != kalphahdr.magic || lheader.magic != kbetahdr.magic)
 		errx(1, "magic numbers don't match");
+	printf("k1 burnt: %lld\n", (long long)kalphahdr.burnt);
 	checkkeystreams(alphaf, betaf, kalphahdr.burnt);
 	verify(betaf, lf, dir, inode, begin, end);
 	if(inode != 0)
