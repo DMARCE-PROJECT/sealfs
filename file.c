@@ -218,7 +218,7 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 
 	lower_file = sealfs_lower_file(file);
 
-	if(1){ //file->f_flags & O_APPEND){
+	if(file->f_flags & O_APPEND){
 		sbinfo = (struct sealfs_sb_info*)
 			file->f_path.mnt->mnt_sb->s_fs_info;
 		/*
