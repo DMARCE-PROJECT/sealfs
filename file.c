@@ -37,7 +37,7 @@ static ssize_t sealfs_read(struct file *file, char __user *buf,
 
 static int initshash(struct sealfs_sb_info *sb)
 {
-	sb->hash_tfm = crypto_alloc_shash("hmac(sha1)", 0, 0);
+	sb->hash_tfm = crypto_alloc_shash("hmac(sha256)", 0, 0);
 	if(IS_ERR(sb->hash_tfm)) {
  		printk(KERN_ERR "sealfs: can't alloc hash_tfm struct\n");
 		return -1;
@@ -49,7 +49,7 @@ static int initshash(struct sealfs_sb_info *sb)
 		return -1;
 	}
 	sb->hash_desc->tfm = sb->hash_tfm;
-	sb->hash_desc->flags = 0;
+	//sb->hash_desc->flags = 0;
 	return 0;
 }
 
