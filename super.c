@@ -90,11 +90,11 @@ static int sealfs_remount_fs(struct super_block *sb, int *flags, char *options)
 	 * can safely accept a few flags (RDONLY, MANDLOCK), and honor
 	 * SILENT, but anything else left over is an error.
 	 */
-	if ((*flags & ~(MS_RDONLY | MS_MANDLOCK | MS_SILENT)) != 0) {
-		printk(KERN_ERR
-		       "sealfs: remount flags 0x%x unsupported\n", *flags);
-		err = -EINVAL;
-	}
+	//if ((*flags & ~(MS_RDONLY | MS_MANDLOCK | MS_SILENT)) != 0) {
+	//	printk(KERN_ERR
+	//	       "sealfs: remount flags 0x%x unsupported\n", *flags);
+	//	err = -EINVAL;
+	//}
 
 	return err;
 }
@@ -131,7 +131,7 @@ static struct inode *sealfs_alloc_inode(struct super_block *sb)
 	/* memset everything up to the inode to 0 */
 	memset(i, 0, offsetof(struct sealfs_inode_info, vfs_inode));
 
-	i->vfs_inode.i_version = 1;
+	i->vfs_inode.i_version.counter = 1;
 	return &i->vfs_inode;
 }
 

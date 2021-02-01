@@ -1,10 +1,6 @@
-/* Q sealfs log and key types */
-#ifndef SHA1_DIGEST_SIZE
-#define SHA1_DIGEST_SIZE 20
-#endif
 
 // HMAC keylen is also FPR_SIZE
-#define FPR_SIZE SHA1_DIGEST_SIZE
+#define FPR_SIZE SHA256_DIGEST_SIZE
 #define DEFAULTLNAME ".SEALFS.LOG"
 
 struct sealfs_keyfile_header {
