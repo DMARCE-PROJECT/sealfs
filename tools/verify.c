@@ -102,7 +102,7 @@ makehmac(int fd, unsigned char *key,
 	        fprintf(stderr, "HMAC_init: error\n");
 		return -1;
 	}
- 	if(HMAC_Init_ex(c, key, FPR_SIZE, EVP_sha1(), NULL) == 0){
+ 	if(HMAC_Init_ex(c, key, FPR_SIZE, EVP_sha256(), NULL) == 0){
                 fprintf(stderr, "HMAC_init: error\n");
 		goto fail;
   	}

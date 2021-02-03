@@ -4,7 +4,7 @@
 // 	kernel and user space tools share this file, and
 //	this definition is not present in user space
 #ifndef SHA256_DIGEST_SIZE
-#define SHA256_DIGEST_SIZE 20
+#define SHA256_DIGEST_SIZE 32
 #endif
 #define FPR_SIZE SHA256_DIGEST_SIZE
 #define DEFAULTLNAME ".SEALFS.LOG"
