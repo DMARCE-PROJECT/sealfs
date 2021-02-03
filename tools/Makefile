@@ -1,6 +1,6 @@
 CC = gcc
 L=-lssl -lcrypto
-CFLAGS = -g -Wall -Wshadow
+CFLAGS = -g -Wall -Wshadow -I.
 DEPS = ../sealfstypes.h
 SRCS = $(wildcard *.c)
 OBJS = $(SRCS:.c=.o)

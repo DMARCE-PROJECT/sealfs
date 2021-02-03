@@ -146,8 +146,8 @@ makehmac(int fd, unsigned char *key,
 		fprintf(stderr, "HMAC_Final: error");
 		goto fail;
 	}
-        if(sz != SHA_DIGEST_LENGTH){
-                fprintf(stderr, "unexpected hmac size");
+        if(sz != SHA256_DIGEST_SIZE){
+                fprintf(stderr, "unexpected hmac size %d != %d", sz, SHA256_DIGEST_SIZE);
 		goto fail;
 	}
 	ret = 0;
