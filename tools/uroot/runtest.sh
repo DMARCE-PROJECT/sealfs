@@ -38,21 +38,31 @@ cp sealfs.ko /var/tmp
 cd tools
 make all || exit 1
 cp prep dump verify test /var/tmp
-ksize=$((1024 * 1024))
-/var/tmp/prep /var/tmp/.SEALFS.LOG /var/tmp/k1 /var/tmp/k2 $ksize
 
 echo building uroot
+export SEALHD=/var/tmp/sealhd
+mount|grep $SEALHD && sudo umount $SEALHD
+touch $SEALHD
+rm "$SEALHD"
+dd if=/dev/zero of=$SEALHD bs=1 count=1 seek=4G > /dev/null 2>&1
+mkfs.ext3 $SEALHD > /dev/null 2>&1
+mkdir -p /tmp/hd
+sudo mount -o loop,user $SEALHD /tmp/hd || exit 1
+ksize=$((1024 * 1024 * 1024))
+sudo /var/tmp/prep /tmp/hd/.SEALFS.LOG /tmp/hd/k1 /tmp/hd/k2 $ksize
+sudo umount $SEALHD
+
 
 cp $GITSEAL/tools/uroot/inside.sh /var/tmp/
 chmod +x /var/tmp/inside.sh
-if ! u-root -uinitcmd=/var/tmp/inside.sh -files "/var/tmp/test" -files "/var/tmp/sealfs.ko" -files /var/tmp/k1 -files /var/tmp/k2 -files /var/tmp/.SEALFS.LOG -files /var/tmp/verify -files /var/tmp/prep -files /var/tmp/dump  -files /var/tmp/inside.sh> /tmp/$$_uroot 2>&1; then
+if ! u-root -uinitcmd=/var/tmp/inside.sh -files "/var/tmp/test" -files "/var/tmp/sealfs.ko" -files /var/tmp/verify -files /var/tmp/prep -files /var/tmp/dump  -files /var/tmp/inside.sh> /tmp/$$_uroot 2>&1; then
 	cat /tmp/$$_uroot 1>&2
 	echo u-root error  1>&2
 	exit 1
 fi
 
 
-rm -f /var/tmp/inside.sh /var/tmp/sealfs.ko /var/tmp/k1 /var/tmp/k2 /var/tmp/.SEALFS.LOG /var/tmp/verify  /var/tmp/prep  /var/tmp/dump  /var/tmp/inside.sh /var/tmp/test
+rm -f /var/tmp/inside.sh /var/tmp/sealfs.ko /var/tmp/verify  /var/tmp/prep  /var/tmp/dump  /var/tmp/inside.sh /var/tmp/test
 
 
 export OUTPUT=/tmp/OUTPUT_seal
@@ -64,20 +74,22 @@ NPROC=$(( ($NPROC + 1 )/ 2 ))
 
 #	killall qemu-system-x86_64
 if [ "$INTERACTIVE" = true ]; then
-	qemu-system-x86_64 -smp $NPROC -kernel $KERNEL -initrd /tmp/initramfs.linux_amd64.cpio -nographic -append "console=ttyS0" 
-	exit 0
+	qemu-system-x86_64 -smp $NPROC -kernel $KERNEL -initrd /tmp/initramfs.linux_amd64.cpio -hda $SEALHD -nographic -append "console=ttyS0"
+
+else
+	qemu-system-x86_64 -smp $NPROC -kernel $KERNEL -initrd /tmp/initramfs.linux_amd64.cpio  -hda $SEALHD -nographic -append "console=ttyS0" > $OUTPUT 2> /dev/null &
+	PIDQEMU=$!
+	
+	echo waiting for qemu to finish
+	while ! egrep '\#' $OUTPUT|egrep '~/'; do
+		sleep 1
+		echo -n .
+	done
+	
+	#	killall qemu-system-x86_64
+	
+	kill $PIDQEMU
 fi
 
-qemu-system-x86_64 -smp $NPROC -kernel $KERNEL -initrd /tmp/initramfs.linux_amd64.cpio -nographic -append "console=ttyS0" > $OUTPUT 2> /dev/null &
-PIDQEMU=$!
-
-echo waiting for qemu to finish
-while ! egrep '\#' $OUTPUT|egrep '~/'; do
-	sleep 1
-	echo -n .
-done
-
-#	killall qemu-system-x86_64
-
-kill $PIDQEMU
+rm "$SEALHD"
 sed -E -n '/STARTTEST/,/ENDTEST|\#/p' $OUTPUT
