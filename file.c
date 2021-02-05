@@ -237,6 +237,7 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
  		*/
 		dinfo = SEALFS_D(dentry);
 		ino = d_inode(dentry);
+
 		mutex_lock(&dinfo->imutex);
 		wr = vfs_write(lower_file, buf, count, ppos); //ppos is ignored
 		if(wr >= 0){
