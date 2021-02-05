@@ -52,20 +52,23 @@ if ! u-root -uinitcmd=/var/tmp/inside.sh -files "/var/tmp/test" -files "/var/tmp
 fi
 
 
-#rm /var/tmp/inside.sh /var/tmp/sealfs.ko /var/tmp/k1 /var/tmp/k2 /var/tmp/.SEALFS.LOG /var/tmp/verify  /var/tmp/prep  /var/tmp/dump  /var/tmp/inside.sh /var/tmp/test
+rm -f /var/tmp/inside.sh /var/tmp/sealfs.ko /var/tmp/k1 /var/tmp/k2 /var/tmp/.SEALFS.LOG /var/tmp/verify  /var/tmp/prep  /var/tmp/dump  /var/tmp/inside.sh /var/tmp/test
 
 
 export OUTPUT=/tmp/OUTPUT_seal
 touch /tmp/OUTPUT_seal
 rm "$OUTPUT"
 
+export NPROC=$(nproc)
+NPROC=$(( ($NPROC + 1 )/ 2 ))
+
 #	killall qemu-system-x86_64
 if [ "$INTERACTIVE" = true ]; then
-	qemu-system-x86_64 -kernel $KERNEL -initrd /tmp/initramfs.linux_amd64.cpio -nographic -append "console=ttyS0" 
+	qemu-system-x86_64 -smp $NPROC -kernel $KERNEL -initrd /tmp/initramfs.linux_amd64.cpio -nographic -append "console=ttyS0" 
 	exit 0
 fi
 
-qemu-system-x86_64 -kernel $KERNEL -initrd /tmp/initramfs.linux_amd64.cpio -nographic -append "console=ttyS0" > $OUTPUT 2> /dev/null &
+qemu-system-x86_64 -smp $NPROC -kernel $KERNEL -initrd /tmp/initramfs.linux_amd64.cpio -nographic -append "console=ttyS0" > $OUTPUT 2> /dev/null &
 PIDQEMU=$!
 
 echo waiting for qemu to finish
