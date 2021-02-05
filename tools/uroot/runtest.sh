@@ -54,7 +54,10 @@ fi
 
 #rm /var/tmp/inside.sh /var/tmp/sealfs.ko /var/tmp/k1 /var/tmp/k2 /var/tmp/.SEALFS.LOG /var/tmp/verify  /var/tmp/prep  /var/tmp/dump  /var/tmp/inside.sh /var/tmp/test
 
+
 export OUTPUT=/tmp/OUTPUT_seal
+touch /tmp/OUTPUT_seal
+rm "$OUTPUT"
 
 #	killall qemu-system-x86_64
 if [ "$INTERACTIVE" = true ]; then
@@ -64,8 +67,12 @@ fi
 
 qemu-system-x86_64 -kernel $KERNEL -initrd /tmp/initramfs.linux_amd64.cpio -nographic -append "console=ttyS0" > $OUTPUT 2> /dev/null &
 PIDQEMU=$!
-sleep 20	##race, no other way...
+
+echo waiting for qemu to finish
+while ! egrep '\#' $OUTPUT|egrep '~/'; do
+	sleep 1
+	echo -n .
+done
+
 kill $PIDQEMU
-
-
 sed -E -n '/STARTTEST/,/ENDTEST|\#/p' $OUTPUT
