@@ -6,7 +6,14 @@ SRCS = $(wildcard *.c)
 OBJS = $(SRCS:.c=.o)
 TOCLEAN = prep $(OBJS)
 
-verify: verify.o $(DEPS)
+all: dump prep verify test
+
+uthash.h:
+	rm -rf /tmp/uthash
+	git clone https://github.com/troydhanson/uthash.git /tmp/uthash
+	cp /tmp/uthash/src/uthash.h .
+
+verify: uthash.h verify.o $(DEPS)
 	$(CC) $(CFLAGS) -o $@ $@.o $L
 
 prep: prep.o $(DEPS)
@@ -18,9 +25,11 @@ dump: dump.o $(DEPS)
 test: test.o
 	$(CC) $(CFLAGS) -std=gnu99 -o $@ $@.o
 
-.PHONY: all clean
-
 clean:
 	rm -f $(TOCLEAN)
 
-all: dump prep verify test
+nuke: clean
+	rm -f  uthash.h
+
+.PHONY: all clean
+
