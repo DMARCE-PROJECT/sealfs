@@ -1,5 +1,19 @@
 #!/bin/bash
 
+usage(){
+        echo "usage: runtest [-i]" 1>&2;
+        exit 1
+}
+
+if [ "$1" = '-i' ]; then
+        INTERACTIVE=true
+	shift
+fi
+
+if [ "$#" -ne 0 ]; then
+        usage
+fi
+
 PATHuroot=$(which u-root)
 PATHqemu=$(which qemu-system-x86_64)
 if ! [ -x $PATHuroot ] || ! [ -x $PATHqemu ]; then
@@ -23,7 +37,7 @@ make all || exit 1
 cp sealfs.ko /var/tmp
 cd tools
 make all || exit 1
-cp prep dump verify /var/tmp
+cp prep dump verify test /var/tmp
 ksize=$((1024 * 1024))
 /var/tmp/prep /var/tmp/.SEALFS.LOG /var/tmp/k1 /var/tmp/k2 $ksize
 
@@ -31,16 +45,22 @@ echo building uroot
 
 cp $GITSEAL/tools/uroot/inside.sh /var/tmp/
 chmod +x /var/tmp/inside.sh
-if ! u-root -uinitcmd=/var/tmp/inside.sh -files "/var/tmp/sealfs.ko" -files /var/tmp/k1 -files /var/tmp/k2 -files /var/tmp/.SEALFS.LOG -files /var/tmp/verify -files /var/tmp/prep -files /var/tmp/dump  -files /var/tmp/inside.sh> /tmp/$$_uroot 2>&1; then
+if ! u-root -uinitcmd=/var/tmp/inside.sh -files "/var/tmp/test" -files "/var/tmp/sealfs.ko" -files /var/tmp/k1 -files /var/tmp/k2 -files /var/tmp/.SEALFS.LOG -files /var/tmp/verify -files /var/tmp/prep -files /var/tmp/dump  -files /var/tmp/inside.sh> /tmp/$$_uroot 2>&1; then
 	cat /tmp/$$_uroot 1>&2
 	echo u-root error  1>&2
 	exit 1
 fi
 
 
-rm /var/tmp/inside.sh /var/tmp/sealfs.ko /var/tmp/k1 /var/tmp/k2 /var/tmp/.SEALFS.LOG /var/tmp/verify  /var/tmp/prep  /var/tmp/dump  /var/tmp/inside.sh
+rm /var/tmp/inside.sh /var/tmp/sealfs.ko /var/tmp/k1 /var/tmp/k2 /var/tmp/.SEALFS.LOG /var/tmp/verify  /var/tmp/prep  /var/tmp/dump  /var/tmp/inside.sh /var/tmp/test
 
 export OUTPUT=/tmp/OUTPUT_seal
+
+if [ INTERACTIVE = true ]; then
+	qemu-system-x86_64 -kernel $KERNEL -initrd /tmp/initramfs.linux_amd64.cpio -nographic -append "console=ttyS0" 
+	exit 0
+fi
+
 qemu-system-x86_64 -kernel $KERNEL -initrd /tmp/initramfs.linux_amd64.cpio -nographic -append "console=ttyS0" > $OUTPUT 2> /dev/null &
 PIDQEMU=$!
 sleep 5
