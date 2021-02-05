@@ -52,19 +52,20 @@ if ! u-root -uinitcmd=/var/tmp/inside.sh -files "/var/tmp/test" -files "/var/tmp
 fi
 
 
-rm /var/tmp/inside.sh /var/tmp/sealfs.ko /var/tmp/k1 /var/tmp/k2 /var/tmp/.SEALFS.LOG /var/tmp/verify  /var/tmp/prep  /var/tmp/dump  /var/tmp/inside.sh /var/tmp/test
+#rm /var/tmp/inside.sh /var/tmp/sealfs.ko /var/tmp/k1 /var/tmp/k2 /var/tmp/.SEALFS.LOG /var/tmp/verify  /var/tmp/prep  /var/tmp/dump  /var/tmp/inside.sh /var/tmp/test
 
 export OUTPUT=/tmp/OUTPUT_seal
 
-if [ INTERACTIVE = true ]; then
+#	killall qemu-system-x86_64
+if [ "$INTERACTIVE" = true ]; then
 	qemu-system-x86_64 -kernel $KERNEL -initrd /tmp/initramfs.linux_amd64.cpio -nographic -append "console=ttyS0" 
 	exit 0
 fi
 
 qemu-system-x86_64 -kernel $KERNEL -initrd /tmp/initramfs.linux_amd64.cpio -nographic -append "console=ttyS0" > $OUTPUT 2> /dev/null &
 PIDQEMU=$!
-sleep 5
+sleep 20	##race, no other way...
 kill $PIDQEMU
 
-echo STARTING TEST
-grep correct $OUTPUT
+
+sed -E -n '/STARTTEST/,/ENDTEST|\#/p' $OUTPUT
