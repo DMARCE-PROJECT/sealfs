@@ -74,5 +74,7 @@ while ! egrep '\#' $OUTPUT|egrep '~/'; do
 	echo -n .
 done
 
+#	killall qemu-system-x86_64
+
 kill $PIDQEMU
 sed -E -n '/STARTTEST/,/ENDTEST|\#/p' $OUTPUT
