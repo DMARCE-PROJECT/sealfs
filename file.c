@@ -128,80 +128,74 @@ static int do_hmac(struct sealfs_sb_info *sb,
 	return 0;
 }
 
-static int read_key(struct sealfs_sb_info *sb, unsigned char *k)
+static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 {
 	loff_t nr;
 	loff_t t;
-	loff_t oldoff;
+	loff_t oldoff, keyoff, zoff;
 	unsigned char buf[FPR_SIZE];
 	size_t x;
 
+	mutex_lock(&sb->bbmutex);	/* burnt requires global lock */
 	oldoff = sb->kheader.burnt;
+	keyoff = oldoff;
 	t = 0ULL;
 	while(t < FPR_SIZE){
 		nr = kernel_read(sb->kfile, k+t, ((loff_t)FPR_SIZE)-t, &sb->kheader.burnt);
 		if(nr < 0) {
 			printk(KERN_ERR "sealfs: error while reading\n");
+			mutex_unlock(&sb->bbmutex);
 			return -1;
 		}
 		if(nr == 0){
 			printk(KERN_ERR "sealfs: key file is burnt\n");
+			mutex_unlock(&sb->bbmutex);
 			return -1;
 		}
   		t += nr;
 	}
- 	get_random_bytes(buf, FPR_SIZE);
-	if(kernel_write(sb->kfile, buf, FPR_SIZE, &oldoff) != (size_t)FPR_SIZE){
-		printk(KERN_ERR "sealfs: can't write key file\n");
-		return -1;
-	}
 	x = sizeof(struct sealfs_keyfile_header);
-	oldoff = 0;
-	if(kernel_write(sb->kfile, (void*)&sb->kheader, x, &oldoff) != x){
+	zoff = 0;
+	if(kernel_write(sb->kfile, (void*)&sb->kheader, x, &zoff) != x){
+		mutex_unlock(&sb->bbmutex);
 		printk(KERN_ERR "sealfs: can't write key file header\n");
 		return -1;
 	}
-	return 0;
+	mutex_unlock(&sb->bbmutex);
+ 	get_random_bytes(buf, FPR_SIZE);
+	if(kernel_write(sb->kfile, buf, FPR_SIZE, &keyoff) != (size_t)FPR_SIZE){
+		printk(KERN_ERR "sealfs: can't write key file\n");
+		return -1;
+	}
+	return oldoff;
 }
 
 static int burn_entry(struct file *f, const char __user *buf, size_t count,
 			loff_t offset, 	struct sealfs_sb_info *sb)
 {
 	unsigned char key[FPR_SIZE];
-	struct kstat kst;
-	int  sz, err;
+	int  sz;
 	struct sealfs_logfile_entry lentry;
 	loff_t o;
+	loff_t keyoff;
 
 	lentry.inode = (uint64_t) file_inode(f)->i_ino;
 	lentry.offset = (uint64_t) offset;
 	lentry.count = (uint64_t) count;
-	lentry.koffset = sb->kheader.burnt;
 
-	if(read_key(sb, key) < 0) {
+	keyoff = read_key(sb, key);
+	if(keyoff < 0) {
 		printk(KERN_ERR "sealfs: readkey failed\n");
 		return -1;
 	}
+	lentry.koffset =  (uint64_t) keyoff;
 	if(do_hmac(sb, buf, key, &lentry) < 0){
 	       printk(KERN_ERR "sealfs: do_hash failed\n");
 	       return -1;
       	}
-	/*
-	 * Ported: now it accepts a path* instead of a vfsmount*mnt and a dentry *
-	 * The new two args are for the new statx syscall (stat on steroids)
-	 *   a mask stx_mask bits for the metadata we want/got
-	 *       STATX_BASIC_STATS means "the stuff in the normal stat struct"
-	 *   type of notification
-	 *       AT_STATX_SYNC_AS_STAT means "do whatever stat() does"
-	 */
-	err = file_inode(sb->lfile)->i_op->getattr(&sb->lfile->f_path, &kst,
-			STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT);
-	if(err){
-		printk(KERN_ERR "sealfs: can't get attr from log file\n");
-		return -1;
-	}
 	sz = sizeof(struct sealfs_logfile_entry);
-	o = kst.size;
+	o =sizeof(struct sealfs_logfile_header) + (keyoff/FPR_SIZE)*sz;
+
 	if(kernel_write(sb->lfile, (void*)&lentry, sz, &o) != sz){
 		printk(KERN_ERR "sealfs: can't write log file\n");
 		return -1;
@@ -223,75 +217,72 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 	struct dentry *dentry = file->f_path.dentry;
 	loff_t woffset = -1;
 	int debug = 0;
-	struct sealfs_dentry_info *dinfo;
 
 	lower_file = sealfs_lower_file(file);
 
-	if(file->f_flags & O_APPEND){
-		sbinfo = (struct sealfs_sb_info*)
-			file->f_path.mnt->mnt_sb->s_fs_info;
-		/*
-		* We can't trust ppos, it's the offset mantained by
-		* the file descriptor, but it's not used by the write operation.
-		* E.g.: the first write has always ppos=0, and it appends
-		* the data correctly. After the first write, the offset in the
-		* file descriptor is updated, but it may not be coherent with the
-		* end of the file if other procs are using it.
-		*
-		* If we use ppos, we will have a race condition
-		* for concurrent write operations over the same file.
-		*
-		* We can't allow concurrent writes for the same file if we
-		* depend on the corresponding offset for each append-only write.
- 		*/
-		dinfo = SEALFS_D(dentry);
-		ino = d_inode(dentry);
-
-		/* no locking of lower file inode, it is ours, protected by overlay */
-		down_write(&ino->i_rwsem);
-		wr = vfs_write(lower_file, buf, count, ppos); //ppos is ignored
-		if(wr >= 0){
-			fsstack_copy_inode_size(ino, file_inode(lower_file));
-			fsstack_copy_attr_times(ino, file_inode(lower_file));
-			woffset = ino->i_size - wr;
-		}
-		up_write(&ino->i_rwsem);
-		/*
-		 * BUG: here, a write with a greater offset can overtake
-		 * a write with a smaller offset FOR THE SAME FILE. Not
-		 * probable, but possible. Fix.
-		 */
-		if(wr >= 0){
-			mutex_lock(&sbinfo->bbmutex);
-			if(burn_entry(file, buf, wr, woffset, sbinfo) < 0){
-				printk(KERN_CRIT "sealfs: fatal error! "
-					"can't burn entry for inode: %lld)\n",
-					(long long) ino->i_ino);
-				wr = -EIO;
-			}
-			mutex_unlock(&sbinfo->bbmutex);
-			if(debug)
-				printk(KERN_INFO
-					"sealfs: append-only write  "
-					"to file %s offset: %lld count: %lld\n",
-					file->f_path.dentry->d_name.name,
-					(long long) woffset,
-					(long long) count);
-		}
-		if(wr >= 0 && wr != count) {
-			printk(KERN_INFO "sealfs: warning! %lld bytes "
-				"of %lld bytes have been writen"
-				" (inode: %lld)\n",
-				(long long) wr,
-				(long long) count,
-				(long long) ino->i_ino);
-		}
-		return wr;
+	if((file->f_flags & O_APPEND) == 0){
+		 // NO APPEND-ONLY, NOT ALLOWED.
+		 printk(KERN_INFO "sealfs: error, non append-only write on file %s\n",
+	 		file->f_path.dentry->d_name.name);
+		 return -EBADF;
 	}
-	 // NO APPEND-ONLY, NOT ALLOWED.
-	 printk(KERN_INFO "sealfs: error, non append-only write on file %s\n",
-	 	file->f_path.dentry->d_name.name);
-	 return -EBADF;
+
+	sbinfo = (struct sealfs_sb_info*)
+		file->f_path.mnt->mnt_sb->s_fs_info;
+	/*
+	* We can't trust ppos, it's the offset mantained by
+	* the file descriptor, but it's not used by the write operation.
+	* E.g.: the first write has always ppos=0, and it appends
+	* the data correctly. After the first write, the offset in the
+	* file descriptor is updated, but it may not be coherent with the
+	* end of the file if other procs are using it.
+	*
+	* If we use ppos, we will have a race condition
+	* for concurrent write operations over the same file.
+	*
+	* We can't allow concurrent writes for the same file if we
+	* depend on the corresponding offset for each append-only write.
+		*/
+	ino = d_inode(dentry);
+
+	/* no locking of lower file inode, it is ours, protected by overlay */
+	down_write(&ino->i_rwsem);
+	wr = vfs_write(lower_file, buf, count, ppos); //ppos is ignored
+	if(wr >= 0){
+		fsstack_copy_inode_size(ino, file_inode(lower_file));
+		fsstack_copy_attr_times(ino, file_inode(lower_file));
+		woffset = ino->i_size - wr;
+	}
+	up_write(&ino->i_rwsem);
+	/*
+	 * BUG: here, a write with a greater offset can overtake
+	 * a write with a smaller offset FOR THE SAME FILE. Not
+	 * probable, but possible. Fix.
+	 */
+	if(wr >= 0){
+		if(burn_entry(file, buf, wr, woffset, sbinfo) < 0){
+			printk(KERN_CRIT "sealfs: fatal error! "
+				"can't burn entry for inode: %lld)\n",
+				(long long) ino->i_ino);
+			wr = -EIO;
+		}
+		if(debug)
+			printk(KERN_INFO
+				"sealfs: append-only write  "
+				"to file %s offset: %lld count: %lld\n",
+				file->f_path.dentry->d_name.name,
+				(long long) woffset,
+				(long long) count);
+	}
+	if(wr >= 0 && wr != count) {
+		printk(KERN_INFO "sealfs: warning! %lld bytes "
+			"of %lld bytes have been writen"
+			" (inode: %lld)\n",
+			(long long) wr,
+			(long long) count,
+			(long long) ino->i_ino);
+	}
+	return wr;
 }
 
 static int sealfs_readdir(struct file *file, struct dir_context *ctx)
