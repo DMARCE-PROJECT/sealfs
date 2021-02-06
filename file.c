@@ -247,14 +247,15 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 		dinfo = SEALFS_D(dentry);
 		ino = d_inode(dentry);
 
-		mutex_lock(&dinfo->imutex);
+		/* no locking of lower file inode, it is ours, protected by overlay */
+		down_write(&ino->i_rwsem);
 		wr = vfs_write(lower_file, buf, count, ppos); //ppos is ignored
 		if(wr >= 0){
 			fsstack_copy_inode_size(ino, file_inode(lower_file));
 			fsstack_copy_attr_times(ino, file_inode(lower_file));
 			woffset = ino->i_size - wr;
 		}
-		mutex_unlock(&dinfo->imutex);
+		up_write(&ino->i_rwsem);
 		/*
 		 * BUG: here, a write with a greater offset can overtake
 		 * a write with a smaller offset FOR THE SAME FILE. Not
