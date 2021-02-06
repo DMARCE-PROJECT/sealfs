@@ -42,7 +42,7 @@ static int initshash(struct sealfs_sb_info *sb)
  		printk(KERN_ERR "sealfs: can't alloc hash_tfm struct\n");
 		return -1;
 	}
-	sb->hash_desc = kmalloc(sizeof(struct shash_desc) +
+	sb->hash_desc = kzalloc(sizeof(struct shash_desc) +
 			       crypto_shash_descsize(sb->hash_tfm), GFP_KERNEL);
 	if(sb->hash_desc == NULL){
 		crypto_free_shash(sb->hash_tfm);
@@ -59,6 +59,7 @@ static int do_hmac(struct sealfs_sb_info *sb,
 	 		struct sealfs_logfile_entry *lentry)
 {
 	int err = 0;
+	u8	*buf;
 
 	if(sb->hash_tfm == NULL){
 		if(initshash(sb) < 0)
@@ -73,7 +74,6 @@ static int do_hmac(struct sealfs_sb_info *sb,
 	if(err){
 		printk(KERN_ERR "sealfs: can't init hmac\n");
 		return -1;
-
 	}
  	err = crypto_shash_update(sb->hash_desc,
 			(u8*) &lentry->inode, sizeof(lentry->inode));
@@ -100,11 +100,19 @@ static int do_hmac(struct sealfs_sb_info *sb,
 		return -1;
 	}
 
-	err = crypto_shash_update(sb->hash_desc, (u8*)data, lentry->count);
+	buf = kmalloc(lentry->count, GFP_KERNEL);
+	if (!buf)
+		return -1;
+	if (copy_from_user(buf, data, lentry->count)) {
+		printk(KERN_ERR "sealfs: cannot copy from user data\n");
+		return -1;
+	}
+	err = crypto_shash_update(sb->hash_desc, (u8*)buf, lentry->count);
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: data\n");
 		return -1;
 	}
+	kfree(buf);
 	err = crypto_shash_final(sb->hash_desc, (u8 *) lentry->fpr);
 	if(err){
 		printk(KERN_ERR "sealfs: can't final hmac\n");
