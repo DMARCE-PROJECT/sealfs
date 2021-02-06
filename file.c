@@ -45,6 +45,7 @@ static int initshash(struct sealfs_sb_info *sb)
 	sb->hash_desc = kmalloc(sizeof(struct shash_desc) +
 			       crypto_shash_descsize(sb->hash_tfm), GFP_KERNEL);
 	if(sb->hash_desc == NULL){
+		crypto_free_shash(sb->hash_tfm);
 		printk(KERN_ERR "sealfs: can't alloc hash_desc struct\n");
 		return -1;
 	}
@@ -75,25 +76,25 @@ static int do_hmac(struct sealfs_sb_info *sb,
 
 	}
  	err = crypto_shash_update(sb->hash_desc,
-			(u8*) &lentry->inode, sizeof(uint64_t));
+			(u8*) &lentry->inode, sizeof(lentry->inode));
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: inode\n");
 		return -1;
 	}
 	err = crypto_shash_update(sb->hash_desc,
-			(u8*) &lentry->offset, sizeof(uint64_t));
+			(u8*) &lentry->offset, sizeof(lentry->offset));
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: offset\n");
 		return -1;
 	}
 	err = crypto_shash_update(sb->hash_desc,
-			(u8*) &lentry->count, sizeof(uint64_t));
+			(u8*) &lentry->count, sizeof(lentry->count));
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: count\n");
 		return -1;
 	}
 	err = crypto_shash_update(sb->hash_desc,
-			(u8*) &lentry->koffset, sizeof(uint64_t));
+			(u8*) &lentry->koffset, sizeof(lentry->koffset));
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: koffset\n");
 		return -1;
