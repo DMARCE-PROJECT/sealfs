@@ -128,45 +128,86 @@ static int do_hmac(struct sealfs_sb_info *sb,
 	return 0;
 }
 
-static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
+int sealfs_update_hdr(struct sealfs_sb_info *sb)
 {
-	loff_t nr;
-	loff_t t;
-	loff_t oldoff, keyoff, zoff;
-	unsigned char buf[FPR_SIZE];
+	struct sealfs_keyfile_header hdr;
+	loff_t zoff;
 	size_t x;
-
-	mutex_lock(&sb->bbmutex);	/* burnt requires global lock */
-	oldoff = sb->kheader.burnt;
-	keyoff = oldoff;
-	t = 0ULL;
-	while(t < FPR_SIZE){
-		nr = kernel_read(sb->kfile, k+t, ((loff_t)FPR_SIZE)-t, &sb->kheader.burnt);
-		if(nr < 0) {
-			printk(KERN_ERR "sealfs: error while reading\n");
-			mutex_unlock(&sb->bbmutex);
-			return -1;
-		}
-		if(nr == 0){
-			printk(KERN_ERR "sealfs: key file is burnt\n");
-			mutex_unlock(&sb->bbmutex);
-			return -1;
-		}
-  		t += nr;
-	}
-	x = sizeof(struct sealfs_keyfile_header);
 	zoff = 0;
-	if(kernel_write(sb->kfile, (void*)&sb->kheader, x, &zoff) != x){
+	mutex_lock(&sb->bbmutex);
+	hdr = sb->kheader;
+	mutex_unlock(&sb->bbmutex);
+	/* hdr may be old by the time it is written
+	 *  this is a benign race condition, we write the current version.
+	 *  There is another race, where we write a *old* version
+	 *  of the offset. This is no problem (unmount corrects it
+	 * see sealfs_put_super). Worst case, if no unmount and the
+	 * race is present, it will invalidate some log entries (but then,
+	 * there are no guarantees anyway)
+	 */
+	x = sizeof(struct sealfs_keyfile_header);
+	if(kernel_write(sb->kfile, (void*)&hdr, x, &zoff) != x){
 		mutex_unlock(&sb->bbmutex);
 		printk(KERN_ERR "sealfs: can't write key file header\n");
 		return -1;
 	}
-	mutex_unlock(&sb->bbmutex);
+	return 0;
+}
+
+static int burn_key(struct sealfs_sb_info *sb, loff_t keyoff)
+{
+	unsigned char buf[FPR_SIZE];
  	get_random_bytes(buf, FPR_SIZE);
 	if(kernel_write(sb->kfile, buf, FPR_SIZE, &keyoff) != (size_t)FPR_SIZE){
 		printk(KERN_ERR "sealfs: can't write key file\n");
 		return -1;
 	}
+	return 0;
+}
+
+static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
+{
+	loff_t nr;
+	loff_t t;
+	loff_t oldoff, keyoff;
+	struct inode *ino;
+
+	/*
+	  * Updating kheader.burnt commits us to
+	 * 	- FPR_SIZE reading in key file (out of reach by means of burnt)
+	 *	- burning FPR_SIZE in key file at some point in the future (after the read)
+	 *	- sizeof(struct sealfs_logfile_entry) in log entry
+	 *	- updating offset header at start of key file at some point in the future
+	 */
+	mutex_lock(&sb->bbmutex);
+	oldoff = sb->kheader.burnt;
+	sb->kheader.burnt += FPR_SIZE;
+	mutex_unlock(&sb->bbmutex);
+	keyoff = oldoff;
+	t = 0ULL;
+
+	ino = file_inode(sb->kfile);
+	
+	while(t < FPR_SIZE){
+		nr = kernel_read(sb->kfile, k+t, ((loff_t)FPR_SIZE)-t, &keyoff);
+		if(nr < 0) {
+			printk(KERN_ERR "sealfs: error while reading\n");
+			up_write(&ino->i_rwsem);
+			return -1;
+		}
+		if(nr == 0){
+			printk(KERN_ERR "sealfs: key file is burnt\n");
+			up_write(&ino->i_rwsem);
+			return -1;
+		}
+  		t += nr;
+	}
+	if(sealfs_update_hdr(sb) < 0)
+		return -1;
+
+	/* this could be done asynchronously by a thread, using sb->kheader.burnt */
+	if(burn_key(sb, oldoff) < 0)
+		return -1;
 	return oldoff;
 }
 
@@ -245,7 +286,7 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 		*/
 	ino = d_inode(dentry);
 
-	/* no locking of lower file inode, it is ours, protected by overlay */
+	/* Note: we use the inode to lock both lower_file and upper file to update offset */
 	down_write(&ino->i_rwsem);
 	wr = vfs_write(lower_file, buf, count, ppos); //ppos is ignored
 	if(wr >= 0){
@@ -259,24 +300,25 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 	 * a write with a smaller offset FOR THE SAME FILE. Not
 	 * probable, but possible. Fix.
 	 */
-	if(wr >= 0){
-		if(burn_entry(file, buf, wr, woffset, sbinfo) < 0){
-			printk(KERN_CRIT "sealfs: fatal error! "
-				"can't burn entry for inode: %lld)\n",
-				(long long) ino->i_ino);
-			wr = -EIO;
-		}
-		if(debug)
-			printk(KERN_INFO
-				"sealfs: append-only write  "
-				"to file %s offset: %lld count: %lld\n",
-				file->f_path.dentry->d_name.name,
-				(long long) woffset,
-				(long long) count);
+	if(wr < 0)
+		return wr;
+
+	if(burn_entry(file, buf, wr, woffset, sbinfo) < 0){
+		printk(KERN_CRIT "sealfs: fatal error! "
+			"can't burn entry for inode: %lld)\n",
+			(long long) ino->i_ino);
+		wr = -EIO;
 	}
-	if(wr >= 0 && wr != count) {
+	if(debug)
+		printk(KERN_INFO
+			"sealfs: append-only write  "
+			"to file %s offset: %lld count: %lld\n",
+			file->f_path.dentry->d_name.name,
+			(long long) woffset,
+			(long long) count);	
+	if(wr != count) {
 		printk(KERN_INFO "sealfs: warning! %lld bytes "
-			"of %lld bytes have been writen"
+			"of %lld bytes have been written"
 			" (inode: %lld)\n",
 			(long long) wr,
 			(long long) count,

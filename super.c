@@ -49,12 +49,12 @@ static void sealfs_put_super(struct super_block *sb)
 	spd = SEALFS_SB(sb);
 	if (!spd)
 		return;
-
 	/* decrement lower super references */
 	s = sealfs_lower_super(sb);
 	sealfs_set_lower_super(sb, NULL);
 	atomic_dec(&s->s_active);
 
+	sealfs_update_hdr(spd);
 	/* Q free the extra info resources */
  	sealfs_cleanup(spd);
 
