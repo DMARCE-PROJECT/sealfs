@@ -79,6 +79,7 @@ extern struct inode *sealfs_iget(struct super_block *sb,
 extern int sealfs_interpose(struct dentry *dentry, struct super_block *sb,
 			    struct path *lower_path);
 
+
 /* file private data */
 struct sealfs_file_info {
 	struct file *lower_file;
@@ -98,6 +99,7 @@ struct sealfs_dentry_info {
 	struct path lower_path;
 };
 
+#include <linux/kthread.h>
 /* sealfs super-block data in memory */
 struct sealfs_sb_info {
 	struct super_block *lower_sb;
@@ -113,9 +115,15 @@ struct sealfs_sb_info {
 	// context for the hash/hmac
 	struct crypto_shash *hash_tfm;
 	struct shash_desc *hash_desc;
+
+	wait_queue_head_t thread_q;
+	struct task_struct *sync_thread;
 };
 
 extern void sealfs_cleanup(struct sealfs_sb_info *);
+extern int sealfs_update_hdr(struct sealfs_sb_info *);
+extern void sealfs_stop_thread(struct sealfs_sb_info *);
+extern void sealfs_start_thread(struct sealfs_sb_info *);
 
 /*
  * inode to private data

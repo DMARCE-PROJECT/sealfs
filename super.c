@@ -54,6 +54,7 @@ static void sealfs_put_super(struct super_block *sb)
 	sealfs_set_lower_super(sb, NULL);
 	atomic_dec(&s->s_active);
 
+	sealfs_stop_thread(spd);
 	sealfs_update_hdr(spd);
 	/* Q free the extra info resources */
  	sealfs_cleanup(spd);

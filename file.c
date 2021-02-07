@@ -127,6 +127,63 @@ static int do_hmac(struct sealfs_sb_info *sb,
 	}
 	return 0;
 }
+static int has_advanced_burnt(struct sealfs_sb_info *sb, loff_t oldburnt)
+{
+	loff_t newburnt;
+
+	mutex_lock(&sb->bbmutex);
+	newburnt = sb->kheader.burnt;
+	mutex_unlock(&sb->bbmutex);
+	return newburnt != oldburnt;
+}
+
+static int burn_key(struct sealfs_sb_info *sb, loff_t keyoff)
+{
+	unsigned char buf[FPR_SIZE];
+ 	get_random_bytes(buf, FPR_SIZE);
+	if(kernel_write(sb->kfile, buf, FPR_SIZE, &keyoff) != (size_t)FPR_SIZE){
+		printk(KERN_ERR "sealfs: can't write key file\n");
+		return -1;
+	}
+	return 0;
+}
+
+static int sealfs_thread(void *data)
+{
+	struct sealfs_sb_info *sb=(struct sealfs_sb_info *)data;
+	wait_queue_head_t *q =&sb->thread_q;
+	loff_t burnt, oldburnt;
+	/* starts after header */
+	oldburnt = sizeof(struct sealfs_logfile_header);
+repeat:
+	if (kthread_should_stop())
+		return 0;
+
+	while(oldburnt + FPR_SIZE <= burnt) {
+		/* burn with random from oldburnt to burnt */
+		burn_key(sb, oldburnt);
+		oldburnt = oldburnt + FPR_SIZE;
+		mutex_lock(&sb->bbmutex);
+		burnt = sb->kheader.burnt;
+		mutex_unlock(&sb->bbmutex);
+	}
+	/* update header */
+	sealfs_update_hdr(sb);
+	wait_event_interruptible_timeout(*q,
+		kthread_should_stop() || has_advanced_burnt(sb, oldburnt), HZ);
+	goto repeat;
+}
+
+void sealfs_stop_thread(struct sealfs_sb_info *sb)
+{
+	kthread_stop(sb->sync_thread);
+	
+}
+void sealfs_start_thread(struct sealfs_sb_info *sb)
+{
+	init_waitqueue_head(&sb->thread_q);
+	sb->sync_thread = kthread_run(sealfs_thread, sb, "sealfs");
+}
 
 int sealfs_update_hdr(struct sealfs_sb_info *sb)
 {
@@ -154,16 +211,6 @@ int sealfs_update_hdr(struct sealfs_sb_info *sb)
 	return 0;
 }
 
-static int burn_key(struct sealfs_sb_info *sb, loff_t keyoff)
-{
-	unsigned char buf[FPR_SIZE];
- 	get_random_bytes(buf, FPR_SIZE);
-	if(kernel_write(sb->kfile, buf, FPR_SIZE, &keyoff) != (size_t)FPR_SIZE){
-		printk(KERN_ERR "sealfs: can't write key file\n");
-		return -1;
-	}
-	return 0;
-}
 
 static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 {
@@ -231,6 +278,9 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 	}
 	lentry.koffset =  (uint64_t) keyoff;
 	mutex_lock(&sb->bbmutex);
+	if(sb->sync_thread == NULL)
+		sealfs_start_thread(sb);
+		
 	if(do_hmac(sb, buf, key, &lentry) < 0){
 		printk(KERN_ERR "sealfs: do_hash failed\n");
 		mutex_unlock(&sb->bbmutex);
@@ -238,12 +288,14 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
       	}
 	mutex_unlock(&sb->bbmutex);
 	sz = sizeof(struct sealfs_logfile_entry);
-	o =sizeof(struct sealfs_logfile_header) + (keyoff/FPR_SIZE)*sz;
+	o = sizeof(struct sealfs_logfile_header) + (keyoff/FPR_SIZE)*sz;
 
 	if(kernel_write(sb->lfile, (void*)&lentry, sz, &o) != sz){
 		printk(KERN_ERR "sealfs: can't write log file\n");
 		return -1;
 	}
+	if (waitqueue_active(&sb->thread_q))
+		wake_up(&sb->thread_q);
 	return 0;
 }
 
