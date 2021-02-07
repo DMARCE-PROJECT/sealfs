@@ -230,10 +230,13 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 		return -1;
 	}
 	lentry.koffset =  (uint64_t) keyoff;
+	mutex_lock(&sb->bbmutex);
 	if(do_hmac(sb, buf, key, &lentry) < 0){
 	       printk(KERN_ERR "sealfs: do_hash failed\n");
+		mutex_unlock(&sb->bbmutex);
 	       return -1;
       	}
+	mutex_lock(&sb->bbmutex);
 	sz = sizeof(struct sealfs_logfile_entry);
 	o =sizeof(struct sealfs_logfile_header) + (keyoff/FPR_SIZE)*sz;
 
