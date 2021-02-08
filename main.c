@@ -136,11 +136,10 @@ static int read_headers(struct sealfs_sb_info *info)
 		printk(KERN_ERR "sealfs: bad key file size\n");
 		return -1;
 	}
-	sealfs_start_thread(info);
-	pr_notice("sealfs: kheader magic: %lld burnt: %lld maxkfilesz: %lld\n",
+	pr_notice("sealfs: maxkfilesz: %lld\n", info->maxkfilesz);
+	pr_notice("sealfs: kheader magic: %lld burnt: %lld\n",
 			info->kheader.magic,
-			info->kheader.burnt,
-			info->maxkfilesz);
+			info->kheader.burnt);
 	pr_notice("sealfs: lheader magic: %lld\n",
 			info->lheader.magic);
 	return 0;
@@ -285,6 +284,7 @@ out_free:
   	sealfs_cleanup(info);
 	path_put(&lower_path);
 out:
+	sealfs_start_thread(info);
 	return err;
 }
 
