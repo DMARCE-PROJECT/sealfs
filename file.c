@@ -164,7 +164,9 @@ static int sealfs_thread(void *data)
 	struct sealfs_sb_info *sb=(struct sealfs_sb_info *)data;
 	wait_queue_head_t *q =&sb->thread_q;
 	loff_t burnt, unburnt, chkburnt;
+	int nrepeats;
 
+	nrepeats = 0;
 	/* starts after header */
 	unburnt = sizeof(struct sealfs_keyfile_header);
 
@@ -182,9 +184,11 @@ repeat:
 			break;
 		}
 		unburnt = unburnt + chkburnt;
+		nrepeats = 3;
 	}
 	/* update header */
-	sealfs_update_hdr(sb);
+	if(nrepeats-- > 0)
+		sealfs_update_hdr(sb);
 	if (kthread_should_stop()){
 		if(!has_advanced_burnt(sb, unburnt)){
 			printk(KERN_ERR "sealfs: done oldburnt: %lld burnt: %lld\n",
