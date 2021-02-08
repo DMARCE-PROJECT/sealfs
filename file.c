@@ -137,40 +137,64 @@ static int has_advanced_burnt(struct sealfs_sb_info *sb, loff_t oldburnt)
 	return newburnt != oldburnt;
 }
 
-static int burn_key(struct sealfs_sb_info *sb, loff_t keyoff)
+enum {
+	MaxBurnBatch = 8	/* max number of FPR_SIZE chunks to burn */
+};
+
+static int burn_key(struct sealfs_sb_info *sb, loff_t keyoff, int nentries)
 {
-	unsigned char buf[FPR_SIZE];
- 	get_random_bytes(buf, FPR_SIZE);
-	if(kernel_write(sb->kfile, buf, FPR_SIZE, &keyoff) != (size_t)FPR_SIZE){
+	unsigned char buf[MaxBurnBatch*FPR_SIZE];
+	int sz;
+	
+	if(nentries > MaxBurnBatch)
+		nentries = MaxBurnBatch;
+	
+	sz = nentries * FPR_SIZE;
+ 	get_random_bytes(buf, sz);
+	//printk(KERN_ERR "sealfs: burn_key %d %lld\n", sz, keyoff);
+	if(kernel_write(sb->kfile, buf, sz, &keyoff) != (size_t)sz){
 		printk(KERN_ERR "sealfs: can't write key file\n");
 		return -1;
 	}
-	return 0;
+	return sz;
 }
 
 static int sealfs_thread(void *data)
 {
 	struct sealfs_sb_info *sb=(struct sealfs_sb_info *)data;
 	wait_queue_head_t *q =&sb->thread_q;
-	loff_t burnt, oldburnt;
-	/* starts after header */
-	oldburnt = sizeof(struct sealfs_logfile_header);
-repeat:
-	if (kthread_should_stop())
-		return 0;
+	loff_t burnt, unburnt, chkburnt;
 
-	while(oldburnt + FPR_SIZE <= burnt) {
+	/* starts after header */
+	unburnt = sizeof(struct sealfs_keyfile_header);
+
+repeat:
+	mutex_lock(&sb->bbmutex);
+	burnt = sb->kheader.burnt;
+	mutex_unlock(&sb->bbmutex);
+	//printk(KERN_ERR "sealfs: TICK oldburnt: %lld burnt: %lld, start %ld\n",
+	//	unburnt, burnt, sizeof(struct sealfs_keyfile_header));
+	while(unburnt  < burnt) {
 		/* burn with random from oldburnt to burnt */
-		burn_key(sb, oldburnt);
-		oldburnt = oldburnt + FPR_SIZE;
-		mutex_lock(&sb->bbmutex);
-		burnt = sb->kheader.burnt;
-		mutex_unlock(&sb->bbmutex);
+		chkburnt = burn_key(sb, unburnt, (burnt - unburnt)/FPR_SIZE);
+		if(chkburnt < 0) {
+			printk(KERN_ERR "sealfs: error writing key file\n");
+			break;
+		}
+		unburnt = unburnt + chkburnt;
 	}
 	/* update header */
 	sealfs_update_hdr(sb);
+	if (kthread_should_stop()){
+		if(!has_advanced_burnt(sb, unburnt)){
+			printk(KERN_ERR "sealfs: done oldburnt: %lld burnt: %lld\n",
+				unburnt, burnt);
+			return 0;
+		}else
+			goto repeat;
+	}
 	wait_event_interruptible_timeout(*q,
-		kthread_should_stop() || has_advanced_burnt(sb, oldburnt), HZ);
+		kthread_should_stop() || has_advanced_burnt(sb, unburnt), HZ);
 	goto repeat;
 }
 
@@ -219,20 +243,20 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 	struct inode *ino;
 
 	/*
-	  * Updating kheader.burnt commits us to
+	  * Updating sb->keytaken commits us to
 	 * 	- FPR_SIZE reading in key file (out of reach by means of burnt)
 	 *	- burning FPR_SIZE in key file at some point in the future (after the read)
 	 *	- sizeof(struct sealfs_logfile_entry) in log entry
 	 *	- updating offset header at start of key file at some point in the future
 	 */
 	mutex_lock(&sb->bbmutex);
-	oldoff = sb->kheader.burnt;
-	if(sb->kheader.burnt >= sb->maxkfilesz){
+	oldoff = sb->keytaken;
+	if(sb->keytaken >= sb->maxkfilesz){
 			printk(KERN_ERR "sealfs: burnt key\n");
 			mutex_unlock(&sb->bbmutex);
 			return -1;
 	}
-	sb->kheader.burnt += FPR_SIZE;
+	sb->keytaken += FPR_SIZE;
 	mutex_unlock(&sb->bbmutex);
 	keyoff = oldoff;
 	t = 0ULL;
@@ -253,12 +277,9 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 		}
   		t += nr;
 	}
-	if(sealfs_update_hdr(sb) < 0)
-		return -1;
-
-	/* this could be done asynchronously by a thread, using sb->kheader.burnt */
-	if(burn_key(sb, oldoff) < 0)
-		return -1;
+	mutex_lock(&sb->bbmutex);
+	sb->kheader.burnt = sb->keytaken;
+	mutex_unlock(&sb->bbmutex);
 	return oldoff;
 }
 
@@ -339,7 +360,7 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 	*
 	* We can't allow concurrent writes for the same file if we
 	* depend on the corresponding offset for each append-only write.
-		*/
+	*/
 	ino = d_inode(dentry);
 
 	/* Note: we use the inode to lock both lower_file and upper file to update offset */
