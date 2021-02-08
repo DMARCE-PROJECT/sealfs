@@ -97,6 +97,19 @@ static struct file * _openfile(char *s, char sync) {
 	return f;
 }
 
+static loff_t get_keysz(struct sealfs_sb_info *info)
+{
+	struct kstat kst;
+	int err;
+	err = file_inode(info->kfile)->i_op->getattr(&info->kfile->f_path, &kst,
+		STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT);
+	if(err){
+		printk(KERN_ERR "sealfs: can't get attr from key file\n");
+		return -1;
+	}
+	return kst.size;
+}
+
 static int read_headers(struct sealfs_sb_info *info)
 {
 	loff_t nr;
@@ -118,10 +131,16 @@ static int read_headers(struct sealfs_sb_info *info)
 		"lheader: %lld\n", nr);
 		return -1;
 	}
-
-	pr_notice("sealfs: kheader magic: %lld burnt: %lld\n",
+	info->maxkfilesz = get_keysz(info);
+	if (info->maxkfilesz <= 0){
+		printk(KERN_ERR "sealfs: bad key file size\n");
+		return -1;
+	}
+	sealfs_start_thread(info);
+	pr_notice("sealfs: kheader magic: %lld burnt: %lld maxkfilesz: %lld\n",
 			info->kheader.magic,
-			info->kheader.burnt);
+			info->kheader.burnt,
+			info->maxkfilesz);
 	pr_notice("sealfs: lheader magic: %lld\n",
 			info->lheader.magic);
 	return 0;

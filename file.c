@@ -211,7 +211,6 @@ int sealfs_update_hdr(struct sealfs_sb_info *sb)
 	return 0;
 }
 
-
 static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 {
 	loff_t nr;
@@ -228,6 +227,11 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 	 */
 	mutex_lock(&sb->bbmutex);
 	oldoff = sb->kheader.burnt;
+	if(sb->kheader.burnt >= sb->maxkfilesz){
+			printk(KERN_ERR "sealfs: burnt key\n");
+			mutex_unlock(&sb->bbmutex);
+			return -1;
+	}
 	sb->kheader.burnt += FPR_SIZE;
 	mutex_unlock(&sb->bbmutex);
 	keyoff = oldoff;
@@ -278,9 +282,6 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 	}
 	lentry.koffset =  (uint64_t) keyoff;
 	mutex_lock(&sb->bbmutex);
-	if(sb->sync_thread == NULL)
-		sealfs_start_thread(sb);
-		
 	if(do_hmac(sb, buf, key, &lentry) < 0){
 		printk(KERN_ERR "sealfs: do_hash failed\n");
 		mutex_unlock(&sb->bbmutex);
