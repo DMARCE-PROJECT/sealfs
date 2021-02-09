@@ -304,13 +304,13 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 		return -1;
 	}
 	lentry.koffset =  (uint64_t) keyoff;
-	mutex_lock(&sb->hashmutex);	/* careful hash_tfm and hash_desc */
+	mutex_lock(&sb->hash_mutex);	/* careful hash_tfm and hash_desc */
 	if(do_hmac(sb, buf, key, &lentry) < 0){
 		printk(KERN_ERR "sealfs: do_hash failed\n");
-		mutex_unlock(&sb->hashmutex);
+		mutex_unlock(&sb->hash_mutex);
 		return -1;
       	}
-	mutex_unlock(&sb->hashmutex);
+	mutex_unlock(&sb->hash_mutex);
 	sz = sizeof(struct sealfs_logfile_entry);
 	o = sizeof(struct sealfs_logfile_header) + (keyoff/FPR_SIZE)*sz;
 
