@@ -13,8 +13,8 @@ uthash.h:
 	git clone https://github.com/troydhanson/uthash.git /tmp/uthash
 	cp /tmp/uthash/src/uthash.h .
 
-verify: uthash.h verify.o $(DEPS)
-	$(CC) $(CFLAGS) -o $@ $@.o $L
+verify: uthash.h verify.o $(DEPS) heap.h heap.o
+	$(CC) $(CFLAGS) -o $@ $@.o  heap.o $L
 
 prep: prep.o $(DEPS)
 	$(CC) $(CFLAGS) -o $@ $@.o

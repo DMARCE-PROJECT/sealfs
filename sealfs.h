@@ -113,6 +113,7 @@ struct sealfs_sb_info {
 	struct sealfs_keyfile_header kheader;
 	struct sealfs_logfile_header lheader;
 	// context for the hash/hmac
+	struct mutex hash_mutex;
 	struct crypto_shash *hash_tfm;
 	struct shash_desc *hash_desc;
 

@@ -375,9 +375,9 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 	}
 	up_write(&ino->i_rwsem);
 	/*
-	 * BUG: here, a write with a greater offset can overtake
+	 * NOTE: here, a write with a greater offset can overtake
 	 * a write with a smaller offset FOR THE SAME FILE. Not
-	 * probable, but possible. Fix.
+	 * probable, but possible. Verify compensates for this (by using a heap)
 	 */
 	if(wr < 0)
 		return wr;

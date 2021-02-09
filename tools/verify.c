@@ -16,6 +16,7 @@
 #include <openssl/evp.h>
 #include <openssl/ossl_typ.h>
 #include "../sealfstypes.h" //shared with kernel module
+#include "heap.h"
 
 /*
  * https://troydhanson.github.io/uthash/userguide.html
@@ -28,6 +29,7 @@ enum{
 };
 
 struct Ofile {
+	Heap *heap;
 	uint64_t inode;
 	int fd;
 	uint64_t offset;
@@ -66,10 +68,34 @@ scandirfiles(char *path, Ofile **ofiles)
 			o->fd = open(fpath, O_RDONLY);
 			if(o->fd < 0)
 			 	err(1, "can't open file %s", fpath);
+			o->heap = createheap();
+			if(o->heap == NULL)
+				err(1, "problem allocating heap");
  			HASH_ADD(hh, *ofiles, inode, sizeof(uint64_t), o);
 		}
 	}
 	closedir(d);
+}
+
+static void
+checktailofiles(Ofile *ofiles)
+{
+	Ofile *o;
+	int err = 0;
+    	for(o = ofiles; o != NULL;) {
+		if(o->heap->count != 0){
+			fprintf(stderr, 
+				"disordered offsets pend for ofile inode: %lld fd: %d\n\t",
+	 			(long long)o->inode, o->fd);
+			printheap(o->heap);
+			err=1;
+		}
+		free(o->heap);
+		o = o->hh.next;
+	}
+	if(err){
+		exit(1);
+	}
 }
 
 static void
@@ -156,25 +182,58 @@ fail:
 	return ret;
 }
 
+
+static int
+checkholes(struct sealfs_logfile_entry *e, Ofile *o)
+{
+	uint64_t min;
+	int count;
+	Heap *heap;
+
+	heap = o->heap;
+	// ensure that the file doesn't have holes and it starts at offset 0.
+	// file's records must be *almost* ordered in the log
+	// coverage must be total
+
+	// There may be some disorder (MaxHeapSz entries)
+	// 	Keep a minheap of offset and advance it when it is contiguous
+
+	if(o->offset == e->offset){
+		o->offset += e->count;
+		return 0;
+	}
+	if(insertheap(heap, e->offset, e->count) < 0){
+		fprintf(stderr, "read %d entries without fixing a hole\n", MaxHeapSz);
+		return -1;
+	}
+	for(;;){	
+		min = popminheap(heap, &count);
+		if(min == (uint64_t)-1){
+			fprintf(stderr, "bad: hole in file, log's offsets do not match: "
+				"%lld vs %lld\n",
+				(long long) o->offset,
+				(long long) e->offset);
+			return -1;
+		}
+		if(min == o->offset){
+			o->offset += count; //get count from hash...
+		}else{
+			insertheap(heap, min, count);	//put it back, just took it, so there is place
+			break;
+		}
+	}
+	return 0;
+}
+
 static int
 isentryok(struct sealfs_logfile_entry *e, Ofile *o, FILE *kf)
 {
 	unsigned char k[FPR_SIZE];
 	unsigned char h[FPR_SIZE];
 
-	// ensure that the file doesn't have holes and it starts at offset 0.
-	// file's records must be ordered in the log
-	// coverage must be total
-
-	if(o->offset != e->offset){
-		fprintf(stderr, "bad: log's offsets do not match: "
-			"%lld vs %lld\n",
-			(long long) o->offset,
-			(long long) e->offset);
+	if(checkholes(e, o)){
 		return 0;
 	}
-	o->offset += e->count;
-
 	if(fseek(kf, (long) e->koffset, SEEK_SET) < 0){
 		fprintf(stderr, "can't seek kbeta\n");
 		return 0;
@@ -287,6 +346,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		}
 		c++;
 	}
+	checktailofiles(ofiles);
 	freeofiles(ofiles);
 	if(c == 0)
  		errx(1, "error, no entries in the log\n");

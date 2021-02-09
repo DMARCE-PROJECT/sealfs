@@ -215,6 +215,7 @@ static int sealfs_read_super(struct super_block *sb,
 
 	/* Q init the mutex */
 	mutex_init(&info->bbmutex);
+	mutex_init(&info->hash_mutex);
 
 	/* set the lower superblock field of upper superblock */
 	lower_sb = lower_path.dentry->d_sb;
