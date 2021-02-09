@@ -138,7 +138,10 @@ static int has_advanced_burnt(struct sealfs_sb_info *sb, loff_t oldburnt)
 }
 
 enum {
-	MaxBurnBatch = 8	/* max number of FPR_SIZE chunks to burn */
+	/* max number of FPR_SIZE chunks to burn. DO NOT make it bigger
+	 *  if you want to make it bigger, you need to kalloc
+	 */
+	MaxBurnBatch = 16
 };
 
 static int burn_key(struct sealfs_sb_info *sb, loff_t keyoff, int nentries)
@@ -151,7 +154,6 @@ static int burn_key(struct sealfs_sb_info *sb, loff_t keyoff, int nentries)
 	
 	sz = nentries * FPR_SIZE;
  	get_random_bytes(buf, sz);
-	//printk(KERN_ERR "sealfs: burn_key %d %lld\n", sz, keyoff);
 	if(kernel_write(sb->kfile, buf, sz, &keyoff) != (size_t)sz){
 		printk(KERN_ERR "sealfs: can't write key file\n");
 		return -1;
@@ -174,8 +176,6 @@ repeat:
 	mutex_lock(&sb->bbmutex);
 	burnt = sb->kheader.burnt;
 	mutex_unlock(&sb->bbmutex);
-	//printk(KERN_ERR "sealfs: TICK oldburnt: %lld burnt: %lld, start %ld\n",
-	//	unburnt, burnt, sizeof(struct sealfs_keyfile_header));
 	while(unburnt  < burnt) {
 		/* burn with random from oldburnt to burnt */
 		chkburnt = burn_key(sb, unburnt, (burnt - unburnt)/FPR_SIZE);
@@ -248,9 +248,9 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 
 	/*
 	  * Updating sb->keytaken commits us to
-	 * 	- FPR_SIZE reading in key file (out of reach by means of burnt)
-	 *	- burning FPR_SIZE in key file at some point in the future (after the read)
-	 *	- sizeof(struct sealfs_logfile_entry) in log entry
+	 * 	- FPR_SIZE reading in key file (out of reach for futures reads)
+	 *	- After reading the key, sb->kheader.burnt may be updated if it wasn't so it can be burnt
+	 *	- reading sizeof(struct sealfs_logfile_entry) in log entry
 	 *	- updating offset header at start of key file at some point in the future
 	 */
 	mutex_lock(&sb->bbmutex);
@@ -282,7 +282,8 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
   		t += nr;
 	}
 	mutex_lock(&sb->bbmutex);
-	sb->kheader.burnt = sb->keytaken;
+	if(sb->keytaken == oldoff + FPR_SIZE)
+		sb->kheader.burnt = sb->keytaken;
 	mutex_unlock(&sb->bbmutex);
 	return oldoff;
 }
