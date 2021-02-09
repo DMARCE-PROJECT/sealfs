@@ -240,50 +240,46 @@ int sealfs_update_hdr(struct sealfs_sb_info *sb)
 	return 0;
 }
 
+/* this operation need to be atomic for clients, bbmutex needs to be taken when called */
 static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 {
 	loff_t nr;
 	loff_t t;
 	loff_t oldoff, keyoff;
-	struct inode *ino;
 
 	/*
 	  * Updating sb->keytaken commits us to
 	 * 	- FPR_SIZE reading in key file (out of reach for futures reads)
-	 *	- After reading the key, sb->kheader.burnt may be updated if it wasn't so it can be burnt
+	 *	- then, atomically sb->kheader.burnt
 	 *	- The mutex has to be kept between taken and burnt so that no race is posible and something
 	 *		is burnt before reading.
-	 *	- reading sizeof(struct sealfs_logfile_entry) in log entry
-	 *	- updating offset header at start of key file at some point in the future
+	 *	- Later (without lock) writing sizeof(struct sealfs_logfile_entry) in log entry in that offset
+	 *	- Updating offset header at start of key file at some point in the future
 	 */
-	mutex_lock(&sb->bbmutex);
 	oldoff = sb->keytaken;
 	if(sb->keytaken >= sb->maxkfilesz){
 			printk(KERN_ERR "sealfs: burnt key\n");
-			mutex_unlock(&sb->bbmutex);
 			return -1;
 	}
 	sb->keytaken += FPR_SIZE;
 	keyoff = oldoff;
 	t = 0ULL;
-	ino = file_inode(sb->kfile);
 	
 	while(t < FPR_SIZE){
 		nr = kernel_read(sb->kfile, k+t, ((loff_t)FPR_SIZE)-t, &keyoff);
 		if(nr < 0) {
+			mutex_unlock(&sb->bbmutex);
 			printk(KERN_ERR "sealfs: error while reading\n");
-			up_write(&ino->i_rwsem);
 			return -1;
 		}
 		if(nr == 0){
+			mutex_unlock(&sb->bbmutex);
 			printk(KERN_ERR "sealfs: key file is burnt\n");
-			up_write(&ino->i_rwsem);
 			return -1;
 		}
   		t += nr;
 	}
 	sb->kheader.burnt = sb->keytaken;
-	mutex_unlock(&sb->bbmutex);
 	return oldoff;
 }
 
@@ -300,7 +296,9 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 	lentry.offset = (uint64_t) offset;
 	lentry.count = (uint64_t) count;
 
+	mutex_lock(&sb->bbmutex);
 	keyoff = read_key(sb, key);
+	mutex_unlock(&sb->bbmutex);
 	if(keyoff < 0) {
 		printk(KERN_ERR "sealfs: readkey failed\n");
 		return -1;
