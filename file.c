@@ -168,7 +168,7 @@ static int sealfs_thread(void *data)
 	loff_t burnt, unburnt, chkburnt;
 	int nrepeats;
 
-	nrepeats = 0;
+	nrepeats = 1;
 	/* starts after header */
 	unburnt = sizeof(struct sealfs_keyfile_header);
 
@@ -187,8 +187,9 @@ repeat:
 		nrepeats = 3;
 	}
 	/* update header */
-	if(nrepeats-- > 0)
+	if(nrepeats-- > 0){
 		sealfs_update_hdr(sb);
+	}
 	if (kthread_should_stop()){
 		if(!has_advanced_burnt(sb, unburnt)){
 			printk(KERN_ERR "sealfs: done oldburnt: %lld burnt: %lld\n",
