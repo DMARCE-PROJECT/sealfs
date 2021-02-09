@@ -250,6 +250,8 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 	  * Updating sb->keytaken commits us to
 	 * 	- FPR_SIZE reading in key file (out of reach for futures reads)
 	 *	- After reading the key, sb->kheader.burnt may be updated if it wasn't so it can be burnt
+	 *	- The mutex has to be kept between taken and burnt so that no race is posible and something
+	 *		is burnt before reading.
 	 *	- reading sizeof(struct sealfs_logfile_entry) in log entry
 	 *	- updating offset header at start of key file at some point in the future
 	 */
@@ -261,10 +263,8 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 			return -1;
 	}
 	sb->keytaken += FPR_SIZE;
-	mutex_unlock(&sb->bbmutex);
 	keyoff = oldoff;
 	t = 0ULL;
-
 	ino = file_inode(sb->kfile);
 	
 	while(t < FPR_SIZE){
@@ -281,9 +281,7 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 		}
   		t += nr;
 	}
-	mutex_lock(&sb->bbmutex);
-	if(sb->keytaken == oldoff + FPR_SIZE)
-		sb->kheader.burnt = sb->keytaken;
+	sb->kheader.burnt = sb->keytaken;
 	mutex_unlock(&sb->bbmutex);
 	return oldoff;
 }
