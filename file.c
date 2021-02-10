@@ -283,6 +283,12 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
   		t += nr;
 	}
 	sb->kheader.burnt = sb->keytaken;
+
+	// maybe an option to do it synchronously, at least burn?
+	//if(sealfs_update_hdr(sb) < 0)
+	//	return -1;
+	//if(burn_key(sb, oldoff, 1) < 0)
+	//	return -1;
 	return oldoff;
 }
 
