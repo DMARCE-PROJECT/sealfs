@@ -284,11 +284,6 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 	}
 	sb->kheader.burnt = sb->keytaken;
 
-	// maybe an option to do it synchronously, at least burn?
-	//if(sealfs_update_hdr(sb) < 0)
-	//	return -1;
-	//if(burn_key(sb, oldoff, 1) < 0)
-	//	return -1;
 	return oldoff;
 }
 
@@ -308,6 +303,12 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 	mutex_lock(&sb->bbmutex);
 	keyoff = read_key(sb, key);
 	mutex_unlock(&sb->bbmutex);
+	// maybe an option to do it synchronously, at least burn?
+	// in that case UNLOCK FIRST (out of the function)
+	//if(sealfs_update_hdr(sb) < 0)
+	//	return -1;
+	//if(burn_key(sb, keyoff, 1) < 0)
+	//	return -1;
 	if(keyoff < 0) {
 		printk(KERN_ERR "sealfs: readkey failed\n");
 		return -1;
