@@ -166,9 +166,9 @@ static int sealfs_thread(void *data)
 	struct sealfs_sb_info *sb=(struct sealfs_sb_info *)data;
 	wait_queue_head_t *q =&sb->thread_q;
 	loff_t burnt, unburnt, chkburnt;
-	int nrepeats;
+	int hdrpending;
 
-	nrepeats = 1;
+	hdrpending = 1;
 	/* starts after header */
 	unburnt = sizeof(struct sealfs_keyfile_header);
 
@@ -184,11 +184,12 @@ repeat:
 			break;
 		}
 		unburnt = unburnt + chkburnt;
-		nrepeats = 3;
+		hdrpending = 1;
 	}
 	/* update header */
-	if(nrepeats-- > 0){
+	if(hdrpending){
 		sealfs_update_hdr(sb);
+		hdrpending = 0;
 	}
 	if (kthread_should_stop()){
 		if(!has_advanced_burnt(sb, unburnt)){
@@ -240,7 +241,10 @@ int sealfs_update_hdr(struct sealfs_sb_info *sb)
 	return 0;
 }
 
-/* this operation need to be atomic for clients, bbmutex needs to be taken when called */
+/*
+ * This operation need to be atomic for clients, bbmutex needs to be taken when called
+ *	if it wasn't, one client overtaking other would provoke Burn before reading key (bad)
+ */
 static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 {
 	loff_t nr;
@@ -250,11 +254,10 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 	/*
 	  * Updating sb->keytaken commits us to
 	 * 	- FPR_SIZE reading in key file (out of reach for futures reads)
-	 *	- then, atomically sb->kheader.burnt
-	 *	- The mutex has to be kept between taken and burnt so that no race is posible and something
-	 *		is burnt before reading.
-	 *	- Later (without lock) writing sizeof(struct sealfs_logfile_entry) in log entry in that offset
+	 *	- then, atomically (w.r.t. the sb->bbmutex) sb->kheader.burnt (Burn *after* reading)
+	 *	- Later (without lock) writing sizeof(struct sealfs_logfile_entry) in log entry in the correct offset
 	 *	- Updating offset header at start of key file at some point in the future
+	 *	- We will burn what is read asynchronously in the kthread driven by sb->kheader.burnt
 	 */
 	oldoff = sb->keytaken;
 	if(sb->keytaken >= sb->maxkfilesz){
@@ -318,6 +321,12 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 		printk(KERN_ERR "sealfs: can't write log file\n");
 		return -1;
 	}
+	/* This wakeup could be done right after read_key with the mutex being held,
+	 *  but in order to not miss any wakeups, the mutex has to be passed
+	 *  to the kthread, slowing the write. Instead of that, if the wakeup is
+	 *  missed, the kthread will catch up 1s later via timeout. This also make the
+	 *  batching of burnts possible, the kthread if fully asynchronous.
+	 */
 	if (waitqueue_active(&sb->thread_q))
 		wake_up(&sb->thread_q);
 	return 0;
