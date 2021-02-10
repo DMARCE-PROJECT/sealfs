@@ -180,7 +180,7 @@ repeat:
 		/* burn with random from oldburnt to burnt */
 		chkburnt = burn_key(sb, unburnt, (burnt - unburnt)/FPR_SIZE);
 		if(chkburnt < 0) {
-			printk(KERN_ERR "sealfs: error writing key file\n");
+			printk(KERN_CRIT  "sealfs: error writing key file\n");
 			break;
 		}
 		unburnt = unburnt + chkburnt;
@@ -379,6 +379,8 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 	* We can't allow concurrent writes for the same file if we
 	* depend on the corresponding offset for each append-only write.
 	*/
+
+
 	ino = d_inode(dentry);
 
 	/* Note: we use the inode to lock both lower_file and upper file to update offset */
@@ -393,7 +395,8 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 	/*
 	 * NOTE: here, a write with a greater offset can overtake
 	 * a write with a smaller offset FOR THE SAME FILE. Not
-	 * probable, but possible. Verify compensates for this (by using a heap)
+	 * probable, but possible. The verify tool compensates
+	 *  for this (by using a small heap)
 	 */
 	if(wr < 0)
 		return wr;
