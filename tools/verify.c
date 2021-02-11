@@ -22,6 +22,10 @@
  * https://troydhanson.github.io/uthash/userguide.html
  */
 
+int	DEBUGHOLE;	//true only to debug holes
+
+#define dhfprintf if(DEBUGHOLE)fprintf
+
 enum{
 	Maxfiles = 256,
 	Maxpath = 4 * 1024,
@@ -77,12 +81,69 @@ scandirfiles(char *path, Ofile **ofiles)
 	closedir(d);
 }
 
+static int
+checkholes(struct sealfs_logfile_entry *e, Ofile *o)
+{
+	uint64_t min;
+	Heap *heap;
+	struct sealfs_logfile_entry *ec;
+
+	dhfprintf(stderr, "CHECKHOLE: %p\n", e);
+	heap = o->heap;
+	// ensure that the file doesn't have holes and it starts at offset 0.
+	// file's records must be *almost* ordered in the log
+	// coverage must be total
+
+	// There may be some disorder (MaxHeapSz entries)
+	// 	Keep a minheap of offset and advance it when it is contiguous
+
+	if(e != NULL) {
+		if(o->offset == e->offset){
+			o->offset += e->count;
+			return 0;
+		}
+		ec = (struct sealfs_logfile_entry*)malloc(sizeof(*ec));
+		if(!ec)
+			err(1, "cannot allocate entry");
+		memmove(ec, e, sizeof(struct sealfs_logfile_entry));
+		if(insertheap(heap, e->offset, ec) < 0){
+			free(ec);
+			ec = NULL;
+			fprintf(stderr, "read %d entries without fixing a hole\n", MaxHeapSz);
+			return -1;
+		}
+	}else if(heap == NULL)
+		return 0;
+
+	for(;;){	
+		ec = (struct sealfs_logfile_entry*)popminheap(heap, &min);
+		if(ec == NULL){
+			dhfprintf(stderr, "HOLE NULL o:%lu\n", o->offset);
+			break;
+		}
+		if(ec != NULL && o->offset == ec->offset){
+			dhfprintf(stderr, "HOLE advance o:%lu\n", o->offset);
+			o->offset += ec->count;
+			free(ec);
+		}else{
+			dhfprintf(stderr, "HOLE no advance o:%lu, e:%lu\n",
+					o->offset,ec->offset);
+			insertheap(heap, min, ec);	//put it back, just took it, so there is place
+			break;
+		}
+	}
+	return 0;
+}
+
 static void
 checktailofiles(Ofile *ofiles)
 {
 	Ofile *o;
 	int err = 0;
     	for(o = ofiles; o != NULL;) {
+		if(o->heap != NULL && checkholes(NULL, o) < 0){
+			err = 1;
+		}
 		if(o->heap->count != 0){
 			fprintf(stderr, 
 				"disordered offsets pend for ofile inode: %lld fd: %d\n\t",
@@ -184,54 +245,12 @@ fail:
 
 
 static int
-checkholes(struct sealfs_logfile_entry *e, Ofile *o)
-{
-	uint64_t min;
-	int count;
-	Heap *heap;
-
-	heap = o->heap;
-	// ensure that the file doesn't have holes and it starts at offset 0.
-	// file's records must be *almost* ordered in the log
-	// coverage must be total
-
-	// There may be some disorder (MaxHeapSz entries)
-	// 	Keep a minheap of offset and advance it when it is contiguous
-
-	if(o->offset == e->offset){
-		o->offset += e->count;
-		return 0;
-	}
-	if(insertheap(heap, e->offset, e->count) < 0){
-		fprintf(stderr, "read %d entries without fixing a hole\n", MaxHeapSz);
-		return -1;
-	}
-	for(;;){	
-		min = popminheap(heap, &count);
-		if(min == (uint64_t)-1){
-			fprintf(stderr, "bad: hole in file, log's offsets do not match: "
-				"%lld vs %lld\n",
-				(long long) o->offset,
-				(long long) e->offset);
-			return -1;
-		}
-		if(min == o->offset){
-			o->offset += count; //get count from hash...
-		}else{
-			insertheap(heap, min, count);	//put it back, just took it, so there is place
-			break;
-		}
-	}
-	return 0;
-}
-
-static int
 isentryok(struct sealfs_logfile_entry *e, Ofile *o, FILE *kf)
 {
 	unsigned char k[FPR_SIZE];
 	unsigned char h[FPR_SIZE];
 
-	if(checkholes(e, o)){
+	if(checkholes(e, o) < 0){
 		return 0;
 	}
 	if(fseek(kf, (long) e->koffset, SEEK_SET) < 0){
@@ -283,6 +302,7 @@ inrange(struct sealfs_logfile_entry *e, uint64_t begin, uint64_t end)
 		(begin <= e->offset && e->offset+e->count <= end);
 }
 
+
 /*
  *  inode == 0, check all files, else check only the inode
  *  begin == 0 && end == 0, check the whole file
@@ -312,6 +332,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		if(o == NULL)
 			errx(1, "file with inode %lld not found!",
 				(long long) e.inode);
+
 		if(inode != 0){
 			if(e.inode != inode)
 				continue;
@@ -320,7 +341,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			/*
 			 * init o->offset
 			 * o->offset must be the e.offset of the first,
-			 * record to check, not begin!
+			 * record to check, not start!
 			 */
 			if(o->offset == 0)
 				o->offset = e.offset;
@@ -335,7 +356,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		/*
 		 * check continuity if we are checking the whole log
 		 */
-		if(inode == 0 && e.koffset != szhdr + c*FPR_SIZE){
+		if(!DEBUGHOLE && inode == 0 && e.koffset != szhdr + c*FPR_SIZE){
 			fprintf(stderr, "koffset not correct: %lld "
 					"should be %lld for entry: ",
 					(long long) e.koffset,
@@ -407,7 +428,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "USAGE: verify dir kalpha kbeta"
-			" [-n lfilename] [-i inode begin end]\n");
+			" [-h] [-n lfilename] [-i inode begin end]\n");
 	exit(1);
 }
 
@@ -431,7 +452,7 @@ main(int argc, char *argv[])
 	char lpath[Maxpath];
 	int i;
 
-	if(argc < 3 || argc > 8)
+	if(argc < 3 || argc > 9)
 		usage();
 
 	dir = argv[1];
@@ -440,7 +461,9 @@ main(int argc, char *argv[])
 	argc-=4;
 	argv+=4;
 	for(i=0; i<argc; i++){
-		if(strncmp(argv[i], "-n", 2) == 0){
+		if(strncmp(argv[i], "-h", 2) == 0)
+			DEBUGHOLE++;
+		else if(strncmp(argv[i], "-n", 2) == 0){
 			if(argc > i+1){
 				lname = argv[i+1];
 				i++;

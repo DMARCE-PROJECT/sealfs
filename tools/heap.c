@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "../sealfstypes.h" //shared with kernel module
 #include "heap.h"
 
 static void heapify_bottom_top(Heap *h,int index);
@@ -19,13 +20,13 @@ createheap(void)
 }
 
 int
-insertheap(Heap *h, uint64_t key, int val)
+insertheap(Heap *h, uint64_t key, void *val)
 {
 	if(h->count >= MaxHeapSz){
 		return -1;
 	}
 	h->arr[h->count] = key;
-	h->val[h->count] = val;
+	h->vals[h->count] = val;
 	heapify_bottom_top(h, h->count);
 	h->count++;
 	return h->count;
@@ -35,13 +36,14 @@ static void
 swap(Heap *h, int p, int q)
 {
 	uint64_t aux;
+	void *auxp;
 	aux = h->arr[p];
 	h->arr[p] = h->arr[q];
 	h->arr[q] = aux;
 
-	aux = h->val[p];
-	h->val[p] = h->val[q];
-	h->val[q] = aux;
+	auxp = h->vals[p];
+	h->vals[p] = h->vals[q];
+	h->vals[q] = auxp;
 }
 
 static void
@@ -83,29 +85,30 @@ heapify_top_bottom(Heap *h, int parent_node)
 	}
 }
 
-uint64_t
-popminheap(Heap *h, int *valp)
+
+void *
+popminheap(Heap *h, uint64_t *min)
 {
-	int pop;
+	void *val;
 	if(h->count==0){
 		/* heap is empty */
-		return -1;
+		return NULL;
 	}
 	// replace first node by last and delete last
-	pop = h->arr[0];
-	*valp = h->val[0];
+	*min = h->arr[0];
+	val = h->vals[0];
 	h->arr[0] = h->arr[h->count-1];
-	h->val[0] = h->val[h->count-1];
+	h->vals[0] = h->vals[h->count-1];
 	h->count--;
 	heapify_top_bottom(h, 0);
-	return pop;
+	return val;
 }
 
 void printheap(Heap *h){
 	int i;
 	fprintf(stderr, "offsets, counts: [");
 	for(i=0;i< h->count;i++){
-		fprintf(stderr, "(%lu, %d), ", h->arr[i], h->val[i]);
+		fprintf(stderr, "%lu, ", h->arr[i]);
 	}
 	fprintf(stderr, "]\n");
 }

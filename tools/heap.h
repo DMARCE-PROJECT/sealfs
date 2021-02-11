@@ -6,14 +6,12 @@ enum {
 
 struct Heap{
 	uint64_t arr[MaxHeapSz];
-	int val[MaxHeapSz];
+	void *vals[MaxHeapSz];
 	int count;
-	int capacity;
-	int heap_type; // for min heap , 1 for max heap
 };
 typedef struct Heap Heap;
 
 extern Heap *createheap(void);
-extern int insertheap(Heap *h, uint64_t key, int val);
-extern uint64_t popminheap(Heap *h, int *valp);
+extern int insertheap(Heap *h, uint64_t key, void *val);
+extern void *popminheap(Heap *h, uint64_t *valp);
 extern void printheap(Heap *h);
