@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../sealfstypes.h" //shared with kernel module
 #include "heap.h"
 
 static void heapify_bottom_top(Heap *h,int index);
@@ -59,24 +58,39 @@ heapify_bottom_top(Heap *h,int index)
 	}
 }
 
+enum {
+	LEFT,
+	RIGHT,
+	NELEM,
+};
+
+static int
+isval(Heap *h, int idx)
+{
+	return idx < h->count && idx >= 0;
+}
+
+static int
+ismin(Heap *h, int *elem, int side, int minidx)
+{
+	int e;
+	e = elem[side];
+	return  isval(h, e) && h->arr[e] < h->arr[minidx];
+}
+
 static void
 heapify_top_bottom(Heap *h, int parent_node)
 {
-	int left, right, min;
+	int elem[NELEM], min;
 
-	left = parent_node*2+1;
-	right = parent_node*2+2;
-	if(left >= h->count || left <0)
-		left = -1;
-	if(right >= h->count || right <0)
-		right = -1;
+	elem[LEFT] = parent_node*2 + 1;
+	elem[RIGHT] = parent_node*2 + 2;
 
-	if(left != -1 && h->arr[left] < h->arr[parent_node])
-		min=left;
-	else
-		min =parent_node;
-	if(right != -1 && h->arr[right] < h->arr[min])
-		min = right;
+	min = parent_node;
+	if(ismin(h, elem, LEFT, min))
+		min = elem[LEFT];
+	if(ismin(h, elem, RIGHT, min))
+		min = elem[RIGHT];
 
 	if(min != parent_node){
 		swap(h, min, parent_node);
