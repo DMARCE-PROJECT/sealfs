@@ -54,7 +54,7 @@ heapify_bottom_top(Heap *h,int index)
 	if(h->arr[parent_node] > h->arr[index]){
 		swap(h, parent_node, index);
 		// recursive  call
-		heapify_bottom_top(h,parent_node);
+		heapify_bottom_top(h, parent_node);
 	}
 }
 
@@ -71,32 +71,33 @@ isval(Heap *h, int idx)
 }
 
 static int
-ismin(Heap *h, int *elem, int side, int minidx)
+ismin(Heap *h, int *elemsidx, int side, int minidx)
 {
-	int e;
-	e = elem[side];
-	return  isval(h, e) && h->arr[e] < h->arr[minidx];
+	int ei;
+	ei = elemsidx[side];
+	return  isval(h, ei) && h->arr[ei] < h->arr[minidx];
 }
 
 static void
 heapify_top_bottom(Heap *h, int parent_node)
 {
-	int elem[NELEM], min;
+	int elemsidx[NELEM], min;
 
-	elem[LEFT] = parent_node*2 + 1;
-	elem[RIGHT] = parent_node*2 + 2;
+	elemsidx[LEFT] = parent_node*2 + 1;
+	elemsidx[RIGHT] = parent_node*2 + 2;
 
 	min = parent_node;
-	if(ismin(h, elem, LEFT, min))
-		min = elem[LEFT];
-	if(ismin(h, elem, RIGHT, min))
-		min = elem[RIGHT];
+	if(ismin(h, elemsidx, LEFT, min))
+		min = elemsidx[LEFT];
+	if(ismin(h, elemsidx, RIGHT, min))
+		min = elemsidx[RIGHT];
 
-	if(min != parent_node){
-		swap(h, min, parent_node);
-		// recursive  call
-		heapify_top_bottom(h, min);
+	if(min == parent_node){
+		return;
 	}
+	swap(h, min, parent_node);
+	// recursive  call
+	heapify_top_bottom(h, min);
 }
 
 
