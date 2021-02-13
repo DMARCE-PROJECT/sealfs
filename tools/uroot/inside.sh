@@ -83,7 +83,7 @@ mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
 umount /tmp/y
 
 dd if=/tmp/x/.SEALFS.LOG bs=16 count=1 of=/tmp/hdr
-#with if=file, skip bug
+#with if=file, dd has a bug with skip ??
 dd bs=16 skip=1 of=/tmp/body < /tmp/x/.SEALFS.LOG
 dd bs=64 count=3 of=/tmp/start < /tmp/body
 dd bs=64 count=3 skip=3 of=/tmp/medium < /tmp/body
