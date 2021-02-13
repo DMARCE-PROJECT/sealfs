@@ -35,6 +35,7 @@ chmod 777 $KERNEL
 cd $GITSEAL
 make all || exit 1
 cp sealfs.ko /var/tmp
+cp `which bash` /var/tmp
 cd tools
 make all || exit 1
 cp prep dump verify test /var/tmp
@@ -55,7 +56,7 @@ sudo umount $SEALHD
 
 cp $GITSEAL/tools/uroot/inside.sh /var/tmp/
 chmod +x /var/tmp/inside.sh
-if ! u-root -uinitcmd=/var/tmp/inside.sh -files "/var/tmp/test" -files "/var/tmp/sealfs.ko" -files /var/tmp/verify -files /var/tmp/prep -files /var/tmp/dump  -files /var/tmp/inside.sh> /tmp/$$_uroot 2>&1; then
+if ! u-root -uinitcmd=/var/tmp/inside.sh -files "/var/tmp/test" -files "/var/tmp/bash" -files "/var/tmp/sealfs.ko" -files /var/tmp/verify -files /var/tmp/prep -files /var/tmp/dump  -files /var/tmp/inside.sh> /tmp/$$_uroot 2>&1; then
 	cat /tmp/$$_uroot 1>&2
 	echo u-root error  1>&2
 	exit 1
