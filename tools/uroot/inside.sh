@@ -1,4 +1,4 @@
-#!/var/tmp/bash
+#!/usr/bin/sh
 
 mkdir -p /mount/hd
 mount /dev/sda /mount/hd
@@ -75,6 +75,7 @@ checktest TEST2
 echo TEST 3 '----------------'
 ############################# 3 TEST simulate race condition
 ###LOG_HDR_SZ=16
+
 resettest
 
 mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
