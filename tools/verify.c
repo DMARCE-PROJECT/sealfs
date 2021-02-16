@@ -250,9 +250,6 @@ isentryok(struct sealfs_logfile_entry *e, Ofile *o, FILE *kf)
 	unsigned char k[FPR_SIZE];
 	unsigned char h[FPR_SIZE];
 
-	if(checkjqueues(e, o) < 0){
-		return 0;
-	}
 	if(fseek(kf, (long) e->koffset, SEEK_SET) < 0){
 		fprintf(stderr, "can't seek kbeta\n");
 		return 0;
@@ -348,7 +345,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			printf("checking entry: ");
 			printentry(stdout, &e);
 		}
-		if(! isentryok(&e, o, kf)){
+		if(checkjqueues(&e, o) < 0 || ! isentryok(&e, o, kf)){
 			fprintf(stderr, "can't verify entry: ");
 			printentry(stderr, &e);
 			exit(1);
