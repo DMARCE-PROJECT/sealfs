@@ -98,6 +98,8 @@ if sed -E -n '/STARTTEST/,/ENDTEST|\#/p' $OUTPUT|grep FAIL > /dev/null; then
 	echo cat $OUTPUT 1>&2
 	echo FAILED TESTS 1>&2
 	exit 1
+else
+	echo OK TESTS 1>&2
 fi
 exit 0
 
