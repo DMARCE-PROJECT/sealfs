@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <dirent.h>
 #include "../sealfstypes.h" //shared with kernel module
+#include "entries.h"
 
 enum{
 	Maxpath=512,
@@ -27,22 +28,14 @@ dump(FILE* lf)
 	struct sealfs_logfile_entry e;
 	uint64_t c = 0;
   	for(;;){
-		if(fread(&e, sizeof(e), 1, lf) != 1){
+		if(freadentry(lf, &e) != 1){
  			if(ferror(lf))
 				err(1, "can't read from lfile");
 			else
 				break; //we're done
 		}
-		printf("#%lld\n"
-			"\tinode: %lld\n"
-			"\toffset: %lld\n"
-			"\tcount: %lld\n"
-			"\tkoffset: %lld\n",
-			(long long) c,
-			(long long) e.inode,
-			(long long) e.offset,
-			(long long) e.count,
-			(long long) e.koffset);
+		fprintf(stdout, "#%lld\n", (long long) c);
+		fprintentry(stdout, &e);
 		c++;
 	}
  	printf("%lld entries dumped\n", (long long) c);
