@@ -22,9 +22,9 @@
  * https://troydhanson.github.io/uthash/userguide.html
  */
 
-int	DEBUGHOLE;	//true only to debug holes
+int	DEBUGJQUEUE;	//true only to debug jQUEUE
 
-#define dhfprintf if(DEBUGHOLE)fprintf
+#define dhfprintf if(DEBUGJQUEUE)fprintf
 
 enum{
 	Maxfiles = 256,
@@ -82,15 +82,15 @@ scandirfiles(char *path, Ofile **ofiles)
 }
 
 static int
-checkholes(struct sealfs_logfile_entry *e, Ofile *o)
+checkjqueues(struct sealfs_logfile_entry *e, Ofile *o)
 {
 	uint64_t min;
 	Heap *heap;
 	struct sealfs_logfile_entry *ec;
 
-	dhfprintf(stderr, "CHECKHOLE: %p\n", e);
+	dhfprintf(stderr, "CHECKJQUEUE: %p\n", e);
 	heap = o->heap;
-	// ensure that the file doesn't have holes and it starts at offset 0.
+	// ensure that the file doesn't have jqueues and it starts at offset 0.
 	// file's records must be *almost* ordered in the log
 	// coverage must be total
 
@@ -109,7 +109,7 @@ checkholes(struct sealfs_logfile_entry *e, Ofile *o)
 		if(insertheap(heap, e->offset, ec) < 0){
 			free(ec);
 			ec = NULL;
-			fprintf(stderr, "read %d entries without fixing a hole\n", MaxHeapSz);
+			fprintf(stderr, "read %d entries without fixing a jqueue\n", MaxHeapSz);
 			return -1;
 		}
 	}else if(heap == NULL)
@@ -118,15 +118,15 @@ checkholes(struct sealfs_logfile_entry *e, Ofile *o)
 	for(;;){	
 		ec = (struct sealfs_logfile_entry*)popminheap(heap, &min);
 		if(ec == NULL){
-			dhfprintf(stderr, "HOLE NULL o:%lu\n", o->offset);
+			dhfprintf(stderr, "JQUEUE NULL o:%lu\n", o->offset);
 			break;
 		}
 		if(ec != NULL && o->offset == ec->offset){
-			dhfprintf(stderr, "HOLE advance o:%lu\n", o->offset);
+			dhfprintf(stderr, "JQUEUE advance o:%lu\n", o->offset);
 			o->offset += ec->count;
 			free(ec);
 		}else{
-			dhfprintf(stderr, "HOLE no advance o:%lu, e:%lu\n",
+			dhfprintf(stderr, "JQUEUE no advance o:%lu, e:%lu\n",
 					o->offset,ec->offset);
 			insertheap(heap, min, ec);	//put it back, just took it, so there is place
 			break;
@@ -141,7 +141,7 @@ checktailofiles(Ofile *ofiles)
 	Ofile *o;
 	int err = 0;
     	for(o = ofiles; o != NULL;) {
-		if(o->heap != NULL && checkholes(NULL, o) < 0){
+		if(o->heap != NULL && checkjqueues(NULL, o) < 0){
 			err = 1;
 		}
 		if(o->heap->count != 0){
@@ -250,7 +250,7 @@ isentryok(struct sealfs_logfile_entry *e, Ofile *o, FILE *kf)
 	unsigned char k[FPR_SIZE];
 	unsigned char h[FPR_SIZE];
 
-	if(checkholes(e, o) < 0){
+	if(checkjqueues(e, o) < 0){
 		return 0;
 	}
 	if(fseek(kf, (long) e->koffset, SEEK_SET) < 0){
@@ -355,15 +355,16 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		}
 		/*
 		 * check continuity if we are checking the whole log
+		 * it may still be correct (see checkjqueue), but warn the user
 		 */
-		if(!DEBUGHOLE && inode == 0 && e.koffset != szhdr + c*FPR_SIZE){
-			fprintf(stderr, "koffset not correct: %lld "
+		if(inode == 0 && e.koffset != szhdr + c*FPR_SIZE){
+			fprintf(stderr, "warning: koffset not correct: %lld "
 					"should be %lld for entry: ",
 					(long long) e.koffset,
 					(long long) sizeof(struct sealfs_keyfile_header)
 						+ c*FPR_SIZE);
 			printentry(stderr, &e);
-			exit(1);
+			//exit(1);
 		}
 		c++;
 	}
@@ -432,6 +433,18 @@ usage(void)
 	exit(1);
 }
 
+static void
+setdebugs(char *arg)
+{
+	int i;
+	for(i = 0; i < strlen(arg); i++){
+		if(arg[i] == 'h') {
+			fprintf(stderr, "Debug: jqueue debugging\n");
+			DEBUGJQUEUE++;
+		}
+	}
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -461,8 +474,10 @@ main(int argc, char *argv[])
 	argc-=4;
 	argv+=4;
 	for(i=0; i<argc; i++){
-		if(strncmp(argv[i], "-h", 2) == 0)
-			DEBUGHOLE++;
+		if(strnlen(argv[i], 2) >= 2) {
+			if(argv[i][0] == '-' && argv[i][1] == 'D')
+				setdebugs(argv[i]+2);
+		}
 		else if(strncmp(argv[i], "-n", 2) == 0){
 			if(argc > i+1){
 				lname = argv[i+1];

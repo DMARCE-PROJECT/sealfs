@@ -93,33 +93,33 @@ dd bs=64 count=5 skip=6 of=/tmp/end < /tmp/body
 
 echo hdr start medium end
 cat /tmp/hdr /tmp/start /tmp/medium /tmp/end > /tmp/x/.SEALFS.LOG
-checktest TEST3hsme -h
+checktest TEST3hsme -Dh
 
 
 echo hdr medium start end
 cat /tmp/hdr /tmp/medium /tmp/start /tmp/end > /tmp/x/.SEALFS.LOG
-checktest TEST3hmse -h
+checktest TEST3hmse -Dh
 
 echo hdr medium end start 
 cat /tmp/hdr /tmp/medium /tmp/end /tmp/start  > /tmp/x/.SEALFS.LOG
-checktest TEST3hmes -h
+checktest TEST3hmes -Dh
 
 echo hdr end start medium 
 cat /tmp/hdr  /tmp/end /tmp/start /tmp/medium > /tmp/x/.SEALFS.LOG
 
-checktest TEST3hesm -h
+checktest TEST3hesm -Dh
 
 #SHOULD FAIL
 echo hdr medium end
 cat /tmp/hdr /tmp/medium /tmp/end > /tmp/x/.SEALFS.LOG
-checkfailtest TEST3hme -h
+checkfailtest TEST3hme -Dh
 
 #SHOULD BE GOOD (truncated logs) IS THIS A BUG? SHOULD WE SEAL IN HDR?
 echo hdr medium start
 cat /tmp/hdr /tmp/medium /tmp/start > /tmp/x/.SEALFS.LOG
-checktest TEST3hms -h
+checktest TEST3hms -Dh
 
-##echo TEST 4 '----------------'
+echo TEST 4 '----------------' DISABLED, CPUID not present in qemu
 ############################# 4 TEST (new key so it does not fail)
 ##resettest
 
