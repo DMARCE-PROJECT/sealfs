@@ -1,0 +1,12 @@
+Write more efficiently (is it possible?)
+Run more kthreads (NBURN) reburning the key. Only one of them
+	writes the header.
+Do not insist on updating header so much when it is not needed.
+
+Better tooling:
+
+A) Solve being able to copy the files and verify elsewhere
+	1) Either: rewrite log with different inodes
+			or brute force scan looking for entries which verify
+			or pass to verify -inode filename
+B) Print log files in order with visible mark of whether they are wrong [OK] and or color

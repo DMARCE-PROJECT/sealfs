@@ -81,6 +81,12 @@ scandirfiles(char *path, Ofile **ofiles)
 	closedir(d);
 }
 
+//	Ensure that the file doesn't have holes and it starts at offset 0.
+//		file's records must be *almost* ordered in the log
+//		coverage must be total.
+//	There may be some disorder (MaxHeapSz entries), we call this region a jqueue
+//		jump-queue.
+// 	Keep a minheap of offset and advance it when it is contiguous.
 static int
 checkjqueues(struct sealfs_logfile_entry *e, Ofile *o)
 {
@@ -90,12 +96,6 @@ checkjqueues(struct sealfs_logfile_entry *e, Ofile *o)
 
 	dhfprintf(stderr, "CHECKJQUEUE: %p\n", e);
 	heap = o->heap;
-	// ensure that the file doesn't have jqueues and it starts at offset 0.
-	// file's records must be *almost* ordered in the log
-	// coverage must be total
-
-	// There may be some disorder (MaxHeapSz entries)
-	// 	Keep a minheap of offset and advance it when it is contiguous
 
 	if(e != NULL) {
 		if(o->offset == e->offset){
