@@ -5,8 +5,16 @@ Do not insist on updating header so much when it is not needed.
 
 Better tooling:
 
-A) Solve being able to copy the files and verify elsewhere
-	1) Either: rewrite log with different inodes
-			or brute force scan looking for entries which verify
-			or pass to verify -inode filename
-B) Print log files in order with visible mark of whether they are wrong [OK] and or color
+A) Solve being able to copy the files to another FS and verify (maybe continue working) elsewhere
+	1) Either: rewrite log with different inodes (good for moving, less versatile)
+				rewritelog -2 3 -3 4 -5 650 .SEALFS_log .NEWSEALFS_log
+			or brute force scan looking for start with entries which verify (simple for user, less versatile)
+				verify -f /var/log/x
+			or pass to verify -inode filename (good for scripting)
+				verify -12 fich.log
+B) Print log files in order (when checkjqueue advances)
+with visible mark of whether they are wrong [OK][FAIL] and or color.
+
+
+RATCHET:
+	Add support for ratchet and mixed modes with reseeding.
