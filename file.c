@@ -244,6 +244,29 @@ int sealfs_update_hdr(struct sealfs_sb_info *sb)
 /*
  * This operation need to be atomic for clients, bbmutex needs to be taken when called
  *	if it wasn't, one client overtaking other would provoke Burn before reading key (bad)
+ * There are 3 ways to go about this:
+ * 	- The one implemented and described in this code.
+ *		The operation to and advance sb->kheader.burnt is atomic
+ *			the lock taken which may take time, but it is not so bad, as the clients have
+ *			to wait for read to complete anyway for the data and readahead helps a lot).
+ *		Other thread(s) can asynchronously consult sb->kheader.burnt
+ *			to know until what offset to burn.
+ *	- NOT IMPLEMENTED:
+ *		Then the client burns advances  sb->kheader.burnt and burns its own key 
+ * 		in the same thread guaranteeing causal dependency. PRO: the lock is only
+ *		taken when advancing burnt (a variable) which commits
+ *		the offset for reading and burning. Can use a spin lock. Really simple.
+ *		CON: cannot be burnt asynchronously, so the client pays for everything inline
+ *		has to wait for read and burn to finish (with cache it may not be so bad).
+ *		To implement: uncomment file.c:321,326 change the locking and don't run the thread.
+ *			not compatible with what is implemented. You release the lock before read and
+ *			the burning thread may overcome the reading thread and
+ *				Read before burning
+ *	- NOT IMPLEMENTED: use a heap like verify does. Read an offset and add to heap. The burner
+ *		thread takes from heap in order and when possible burns and advances.
+ *		Secondary threads can use the burnt advanced by primary thread.
+ *		PRO: really fast.
+ *		CON: complex, specially the case when the heap is full and the client needs to block.
  */
 static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 {
@@ -252,19 +275,18 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 	loff_t oldoff, keyoff;
 
 	/*
-	  * Updating sb->keytaken commits us to
+	  * Atomically
 	 * 	- FPR_SIZE reading in key file (out of reach for futures reads)
-	 *	- then, atomically (w.r.t. the sb->bbmutex) sb->kheader.burnt (Burn *after* reading)
+	 *	- Advance sb->kheader.burnt (Then burn *after* reading when bbmutex lock is released)
 	 *	- Later (without lock) writing sizeof(struct sealfs_logfile_entry) in log entry in the correct offset
 	 *	- Updating offset header at start of key file at some point in the future
 	 *	- We will burn what is read asynchronously in the kthread driven by sb->kheader.burnt
 	 */
-	oldoff = sb->keytaken;
-	if(sb->keytaken >= sb->maxkfilesz){
+	oldoff = sb->kheader.burnt;
+	if(oldoff + FPR_SIZE >= sb->maxkfilesz){
 			printk(KERN_ERR "sealfs: burnt key\n");
 			return -1;
 	}
-	sb->keytaken += FPR_SIZE;
 	keyoff = oldoff;
 	t = 0ULL;
 	
@@ -282,7 +304,7 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 		}
   		t += nr;
 	}
-	sb->kheader.burnt = sb->keytaken;
+	sb->kheader.burnt += FPR_SIZE;
 
 	return oldoff;
 }

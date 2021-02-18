@@ -132,7 +132,6 @@ static int read_headers(struct sealfs_sb_info *info)
 		return -1;
 	}
 	info->maxkfilesz = get_keysz(info);
-	info->keytaken = info->kheader.burnt;
 	if (info->maxkfilesz <= 0){
 		printk(KERN_ERR "sealfs: bad key file size\n");
 		return -1;

@@ -117,7 +117,6 @@ struct sealfs_sb_info {
 	struct crypto_shash *hash_tfm;
 	struct shash_desc *hash_desc;
 
-	loff_t keytaken;	/* only when this advances, it is burnt */
 	loff_t maxkfilesz;
 	wait_queue_head_t thread_q;
 	struct task_struct *sync_thread;
