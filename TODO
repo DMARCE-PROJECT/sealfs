@@ -1,9 +1,13 @@
+Better testing (important).
+	Make sure keys are burnt until one offset
+		rewrite a paranoid version of checkkeystreams in verify.c (verify -k)
+
+
 Write more efficiently (is it possible?)
-Run more kthreads (NBURN) reburning the key. Only one of them
-	writes the header.
-Do not insist on updating header so much when it is not needed.
+	Do not insist on updating header so much when it is not needed.
 
 Better tooling:
+
 
 A) Solve being able to copy the files to another FS and verify (maybe continue working) elsewhere
 	1) Either: rewrite log with different inodes (good for moving, less versatile)
@@ -18,3 +22,13 @@ with visible mark of whether they are wrong [OK][FAIL] and or color.
 
 RATCHET:
 	Add support for ratchet and mixed modes with reseeding.
+	Some of it is done:
+		1) Add extra ratchetIndex [0 to N-1] to sealfs_logfile_entry
+		2) Only one readkey for each N ratchet index (N FACTOR of less reads, say 20)
+			Keys are obtained chaining HMAC (ratchet hmac in sb)
+			 	HMAC(B0, B16) -> Kx
+				HMAC(Kx, 0) -> K0
+				HMAC(K0, 1) -> K1
+				HMAC(K_N-2, N-1) -> K_N-1
+                                HMAC(B17, N)	 -> K_N
+                                HMAC(K_N, N+1)	 -> K_N+1
