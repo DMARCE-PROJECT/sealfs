@@ -161,12 +161,27 @@ static int burn_key(struct sealfs_sb_info *sb, loff_t keyoff, int nentries)
 	return sz;
 }
 
-static int sealfs_thread(void *data)
+static int advance_burn(struct sealfs_sb_info *sb, loff_t burnt, loff_t unburnt)
+{
+	loff_t chkburnt;
+	while(unburnt  < burnt) {
+		/* burn with random from oldburnt to burnt */
+		chkburnt = burn_key(sb, unburnt, (burnt - unburnt)/FPR_SIZE);
+		if(chkburnt < 0) {
+			printk(KERN_CRIT  "sealfs: error writing key file\n");
+			break;
+		}
+		unburnt = unburnt + chkburnt;
+	}
+	return unburnt;
+}
+
+static int sealfs_thread_main(void *data, int freq, int do_update_hdr)
 {
 	struct sealfs_sb_info *sb=(struct sealfs_sb_info *)data;
 	wait_queue_head_t *q =&sb->thread_q;
-	loff_t burnt, unburnt, chkburnt;
 	int hdrpending;
+	loff_t burnt, unburnt, oldunburnt;
 
 	hdrpending = 1;
 	/* starts after header */
@@ -176,18 +191,10 @@ repeat:
 	mutex_lock(&sb->bbmutex);
 	burnt = sb->kheader.burnt;
 	mutex_unlock(&sb->bbmutex);
-	while(unburnt  < burnt) {
-		/* burn with random from oldburnt to burnt */
-		chkburnt = burn_key(sb, unburnt, (burnt - unburnt)/FPR_SIZE);
-		if(chkburnt < 0) {
-			printk(KERN_CRIT  "sealfs: error writing key file\n");
-			break;
-		}
-		unburnt = unburnt + chkburnt;
-		hdrpending = 1;
-	}
-	/* update header */
-	if(hdrpending){
+	oldunburnt = unburnt;
+	unburnt = advance_burn(sb, burnt, unburnt);
+	hdrpending = oldunburnt != unburnt;
+	if(hdrpending && do_update_hdr){
 		sealfs_update_hdr(sb);
 		hdrpending = 0;
 	}
@@ -204,15 +211,36 @@ repeat:
 	goto repeat;
 }
 
+static int sealfs_thread(void *data)
+{
+	return sealfs_thread_main(data, HZ, 1);
+}
+
+enum {
+	PERIOD_BURN_RUN=30,	//SECS
+};
+static int sealfs_slow_thread(void *data)
+{
+	return sealfs_thread_main(data, PERIOD_BURN_RUN*HZ, 0);
+}
+
 void sealfs_stop_thread(struct sealfs_sb_info *sb)
 {
-	kthread_stop(sb->sync_thread);
+	int i;
+	for(i = 0; i < NBURNTHREADS; i++){
+		kthread_stop(sb->sync_thread[i]);
+	}
 	
 }
 void sealfs_start_thread(struct sealfs_sb_info *sb)
 {
+	int i;
 	init_waitqueue_head(&sb->thread_q);
-	sb->sync_thread = kthread_run(sealfs_thread, sb, "sealfs");
+	sb->sync_thread[0] = kthread_run(sealfs_thread, sb, "sealfs");
+	init_waitqueue_head(&sb->slow_thread_q);
+	for(i = 1; i < NBURNTHREADS; i++){
+		sb->sync_thread[i] = kthread_run(sealfs_slow_thread, sb, "sealfs");
+	}
 }
 
 int sealfs_update_hdr(struct sealfs_sb_info *sb)

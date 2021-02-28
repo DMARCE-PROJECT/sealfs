@@ -100,6 +100,9 @@ struct sealfs_dentry_info {
 };
 
 #include <linux/kthread.h>
+enum {
+	NBURNTHREADS=3,
+};
 /* sealfs super-block data in memory */
 struct sealfs_sb_info {
 	struct super_block *lower_sb;
@@ -118,8 +121,9 @@ struct sealfs_sb_info {
 	struct shash_desc *hash_desc;
 
 	loff_t maxkfilesz;
-	wait_queue_head_t thread_q;
-	struct task_struct *sync_thread;
+	wait_queue_head_t thread_q;	//first is separated, different freq and woken
+	wait_queue_head_t slow_thread_q;
+	struct task_struct *sync_thread[NBURNTHREADS];
 };
 
 extern void sealfs_cleanup(struct sealfs_sb_info *);
