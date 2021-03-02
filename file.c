@@ -188,11 +188,13 @@ static int sealfs_thread_main(void *data, int freq, int do_update_hdr)
 repeat:
 	burnt = atomic_long_read(&sb->burnt);
 	oldunburnt = unburnt;
+	// This lock is to make sure things are marked to go
+	// to disk before someone else burns them
+	mutex_lock(&sb->burnsyncmutex);
 	unburnt = advance_burn(sb, burnt, unburnt);
-	//it goes to disk
-	//sync_file_range(sb->kfile, oldunburnt, unburnt-oldunburnt, SYNC_FILE_RANGE_WRITE_AND_WAIT);
 	isadvance = oldunburnt != unburnt;
-	vfs_fsync_range(sb->kfile, oldunburnt, unburnt, isadvance);
+	vfs_fsync_range(sb->kfile, oldunburnt, unburnt, 1);
+	mutex_unlock(&sb->burnsyncmutex);
 	if(isadvance && do_update_hdr){
 		sealfs_update_hdr(sb);
 		isadvance = 0;

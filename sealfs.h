@@ -107,6 +107,8 @@ enum {
 struct sealfs_sb_info {
 	struct super_block *lower_sb;
 	struct mutex bbmutex;
+	//synchronize burners and make sure they write to disk
+	struct mutex burnsyncmutex;
 	char *dev_name;
 	char *kpathname;
 	char *lpathname;

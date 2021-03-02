@@ -213,8 +213,9 @@ static int sealfs_read_super(struct super_block *sb,
 		goto out_free;
 	}
 
-	/* Q init the mutex */
+	/* Q init the mutexes */
 	mutex_init(&info->bbmutex);
+	mutex_init(&info->burnsyncmutex);
 	mutex_init(&info->hash_mutex);
 
 	/* set the lower superblock field of upper superblock */
