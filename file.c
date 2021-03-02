@@ -178,10 +178,10 @@ static int sealfs_thread_main(void *data, int freq, int do_update_hdr)
 {
 	struct sealfs_sb_info *sb=(struct sealfs_sb_info *)data;
 	wait_queue_head_t *q =&sb->thread_q;
-	int hdrpending;
+	int isadvance;
 	loff_t burnt, unburnt, oldunburnt;
 
-	hdrpending = 1;
+	isadvance = 1;
 	/* starts after header */
 	unburnt = sizeof(struct sealfs_keyfile_header);
 
@@ -189,10 +189,13 @@ repeat:
 	burnt = atomic_long_read(&sb->burnt);
 	oldunburnt = unburnt;
 	unburnt = advance_burn(sb, burnt, unburnt);
-	hdrpending = oldunburnt != unburnt;
-	if(hdrpending && do_update_hdr){
+	//it goes to disk
+	//sync_file_range(sb->kfile, oldunburnt, unburnt-oldunburnt, SYNC_FILE_RANGE_WRITE_AND_WAIT);
+	isadvance = oldunburnt != unburnt;
+	vfs_fsync_range(sb->kfile, oldunburnt, unburnt, isadvance);
+	if(isadvance && do_update_hdr){
 		sealfs_update_hdr(sb);
-		hdrpending = 0;
+		isadvance = 0;
 	}
 	if (kthread_should_stop()){
 		if(!has_advanced_burnt(sb, unburnt)){
@@ -203,7 +206,7 @@ repeat:
 			goto repeat;
 	}
 	wait_event_interruptible_timeout(*q,
-		kthread_should_stop() || has_advanced_burnt(sb, unburnt), HZ);
+		kthread_should_stop() || has_advanced_burnt(sb, unburnt), freq);
 	goto repeat;
 }
 
