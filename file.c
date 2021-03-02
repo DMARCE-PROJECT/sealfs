@@ -262,7 +262,6 @@ int sealfs_update_hdr(struct sealfs_sb_info *sb)
 	 */
 	x = sizeof(struct sealfs_keyfile_header);
 	if(kernel_write(sb->kfile, (void*)&hdr, x, &zoff) != x){
-		mutex_unlock(&sb->bbmutex);
 		printk(KERN_ERR "sealfs: can't write key file header\n");
 		return -1;
 	}
