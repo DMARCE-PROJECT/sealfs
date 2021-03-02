@@ -113,6 +113,10 @@ struct sealfs_sb_info {
 	char sync; // synchronous IO
  	struct file *kfile;
 	struct file *lfile;
+
+	atomic_long_t	burnt;
+	//kheader contains the header as it was read when mounting
+	//	burnt is tracked by the atomic above
 	struct sealfs_keyfile_header kheader;
 	struct sealfs_logfile_header lheader;
 	// context for the hash/hmac
@@ -121,7 +125,7 @@ struct sealfs_sb_info {
 	struct shash_desc *hash_desc;
 
 	loff_t maxkfilesz;
-	wait_queue_head_t thread_q;	//first is separated, different freq and woken
+	wait_queue_head_t thread_q;	//first is different, higher freq and woken by clients
 	wait_queue_head_t slow_thread_q;
 	struct task_struct *sync_thread[NBURNTHREADS];
 };

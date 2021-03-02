@@ -131,9 +131,7 @@ static int has_advanced_burnt(struct sealfs_sb_info *sb, loff_t oldburnt)
 {
 	loff_t newburnt;
 
-	mutex_lock(&sb->bbmutex);
-	newburnt = sb->kheader.burnt;
-	mutex_unlock(&sb->bbmutex);
+	newburnt = atomic_long_read(&sb->burnt);
 	return newburnt != oldburnt;
 }
 
@@ -188,9 +186,7 @@ static int sealfs_thread_main(void *data, int freq, int do_update_hdr)
 	unburnt = sizeof(struct sealfs_keyfile_header);
 
 repeat:
-	mutex_lock(&sb->bbmutex);
-	burnt = sb->kheader.burnt;
-	mutex_unlock(&sb->bbmutex);
+	burnt = atomic_long_read(&sb->burnt);
 	oldunburnt = unburnt;
 	unburnt = advance_burn(sb, burnt, unburnt);
 	hdrpending = oldunburnt != unburnt;
@@ -249,9 +245,8 @@ int sealfs_update_hdr(struct sealfs_sb_info *sb)
 	loff_t zoff;
 	size_t x;
 	zoff = 0;
-	mutex_lock(&sb->bbmutex);
-	hdr = sb->kheader;
-	mutex_unlock(&sb->bbmutex);
+	hdr = sb->kheader;	//only for the magic
+	hdr.burnt = atomic_long_read(&sb->burnt);
 	/* hdr may be old by the time it is written
 	 *  this is a benign race condition, we write the current version.
 	 *  There is another race, where we write a *old* version
@@ -273,13 +268,13 @@ int sealfs_update_hdr(struct sealfs_sb_info *sb)
  *	if it wasn't, one client overtaking other would provoke Burn before reading key (bad)
  * There are 3 ways to go about this:
  * 	- The one implemented and described in this code.
- *		The operation to and advance sb->kheader.burnt is atomic
- *			the lock taken which may take time, but it is not so bad, as the clients have
- *			to wait for read to complete anyway for the data and readahead helps a lot).
- *		Other thread(s) can asynchronously consult sb->kheader.burnt
+ *		The operation to and advance sb->burnt locks the file until read finishes (burn after read)
+ *			then the variable is updated with atomic operations.
+ *		Other thread(s) can asynchronously consult sb->burnt with atomic operations
  *			to know until what offset to burn.
+ *		Kheader needs to be composed when writing.
  *	- NOT IMPLEMENTED:
- *		Then the client burns advances  sb->kheader.burnt and burns its own key 
+ *		Then the client burns advances  sb->burnt and burns its own key 
  * 		in the same thread guaranteeing causal dependency. PRO: the lock is only
  *		taken when advancing burnt (a variable) which commits
  *		the offset for reading and burning. Can use a spin lock. Really simple.
@@ -293,7 +288,7 @@ int sealfs_update_hdr(struct sealfs_sb_info *sb)
  *		thread takes from heap in order and when possible burns and advances.
  *		Secondary threads can use the burnt advanced by primary thread.
  *		PRO: really fast.
- *		CON: complex, specially the case when the heap is full and the client needs to block.
+ *		CON: too complex, specially the case when the heap is full and the client needs to block.
  */
 static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 {
@@ -309,7 +304,7 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 	 *	- Updating offset header at start of key file at some point in the future
 	 *	- We will burn what is read asynchronously in the kthread driven by sb->kheader.burnt
 	 */
-	oldoff = sb->kheader.burnt;
+	oldoff = atomic_long_read(&sb->burnt);
 	if(oldoff + FPR_SIZE >= sb->maxkfilesz){
 			printk(KERN_ERR "sealfs: burnt key\n");
 			return -1;
@@ -331,8 +326,7 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *k)
 		}
   		t += nr;
 	}
-	sb->kheader.burnt += FPR_SIZE;
-
+	atomic_long_set(&sb->burnt, oldoff+FPR_SIZE);
 	return oldoff;
 }
 

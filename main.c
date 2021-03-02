@@ -124,6 +124,7 @@ static int read_headers(struct sealfs_sb_info *info)
 		" kheader: %lld bytes\n", nr);
 		return -1;
 	}
+	atomic_long_set(&info->burnt, info->kheader.burnt);
 	o = 0;
  	nr = kernel_read(info->lfile, (char*) &info->lheader, lsz, &o);
 	if(nr != lsz){
