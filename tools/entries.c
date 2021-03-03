@@ -30,7 +30,7 @@ freadentry(FILE *f, struct sealfs_logfile_entry *e)
 	n = fread(e, sizeof(*e), 1, f);
 	if(n != 1)
 		return -1;
-	return 0;
+	return 1;
 }
 
 static int
