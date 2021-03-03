@@ -1,3 +1,8 @@
+Burners are syncing with fsync is that working?
+	check invariants on fsync
+
+
+
 Better testing (important).
 	Make sure keys are burnt until one offset
 		rewrite a paranoid version of checkkeystreams in verify.c (verify -k)
@@ -10,8 +15,13 @@ Better tooling:
 
 
 A) Solve being able to copy the files to another FS and verify (maybe continue working) elsewhere
-	1) Either: rewrite log with different inodes (good for moving, less versatile)
-				rewritelog -2 3 -3 4 -5 650 .SEALFS_log .NEWSEALFS_log
+	1) Either:
+		//implemented, it is sufficient.
+		rewrite log with different inodes
+				rewritelog  .SEALFS_log .NEWSEALFS_log -2 3 -3 4 -5 650
+		   do an ls -i on origin and destination and map by hand.
+
+		////not implemented
 			or brute force scan looking for start with entries which verify (simple for user, less versatile)
 				verify -f /var/log/x
 			or pass to verify -inode filename (good for scripting)

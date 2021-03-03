@@ -54,8 +54,8 @@ echo -n 01234567 >> /tmp/y/zzz
 mv /tmp/y/zzz /tmp/y/zzz.1
 echo -n 01234567 >> /tmp/y/zzz
 umount /tmp/y
-
-checktest TEST1
+/var/tmp/dump /tmp/x|grep entries
+checktest TEST1 "-6 6"
 
 echo TEST 2 '----------------'
 ############################# 2 TEST

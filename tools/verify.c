@@ -41,13 +41,22 @@ struct Ofile {
 };
 typedef struct Ofile Ofile;
 
+struct Rename {
+	uint64_t inode;
+	uint64_t newinode;
+	UT_hash_handle hh; /* makes this structure hashable */
+};
+typedef struct Rename Rename;
+
 static void
-scandirfiles(char *path, Ofile **ofiles)
+scandirfiles(char *path, Ofile **ofiles, Rename *renames)
 {
 	DIR *d;
 	struct dirent *ent;
 	Ofile *o;
 	char fpath[Maxpath];
+	Rename *r;
+	r = NULL;
 
 	d = opendir(path);
 	if(d == NULL)
@@ -58,7 +67,7 @@ scandirfiles(char *path, Ofile **ofiles)
 		switch(ent->d_type){
 		case DT_DIR:
 			snprintf(fpath, Maxpath, "%s/%s", path, ent->d_name);
-			scandirfiles(fpath, ofiles);
+			scandirfiles(fpath, ofiles, renames);
 			break;
 		case DT_REG:
 			if(strcmp(DEFAULTLNAME, ent->d_name) == 0)
@@ -68,6 +77,12 @@ scandirfiles(char *path, Ofile **ofiles)
 			if(o == NULL)
 				err(1, "out of memory");
 			o->inode = ent->d_ino;
+			HASH_FIND(hh, renames, &o->inode, sizeof(uint64_t), r);
+			if(r != NULL) {
+				o->inode = r->newinode;
+				fprintf(stderr, "rename inode fs:%lu -> log:%lu\n",
+					o->inode, r->newinode);
+			}
 			snprintf(fpath, Maxpath, "%s/%s", path, ent->d_name);
 			o->fd = open(fpath, O_RDONLY);
 			if(o->fd < 0)
@@ -173,6 +188,20 @@ freeofiles(Ofile *ofiles)
 }
 
 static void
+freerenames(Rename *renames)
+{
+	Rename *r, *p;
+
+    	for(r = renames; r != NULL;) {
+		p = r;
+		r = r->hh.next;
+		free(p);
+    }
+}
+
+
+
+static void
 dumpofiles(Ofile *ofiles)
 {
 	Ofile *o;
@@ -202,7 +231,7 @@ inrange(struct sealfs_logfile_entry *e, uint64_t begin, uint64_t end)
  */
 static void
 verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
-	uint64_t begin, uint64_t end)
+	uint64_t begin, uint64_t end, Rename *renames)
 {
 	struct sealfs_logfile_entry e;
 	Ofile *ofiles = NULL;
@@ -210,7 +239,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 	uint64_t c = 0;
 	int szhdr = sizeof(struct sealfs_keyfile_header);
 
-	scandirfiles(path, &ofiles);
+	scandirfiles(path, &ofiles, renames);
 	if(inode == 0)
 		dumpofiles(ofiles);
  	for(;;){
@@ -262,6 +291,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 	}
 	checktailofiles(ofiles);
 	freeofiles(ofiles);
+	freerenames(renames);
 	if(c == 0)
  		errx(1, "error, no entries in the log\n");
 	printf("%lld entries verified, correct logs\n", (long long) c);
@@ -321,7 +351,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "USAGE: verify dir kalpha kbeta"
-			" [-h] [-n lfilename] [-i inode begin end]\n");
+			" [-h] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n");
 	exit(1);
 }
 
@@ -336,6 +366,7 @@ setdebugs(char *arg)
 		}
 	}
 }
+
 
 int
 main(int argc, char *argv[])
@@ -356,8 +387,10 @@ main(int argc, char *argv[])
 	struct sealfs_logfile_header lheader;
 	char lpath[Maxpath];
 	int i;
-
-	if(argc < 3 || argc > 9)
+	Rename *renames;
+	Rename *r;
+	renames = NULL;
+	if(argc < 3)
 		usage();
 
 	dir = argv[1];
@@ -368,9 +401,22 @@ main(int argc, char *argv[])
 	for(i=0; i<argc; i++){
 		if(strnlen(argv[i], 2) >= 2) {
 			if(argv[i][0] == '-' && argv[i][1] == 'D')
-				setdebugs(argv[i]+2);
-		}
-		else if(strncmp(argv[i], "-n", 2) == 0){
+				setdebugs(argv[i]+2); 
+			else if(argv[i][0] == '-' && atoi(argv[i]+1) != 0){
+				if(i+1 == argc) {
+					usage();
+				}
+				r = malloc(sizeof(Rename));
+				memset(r, 0, sizeof(Rename));
+				if(r == NULL)
+					err(1, "out of memory");
+				r->inode = atoi(argv[i]+1);
+				r->newinode = atoi(argv[i+1]);
+				HASH_ADD(hh, renames, inode, sizeof(uint64_t), r);
+				i++;
+			}else
+				usage();
+		}else if(strncmp(argv[i], "-n", 2) == 0){
 			if(argc > i+1){
 				lname = argv[i+1];
 				i++;
@@ -417,7 +463,7 @@ main(int argc, char *argv[])
 		errx(1, "magic numbers don't match");
 	printf("k1 burnt: %lld\n", (long long)kalphahdr.burnt);
 	checkkeystreams(alphaf, betaf, kalphahdr.burnt);
-	verify(betaf, lf, dir, inode, begin, end);
+	verify(betaf, lf, dir, inode, begin, end, renames);
 	if(inode != 0)
 		fprintf(stderr, "WARNING: you SHOULD run a"
 			" complete verification"
