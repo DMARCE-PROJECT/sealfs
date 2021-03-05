@@ -94,6 +94,8 @@ main(int argc, char *argv[])
 
 	if(getrandom(&kheader.magic, 8, 0) != 8)
 		err(1, "can't generate magic");
+	memset(&kheader, 0, sizeof(kheader));
+	memset(&lheader, 0, sizeof(lheader));
 	kheader.burnt = sizeof(struct sealfs_keyfile_header);
 	lheader.magic = kheader.magic;
 	createkfile(kfd1, kfd2, &kheader, sz);
