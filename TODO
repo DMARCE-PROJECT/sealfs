@@ -32,9 +32,9 @@ with visible mark of whether they are wrong [OK][FAIL] and or color.
 
 RATCHET:
 	Add support for ratchet and mixed modes with reseeding.
-	Some of it is done:
+	Implemented.
 		1) Add extra ratchetIndex [0 to N-1] to sealfs_logfile_entry
-		2) Only one readkey for each N ratchet index (N FACTOR of less reads, say 20)
+		2) Only one readkey for each N ratchet index (N FACTOR of less reads, say 100)
 			Keys are obtained chaining HMAC (ratchet hmac in sb)
 			 	HMAC(B0, B16) -> Kx
 				HMAC(Kx, 0) -> K0
