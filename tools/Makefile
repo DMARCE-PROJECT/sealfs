@@ -25,6 +25,10 @@ dump: dump.o $(DEPS) entries.o
 test: test.o
 	$(CC) $(CFLAGS) -std=gnu99 -o $@ $@.o
 
+%.o: %.c $(DEPS) 
+	$(CC) -c $(CFLAGS) $(CPPFLAGS) $< -o $@
+
+
 clean:
 	rm -f $(TOCLEAN)
 
