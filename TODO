@@ -6,6 +6,8 @@ Burners are syncing with fsync is that working?
 Better testing (important).
 	Make sure keys are burnt until one offset
 		rewrite a paranoid version of checkkeystreams in verify.c (verify -k)
+	Reorder test has some problem, check and fix.
+
 
 
 Write more efficiently (is it possible?)
