@@ -238,6 +238,10 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 	Ofile *o = NULL;
 	uint64_t c = 0;
 	int szhdr = sizeof(struct sealfs_keyfile_header);
+	unsigned char key[FPR_SIZE];
+	uint64_t lastkeyoff;
+
+	lastkeyoff = szhdr;
 
 	scandirfiles(path, &ofiles, renames);
 	if(inode == 0)
@@ -269,21 +273,22 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			printf("checking entry: ");
 			fprintentry(stdout, &e);
 		}
-		if(checkjqueues(&e, o) < 0 || ! isentryok(&e, o->fd, kf)){
+		if(checkjqueues(&e, o) < 0 || ! isentryok(&e, o->fd, kf, key, lastkeyoff)){
 			fprintf(stderr, "can't verify entry: ");
 			fprintentry(stderr, &e);
 			exit(1);
 		}
+		lastkeyoff = e.koffset;
 		/*
 		 * check continuity if we are checking the whole log
 		 * it may still be correct (see checkjqueue), but warn the user
 		 */
-		if(inode == 0 && e.koffset != szhdr + c*FPR_SIZE){
+		if(inode == 0 && e.koffset != szhdr + (c/NRATCHET)*FPR_SIZE){
 			fprintf(stderr, "warning: koffset not correct: %lld "
 					"should be %lld for entry: ",
 					(long long) e.koffset,
 					(long long) sizeof(struct sealfs_keyfile_header)
-						+ c*FPR_SIZE);
+						+  (c*NRATCHET + e.ratchetoffset)*FPR_SIZE);
 			fprintentry(stderr, &e);
 			//exit(1);
 		}
@@ -306,7 +311,7 @@ readchunk(FILE *f, char *p, uint64_t pos)
 	if(old < 0)
 		err(1, "ftell failed");
 	if(fseek(f, (long)pos, SEEK_SET) < 0)
-		err(1, "fseek failed");
+		err(1, "fseek failed reading chunk: %lu", pos);
 	if(fread(p, FPR_SIZE, 1, f) != 1)
 		err(1, "fread failed");
 	if(fseek(f, old, SEEK_SET) < 0)

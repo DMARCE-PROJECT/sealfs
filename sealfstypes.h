@@ -18,7 +18,12 @@ struct sealfs_logfile_header {
 	uint64_t magic;
 };
 
+enum {
+	NRATCHET=100,
+};
+
 struct sealfs_logfile_entry {
+	uint64_t ratchetoffset;			//ratchet offset n of entries %NRATCHET
 	uint64_t inode;				// file
 	uint64_t offset;  			// in the file
 	uint64_t count;   			// len of this write

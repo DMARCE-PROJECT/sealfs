@@ -103,6 +103,12 @@ struct sealfs_dentry_info {
 enum {
 	NBURNTHREADS=3,
 };
+
+struct sealfs_hmac_state {
+	struct crypto_shash *hash_tfm;
+	struct shash_desc *hash_desc;
+};
+
 /* sealfs super-block data in memory */
 struct sealfs_sb_info {
 	struct super_block *lower_sb;
@@ -122,9 +128,14 @@ struct sealfs_sb_info {
 	struct sealfs_keyfile_header kheader;
 	struct sealfs_logfile_header lheader;
 	// context for the hash/hmac
-	struct mutex hash_mutex;
-	struct crypto_shash *hash_tfm;
-	struct shash_desc *hash_desc;
+	struct mutex hmac_mutex;
+	struct sealfs_hmac_state hmac;
+
+	//protected by readkey file/burn mutex (bbmutex)
+	struct sealfs_hmac_state ratchet_hmac;
+	unsigned char keys[2][FPR_SIZE];
+	int	currkey;
+	int ratchetoffset;
 
 	loff_t maxkfilesz;
 	wait_queue_head_t thread_q;	//first is different, higher freq and woken by clients

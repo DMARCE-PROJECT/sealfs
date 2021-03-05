@@ -82,8 +82,52 @@ echo TEST 3 '----------------'
 ############################# 3 TEST simulate race condition
 ###LOG_HDR_SZ=16
 
-echo with ratchet it stopped working, rethink
-echo it was the test for race condition
+resettest
+
+mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+/var/tmp/test -s 2 17 2 /tmp/y
+
+umount /tmp/y
+
+dd if=/tmp/x/.SEALFS.LOG bs=16 count=1 of=/tmp/hdr
+HDRSZ=16
+ENTRYSZ=72
+#with if=file, dd has a bug with skip ??
+dd bs=$HDRSZ skip=1 of=/tmp/body < /tmp/x/.SEALFS.LOG
+dd bs=$ENTRYSZ count=3 of=/tmp/start < /tmp/body
+dd bs=$ENTRYSZ count=3 skip=3 of=/tmp/medium < /tmp/body
+#without count this last one has trailing zeros WTF dd?
+dd bs=$ENTRYSZ count=5 skip=6 of=/tmp/end < /tmp/body
+
+echo hdr start medium end
+cat /tmp/hdr /tmp/start /tmp/medium /tmp/end > /tmp/x/.SEALFS.LOG
+checktest TEST3hsme -Dh
+/var/tmp/dump /tmp/x
+
+echo hdr medium start end
+cat /tmp/hdr /tmp/medium /tmp/start /tmp/end > /tmp/x/.SEALFS.LOG
+checktest TEST3hmse -Dh -v
+/var/tmp/dump /tmp/x
+exit 0
+
+#echo hdr medium end start 
+#cat /tmp/hdr /tmp/medium /tmp/end /tmp/start  > /tmp/x/.SEALFS.LOG
+#checktest TEST3hmes -Dh
+
+#echo hdr end start medium 
+#cat /tmp/hdr  /tmp/end /tmp/start /tmp/medium > /tmp/x/.SEALFS.LOG
+#checktest TEST3hesm -Dh
+
+#SHOULD FAIL
+echo hdr medium end
+cat /tmp/hdr /tmp/medium /tmp/end > /tmp/x/.SEALFS.LOG
+checkfailtest TEST3hme -Dh
+
+#FAIL WITH RATCHET?
+#SHOULD BE GOOD (truncated logs) IS THIS A BUG? SHOULD WE SEAL IN HDR?
+#echo hdr medium start
+#cat /tmp/hdr /tmp/medium /tmp/start > /tmp/x/.SEALFS.LOG
+#checktest TEST3hms -Dh
 
 echo TEST 4 '----------------' DISABLED, CPUID not present in qemu
 ############################# 4 TEST (new key so it does not fail)

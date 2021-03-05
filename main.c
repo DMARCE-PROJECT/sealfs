@@ -216,8 +216,11 @@ static int sealfs_read_super(struct super_block *sb,
 	/* Q init the mutexes */
 	mutex_init(&info->bbmutex);
 	mutex_init(&info->burnsyncmutex);
-	mutex_init(&info->hash_mutex);
-
+	mutex_init(&info->hmac_mutex);
+	info->hmac.hash_tfm = NULL;
+	info->ratchet_hmac.hash_tfm = NULL;
+	info->currkey = 0;
+	info->ratchetoffset = 0;
 	/* set the lower superblock field of upper superblock */
 	lower_sb = lower_path.dentry->d_sb;
 	atomic_inc(&lower_sb->s_active);

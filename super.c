@@ -21,6 +21,15 @@
  */
 static struct kmem_cache *sealfs_inode_cachep;
 
+static void freehmac(struct sealfs_hmac_state *hmacstate)
+{
+	if(hmacstate->hash_tfm){
+		crypto_free_shash(hmacstate->hash_tfm);
+	}
+	kfree(hmacstate->hash_desc);
+}
+
+
 /*
  * Free the extra fields for sealfs
  */
@@ -34,10 +43,8 @@ void sealfs_cleanup(struct sealfs_sb_info *spd)
 	if(spd->kfile){
 		fput(spd->kfile);
 	}
-	if(spd->hash_tfm){
-		crypto_free_shash(spd->hash_tfm);
-	}
-	kfree(spd->hash_desc);
+	freehmac(&spd->hmac);
+	freehmac(&spd->ratchet_hmac);
 }
 
 /* final actions when unmounting a file system */
