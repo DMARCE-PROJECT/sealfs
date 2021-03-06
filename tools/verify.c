@@ -96,6 +96,14 @@ scandirfiles(char *path, Ofile **ofiles, Rename *renames)
 	closedir(d);
 }
 
+
+static uint64_t
+unifyoff(uint64_t offset, uint64_t ratchetoffset)
+{
+	//they should not overlap
+	return offset*1000+ratchetoffset;
+}
+
 //	Ensure that the file doesn't have holes and it starts at offset 0.
 //		file's records must be *almost* ordered in the log
 //		coverage must be total.
@@ -121,7 +129,7 @@ checkjqueues(struct sealfs_logfile_entry *e, Ofile *o)
 		if(!ec)
 			err(1, "cannot allocate entry");
 		memmove(ec, e, sizeof(struct sealfs_logfile_entry));
-		if(insertheap(heap, e->offset, ec) < 0){
+		if(insertheap(heap, unifyoff(e->offset, e->ratchetoffset), ec) < 0){
 			free(ec);
 			ec = NULL;
 			fprintf(stderr, "read %d entries without fixing a jqueue\n", MaxHeapSz);
@@ -143,7 +151,7 @@ checkjqueues(struct sealfs_logfile_entry *e, Ofile *o)
 		}else{
 			dhfprintf(stderr, "JQUEUE no advance o:%lu, e:%lu\n",
 					o->offset,ec->offset);
-			insertheap(heap, min, ec);	//put it back, just took it, so there is place
+			insertheap(heap, unifyoff(min, e->ratchetoffset), ec);	//put it back, just took it, so there is place
 			break;
 		}
 	}

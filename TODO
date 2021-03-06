@@ -1,20 +1,28 @@
+URGENT:
+	Cannot remount with ratchet (there is an unverifyable whole at the end
+	Either seal when remounting with a special entry 
+	Add test for unmounting.
+
+TEST NOT WORKING:
+	Reorder test has some problem, check and fix.
+	
+RETHINK:
+	Is the heap necessary?
+	The offset is already commited. It could be ignored if the
+		log file is append only (if it is not, it should be, it provides
+		more guarantees
+
 Burners are syncing with fsync is that working?
 	check invariants on fsync
-
-
+------
 
 Better testing (important).
-	Make sure keys are burnt until one offset
 		rewrite a paranoid version of checkkeystreams in verify.c (verify -k)
-	Reorder test has some problem, check and fix.
+	Make sure keys are burnt until one offset
 
 
-
-Write more efficiently (is it possible?)
-	Do not insist on updating header so much when it is not needed.
 
 Better tooling:
-
 
 A) Solve being able to copy the files to another FS and verify (maybe continue working) elsewhere
 	1) Either:
@@ -32,9 +40,10 @@ B) Print log files in order (when checkjqueue advances)
 with visible mark of whether they are wrong [OK][FAIL] and or color.
 
 
+Implemented:
+
 RATCHET:
 	Add support for ratchet and mixed modes with reseeding.
-	Implemented.
 		1) Add extra ratchetIndex [0 to N-1] to sealfs_logfile_entry
 		2) Only one readkey for each N ratchet index (N FACTOR of less reads, say 100)
 			Keys are obtained chaining HMAC (ratchet hmac in sb)
