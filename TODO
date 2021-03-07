@@ -3,8 +3,6 @@ URGENT:
 	Either seal when remounting with a special entry 
 	Add test for unmounting.
 
-TEST NOT WORKING:
-	Reorder test has some problem, check and fix.
 	
 RETHINK:
 	Is the heap necessary?

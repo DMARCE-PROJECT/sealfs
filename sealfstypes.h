@@ -20,6 +20,7 @@ struct sealfs_logfile_header {
 
 enum {
 	NRATCHET=100,
+	FAKEINODE=0xffffffffffffffff,
 };
 
 struct sealfs_logfile_entry {

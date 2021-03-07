@@ -370,7 +370,7 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ra
 	loff_t nr;
 	loff_t t;
 	loff_t oldoff, keyoff;
-	loff_t nextkey;
+	int nextkey;
 	loff_t roff;
 
 	mutex_lock(&sb->bbmutex);
@@ -457,7 +457,9 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 	loff_t keyoff, roff;
 	int nks;
 
-	lentry.inode = (uint64_t) file_inode(f)->i_ino;
+	lentry.inode = FAKEINODE;
+	if(f != NULL)
+		lentry.inode = (uint64_t) file_inode(f)->i_ino;
 	lentry.offset = (uint64_t) offset;
 	lentry.count = (uint64_t) count;
 
@@ -497,6 +499,20 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 	if (waitqueue_active(&sb->thread_q))
 		wake_up(&sb->thread_q);
 	return 0;
+}
+
+void sealfs_seal_ratchet(struct sealfs_sb_info *spd)
+{
+	unsigned char c;
+	c = 0;
+
+	while(spd->ratchetoffset != 0) {
+		if(DEBUGENTRY)
+			printk("sealfs: RATCHETSEAL roff: %d", spd->ratchetoffset);
+		burn_entry(NULL, &c, 0, 0, spd);
+	}
+	memset(spd->keys[0], 0, FPR_SIZE);
+	memset(spd->keys[1], 0, FPR_SIZE);
 }
 
 /*

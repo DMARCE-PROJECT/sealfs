@@ -147,7 +147,7 @@ extern void sealfs_cleanup(struct sealfs_sb_info *);
 extern int sealfs_update_hdr(struct sealfs_sb_info *);
 extern void sealfs_stop_thread(struct sealfs_sb_info *);
 extern void sealfs_start_thread(struct sealfs_sb_info *);
-
+extern void sealfs_seal_ratchet(struct sealfs_sb_info *);
 /*
  * inode to private data
  *

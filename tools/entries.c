@@ -92,24 +92,26 @@ makehmac(int fd, unsigned char *key,
 		goto fail;
 	}
 
-       	while(t < e->count){
-		if(e->count-t < Bufsz)
-			l = pread(fd, buf, e->count-t, e->offset+t);
-		else
-			l = pread(fd, buf, Bufsz, e->offset+t);
-		if(l <= 0){
-	 	       fprintf(stderr, "can't read from file, offset: %lld "
-		       		"premature EOF or error, "
-		       		" return value: %d\n",
-	 		       (long long)e->offset+t, l);
-	 	       goto fail;
-		}
-                if(HMAC_Update(c, buf, l) == 0){
-	                fprintf(stderr, "HMAC_Update: error\n");
-			goto fail;
-	 	}
-		t += l;
-        }
+	if(fd > 0){
+  	     	while(t < e->count){
+			if(e->count-t < Bufsz)
+				l = pread(fd, buf, e->count-t, e->offset+t);
+			else
+				l = pread(fd, buf, Bufsz, e->offset+t);
+			if(l <= 0){
+		 	       fprintf(stderr, "can't read from file, offset: %lld "
+			       		"premature EOF or error, "
+			       		" return value: %d\n",
+		 		       (long long)e->offset+t, l);
+		 	       goto fail;
+			}
+	                if(HMAC_Update(c, buf, l) == 0){
+		                fprintf(stderr, "HMAC_Update: error\n");
+				goto fail;
+		 	}
+			t += l;
+	        }
+	}
  	if(HMAC_Final(c, h, &sz) == 0){
 		fprintf(stderr, "HMAC_Final: error");
 		goto fail;

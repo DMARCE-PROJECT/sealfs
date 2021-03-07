@@ -262,6 +262,14 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 				break; //we're done
 		}
 		HASH_FIND(hh, ofiles, &e.inode, sizeof(uint64_t), o);
+		if(e.inode == FAKEINODE){
+			if(!isentryok(&e, -1, kf, key, lastkeyoff)){
+				fprintf(stderr, "can't verify entry: ");
+				fprintentry(stderr, &e);
+				exit(1);
+			}
+			goto done;
+		}
 		if(o == NULL)
 			errx(1, "file with inode %lld not found!",
 				(long long) e.inode);
@@ -286,6 +294,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			fprintentry(stderr, &e);
 			exit(1);
 		}
+done:
 		lastkeyoff = e.koffset;
 		/*
 		 * check continuity if we are checking the whole log
