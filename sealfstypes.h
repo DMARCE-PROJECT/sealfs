@@ -19,7 +19,8 @@ struct sealfs_logfile_header {
 };
 
 enum {
-	NRATCHET=100,
+	NRATCHETDIGITS=2,
+	NRATCHET=(1<<NRATCHETDIGITS)-1,
 	FAKEINODE=0xffffffffffffffff,
 };
 

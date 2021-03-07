@@ -98,10 +98,10 @@ scandirfiles(char *path, Ofile **ofiles, Rename *renames)
 
 
 static uint64_t
-unifyoff(uint64_t offset, uint64_t ratchetoffset)
+unifyoff(uint64_t koffset, uint64_t ratchetoffset)
 {
 	//they should not overlap
-	return offset*1000+ratchetoffset;
+	return (koffset<<NRATCHETDIGITS)+ratchetoffset;
 }
 
 //	Ensure that the file doesn't have holes and it starts at offset 0.
@@ -129,7 +129,7 @@ checkjqueues(struct sealfs_logfile_entry *e, Ofile *o)
 		if(!ec)
 			err(1, "cannot allocate entry");
 		memmove(ec, e, sizeof(struct sealfs_logfile_entry));
-		if(insertheap(heap, unifyoff(e->offset, e->ratchetoffset), ec) < 0){
+		if(insertheap(heap, unifyoff(ec->offset, ec->ratchetoffset), ec) < 0){
 			free(ec);
 			ec = NULL;
 			fprintf(stderr, "read %d entries without fixing a jqueue\n", MaxHeapSz);
@@ -151,11 +151,30 @@ checkjqueues(struct sealfs_logfile_entry *e, Ofile *o)
 		}else{
 			dhfprintf(stderr, "JQUEUE no advance o:%lu, e:%lu\n",
 					o->offset,ec->offset);
-			insertheap(heap, unifyoff(min, e->ratchetoffset), ec);	//put it back, just took it, so there is place
+			insertheap(heap, min, ec);	//put it back, just took it, so there is place
 			break;
 		}
 	}
 	return 0;
+}
+
+static void
+dumpheap(Heap *heap)
+{
+	uint64_t min;
+	struct sealfs_logfile_entry *e;
+	fprintf(stderr, "entries pending, [\n");
+	for(;;){
+		e = (struct sealfs_logfile_entry*)popminheap(heap, &min);
+		if(e == NULL)
+			break;
+		fprintf(stderr, "\t");
+		fprintf(stderr, "min: %ld %ld %ld ->",
+			min, (e->koffset<<NRATCHETDIGITS), e->ratchetoffset);
+		fprintentry(stderr, e);
+	}
+	fprintf(stderr, "]\n");
+	
 }
 
 static void
@@ -171,7 +190,7 @@ checktailofiles(Ofile *ofiles)
 			fprintf(stderr, 
 				"disordered offsets pend for ofile inode: %lld fd: %d\n\t",
 	 			(long long)o->inode, o->fd);
-			printheap(o->heap);
+			dumpheap(o->heap);
 			err=1;
 		}
 		free(o->heap);
@@ -278,16 +297,17 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			if(e.inode != inode)
 				continue;
 			if(end != 0 && !inrange(&e, begin, end))
-				continue;
+				continue;	
 			/*
 			 * init o->offset
 			 * o->offset must be the e.offset of the first,
 			 * record to check, not start!
+			 * paurea: I don't understand this, is it a BUG?
 			 */
 			if(o->offset == 0)
 				o->offset = e.offset;
-			printf("checking entry: ");
-			fprintentry(stdout, &e);
+			//printf("checking entry: ");
+			//fprintentry(stdout, &e);
 		}
 		if(checkjqueues(&e, o) < 0 || ! isentryok(&e, o->fd, kf, key, lastkeyoff)){
 			fprintf(stderr, "can't verify entry: ");
@@ -373,7 +393,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "USAGE: verify dir kalpha kbeta"
-			" [-h] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n");
+			" [-Dh] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n");
 	exit(1);
 }
 

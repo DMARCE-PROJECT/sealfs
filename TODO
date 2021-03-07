@@ -1,7 +1,4 @@
-URGENT:
-	Cannot remount with ratchet (there is an unverifyable whole at the end
-	Either seal when remounting with a special entry 
-	Add test for unmounting.
+Add test for unmounting.
 
 	
 RETHINK:
