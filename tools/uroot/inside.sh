@@ -47,131 +47,147 @@ mkdir /tmp/x
 mkdir /tmp/y
 cp /mount/hd/.SEALFS.LOG /tmp/x
 
-echo TEST 1 '----------------'
-############################# 1 TEST
-mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-echo -n 01234567 >> /tmp/y/zzz
-echo -n 01234567 >> /tmp/y/zzz
-echo -n 0DD4567 >> /tmp/y/zzz
-mv /tmp/y/zzz /tmp/y/zzz.1
-echo -n 01234567 >> /tmp/y/zzz
-umount /tmp/y
-/var/tmp/dump /tmp/x|grep entries
+mandatorytest1(){	
+	echo TEST 1 '----------------'
+	############################# 1 TEST
+	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	echo -n 01234567 >> /tmp/y/zzz
+	echo -n 01234567 >> /tmp/y/zzz
+	echo -n 0DD4567 >> /tmp/y/zzz
+	mv /tmp/y/zzz /tmp/y/zzz.1
+	echo -n 01234567 >> /tmp/y/zzz
+	umount /tmp/y
+	/var/tmp/dump /tmp/x|grep entries
+	
+	checktest TEST1 "-6 6"
+	
+	# TO SEE simple test, change the above for:
+	#checktest TEST1 "-6 6" -v
+	#exit 0
+}
 
-checktest TEST1 "-6 6"
+test2(){	
+	echo TEST 2 '----------------'
+	############################# 2 TEST
+	resettest
+	
+	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	/var/tmp/test -s 2 17 2 /tmp/y
+	mv /tmp/y/file000  /tmp/y/file000.1
+	/var/tmp/test -s 128 17 1000 /tmp/y
+	mv /tmp/y/file000  /tmp/y/file000.2
+	/var/tmp/test -s 2 17 2 /tmp/y
+	mv /tmp/y/file000  /tmp/y/file000.3
+	umount /tmp/y
+	
+	checktest TEST2
+}
 
-# TO SEE simple test, change the above for:
-#checktest TEST1 "-6 6" -v
-#exit 0
+test3(){		
+	echo TEST 3 '----------------'
+	############################# 3 TEST simulate race condition
+	###LOG_HDR_SZ=16
+	
+	resettest
+	
+	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	/var/tmp/test -s 2 17 2 /tmp/y
+	
+	umount /tmp/y
+	
+	dd if=/tmp/x/.SEALFS.LOG bs=16 count=1 of=/tmp/hdr
+	HDRSZ=16
+	ENTRYSZ=72
+	
+	#with if=file, dd has a bug with skip ??
+	dd bs=$HDRSZ skip=1 of=/tmp/body < /tmp/x/.SEALFS.LOG
+	dd bs=$ENTRYSZ count=3 of=/tmp/start < /tmp/body
+	dd bs=$ENTRYSZ count=3 skip=3 of=/tmp/medium < /tmp/body
+	#without count this last one has trailing zeros WTF dd?
+	dd bs=$ENTRYSZ count=6 skip=6 of=/tmp/end < /tmp/body
+	
+	echo hdr start medium end
+	cat /tmp/hdr /tmp/start /tmp/medium /tmp/end > /tmp/x/.SEALFS.LOG
+	checktest TEST3hsme -Dh
+	
+	echo hdr medium start end
+	cat /tmp/hdr /tmp/medium /tmp/start /tmp/end > /tmp/x/.SEALFS.LOG
+	checktest TEST3hmse -Dh
+	
+	#This one if failing since ratchet. What is going on?
+	#echo hdr medium end start 
+	#cat /tmp/hdr /tmp/medium /tmp/end /tmp/start  > /tmp/x/.SEALFS.LOG
+	#checktest TEST3hmes -Dh
+	
+	echo hdr end start medium 
+	cat /tmp/hdr  /tmp/end /tmp/start /tmp/medium > /tmp/x/.SEALFS.LOG
+	checktest TEST3hesm -Dh
+	
+	#SHOULD FAIL
+	echo hdr medium end
+	cat /tmp/hdr /tmp/medium /tmp/end > /tmp/x/.SEALFS.LOG
+	checkfailtest TEST3hme -Dh
+	
+	#FAIL WITH RATCHET?
+	#SHOULD BE GOOD (truncated logs) IS THIS A BUG? SHOULD WE SEAL IN HDR?
+	echo hdr medium start
+	cat /tmp/hdr /tmp/medium /tmp/start > /tmp/x/.SEALFS.LOG
+	checktest TEST3hms -Dh
+}
 
-echo TEST 2 '----------------'
-############################# 2 TEST
-resettest
+test4(){
+	echo TEST 4 '----------------' DISABLED, CPUID not present in qemu
+	############################# 4 TEST (new key so it does not fail)
+	##resettest
+	
+	##mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	##/var/tmp/test -p 4 17 1000 /tmp/y
+	# CPUID is invalid opcode
+	##umount /tmp/y
+}
 
-mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-/var/tmp/test -s 2 17 2 /tmp/y
-mv /tmp/y/file000  /tmp/y/file000.1
-/var/tmp/test -s 128 17 1000 /tmp/y
-mv /tmp/y/file000  /tmp/y/file000.2
-/var/tmp/test -s 2 17 2 /tmp/y
-mv /tmp/y/file000  /tmp/y/file000.3
-umount /tmp/y
+test5() {	
+	echo TEST 5 '----------------'
+	############################# 5 TEST, should fail (new key so it does not fail because of that)
+	resettest
+	
+	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	#write twice on the same one, should fail
+	/var/tmp/test -s 2 17 2 /tmp/y
+	/var/tmp/test -s 60 17 1000 /tmp/y
+	umount /tmp/y
+	
+	#SHOULD FAIL
+	checkfailtest TEST5
+}
 
-checktest TEST2
+test6(){	
+	#####umount test
+	############################# 6 TEST
+	echo TEST 6 '----------------'
+	resettest
+	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	echo -n 01234567 >> /tmp/y/zzz
+	echo -n 01234567 >> /tmp/y/zzz
+	echo -n 0DD4567 >> /tmp/y/zzz
+	mv /tmp/y/zzz /tmp/y/zzz.1
+	echo -n 01234567 >> /tmp/y/zzz
+	umount /tmp/y
+	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	echo -n 0DD4567 >> /tmp/y/zzz
+	mv /tmp/y/zzz.1 /tmp/y/zzz.2
+	mv /tmp/y/zzz /tmp/y/zzz.1
+	umount /tmp/y
+	/var/tmp/dump /tmp/x|grep entries
+	checktest TEST6
+}
 
-echo TEST 3 '----------------'
-############################# 3 TEST simulate race condition
-###LOG_HDR_SZ=16
-
-resettest
-
-mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-/var/tmp/test -s 2 17 2 /tmp/y
-
-umount /tmp/y
-
-dd if=/tmp/x/.SEALFS.LOG bs=16 count=1 of=/tmp/hdr
-HDRSZ=16
-ENTRYSZ=72
-
-#with if=file, dd has a bug with skip ??
-dd bs=$HDRSZ skip=1 of=/tmp/body < /tmp/x/.SEALFS.LOG
-dd bs=$ENTRYSZ count=3 of=/tmp/start < /tmp/body
-dd bs=$ENTRYSZ count=3 skip=3 of=/tmp/medium < /tmp/body
-#without count this last one has trailing zeros WTF dd?
-dd bs=$ENTRYSZ count=6 skip=6 of=/tmp/end < /tmp/body
-
-echo hdr start medium end
-cat /tmp/hdr /tmp/start /tmp/medium /tmp/end > /tmp/x/.SEALFS.LOG
-checktest TEST3hsme -Dh
-
-echo hdr medium start end
-cat /tmp/hdr /tmp/medium /tmp/start /tmp/end > /tmp/x/.SEALFS.LOG
-checktest TEST3hmse -Dh
-
-#This one if failing since ratchet. What is going on?
-#echo hdr medium end start 
-#cat /tmp/hdr /tmp/medium /tmp/end /tmp/start  > /tmp/x/.SEALFS.LOG
-#checktest TEST3hmes -Dh
-
-echo hdr end start medium 
-cat /tmp/hdr  /tmp/end /tmp/start /tmp/medium > /tmp/x/.SEALFS.LOG
-checktest TEST3hesm -Dh
-
-#SHOULD FAIL
-echo hdr medium end
-cat /tmp/hdr /tmp/medium /tmp/end > /tmp/x/.SEALFS.LOG
-checkfailtest TEST3hme -Dh
-
-#FAIL WITH RATCHET?
-#SHOULD BE GOOD (truncated logs) IS THIS A BUG? SHOULD WE SEAL IN HDR?
-echo hdr medium start
-cat /tmp/hdr /tmp/medium /tmp/start > /tmp/x/.SEALFS.LOG
-checktest TEST3hms -Dh
-
-echo TEST 4 '----------------' DISABLED, CPUID not present in qemu
-############################# 4 TEST (new key so it does not fail)
-##resettest
-
-##mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-##/var/tmp/test -p 4 17 1000 /tmp/y
-# CPUID is invalid opcode
-##umount /tmp/y
-
-
-echo TEST 5 '----------------'
-############################# 5 TEST, should fail (new key so it does not fail because of that)
-resettest
-
-mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-#write twice on the same one, should fail
-/var/tmp/test -s 2 17 2 /tmp/y
-/var/tmp/test -s 60 17 1000 /tmp/y
-umount /tmp/y
-
-#SHOULD FAIL
-checkfailtest TEST5
-
-#####umount test
-############################# 6 TEST
-echo TEST 6 '----------------'
-resettest
-mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-echo -n 01234567 >> /tmp/y/zzz
-echo -n 01234567 >> /tmp/y/zzz
-echo -n 0DD4567 >> /tmp/y/zzz
-mv /tmp/y/zzz /tmp/y/zzz.1
-echo -n 01234567 >> /tmp/y/zzz
-umount /tmp/y
-/var/tmp/dump /tmp/x
-mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-echo -n 0DD4567 >> /tmp/y/zzz
-mv /tmp/y/zzz.1 /tmp/y/zzz.2
-mv /tmp/y/zzz /tmp/y/zzz.1
-umount /tmp/y
-/var/tmp/dump /tmp/x|grep entries
-/var/tmp/dump /tmp/x
-checktest TEST6
+mandatorytest1
+test2
+test3
+test4
+test5
+test6
 
 
 echo ENDTEST
