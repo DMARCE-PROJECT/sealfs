@@ -168,19 +168,24 @@ fail:
 	return ret;
 }
 int
-isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf, unsigned char *oldkey, uint64_t lastkeyoff, uint64_t lastroff)
+isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf,
+		unsigned char *oldkey, uint64_t lastkeyoff, uint64_t lastroff)
 {
 	unsigned char h[FPR_SIZE];
 	unsigned char k[FPR_SIZE];
-	int isreratchet;
+	int isrekey;
 	int i;
 	
 	int szhdr = sizeof(struct sealfs_keyfile_header);
-	isreratchet = lastkeyoff != e->koffset;
+	isrekey = lastkeyoff != e->koffset;
 	if(lastkeyoff == -1)
 		lastkeyoff = szhdr;
-	// TO HELP DEBUG RERATCHET isreratchet = 1;
-	if(e->ratchetoffset == 0 || isreratchet) {
+	if(lastroff < e->ratchetoffset){
+		lastroff = 0;
+		isrekey = 1;
+	}
+	// TO HELP DEBUG RERATCHET isrekey = 1;
+	if(e->ratchetoffset == 0 || isrekey) {
 		if(fseek(kf, (long) e->koffset, SEEK_SET) < 0){
 			fprintf(stderr, "can't seek kbeta\n");
 			return 0;

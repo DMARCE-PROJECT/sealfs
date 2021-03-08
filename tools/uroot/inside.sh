@@ -96,14 +96,14 @@ test3(){
 	
 	HDRSZ=8
 	ENTRYSZ=72
-	dd if=/tmp/x/.SEALFS.LOG bs=$HDRSZ count=1 of=/tmp/hdr
+	dd if=/tmp/x/.SEALFS.LOG bs=$HDRSZ count=1 of=/tmp/hdr >/dev/null 2>&1
 	
 	#with if=file, dd has a bug with skip ??
-	dd bs=$HDRSZ skip=1 of=/tmp/body < /tmp/x/.SEALFS.LOG
-	dd bs=$ENTRYSZ count=3 of=/tmp/start < /tmp/body
-	dd bs=$ENTRYSZ count=3 skip=3 of=/tmp/medium < /tmp/body
+	dd bs=$HDRSZ skip=1 of=/tmp/body < /tmp/x/.SEALFS.LOG >/dev/null 2>&1
+	dd bs=$ENTRYSZ count=3 of=/tmp/start < /tmp/body >/dev/null 2>&1
+	dd bs=$ENTRYSZ count=3 skip=3 of=/tmp/medium < /tmp/body >/dev/null 2>&1
 	#without count this last one has trailing zeros WTF dd?
-	dd bs=$ENTRYSZ count=6 skip=6 of=/tmp/end < /tmp/body
+	dd bs=$ENTRYSZ count=6 skip=6 of=/tmp/end < /tmp/body >/dev/null 2>&1
 	
 	echo hdr start medium end
 	cat /tmp/hdr /tmp/start /tmp/medium /tmp/end > /tmp/x/.SEALFS.LOG
@@ -114,7 +114,6 @@ test3(){
 	checktest TEST3hmse -Dh
 	/var/tmp/dump /tmp/x
 
-	#This one if failing since ratchet. What is going on?
 	echo hdr medium end start 
 	cat /tmp/hdr /tmp/medium /tmp/end /tmp/start  > /tmp/x/.SEALFS.LOG
 	checktest TEST3hmes -Dh
