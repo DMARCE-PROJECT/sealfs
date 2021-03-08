@@ -86,7 +86,6 @@ test2(){
 test3(){		
 	echo TEST 3 '----------------'
 	############################# 3 TEST simulate race condition
-	###LOG_HDR_SZ=16
 	
 	resettest
 	
@@ -95,9 +94,9 @@ test3(){
 	
 	umount /tmp/y
 	
-	dd if=/tmp/x/.SEALFS.LOG bs=16 count=1 of=/tmp/hdr
-	HDRSZ=16
+	HDRSZ=8
 	ENTRYSZ=72
+	dd if=/tmp/x/.SEALFS.LOG bs=$HDRSZ count=1 of=/tmp/hdr
 	
 	#with if=file, dd has a bug with skip ??
 	dd bs=$HDRSZ skip=1 of=/tmp/body < /tmp/x/.SEALFS.LOG
@@ -113,12 +112,13 @@ test3(){
 	echo hdr medium start end
 	cat /tmp/hdr /tmp/medium /tmp/start /tmp/end > /tmp/x/.SEALFS.LOG
 	checktest TEST3hmse -Dh
-	
+	/var/tmp/dump /tmp/x
+
 	#This one if failing since ratchet. What is going on?
-	#echo hdr medium end start 
-	#cat /tmp/hdr /tmp/medium /tmp/end /tmp/start  > /tmp/x/.SEALFS.LOG
-	#checktest TEST3hmes -Dh
-	
+	echo hdr medium end start 
+	cat /tmp/hdr /tmp/medium /tmp/end /tmp/start  > /tmp/x/.SEALFS.LOG
+	checktest TEST3hmes -Dh
+
 	echo hdr end start medium 
 	cat /tmp/hdr  /tmp/end /tmp/start /tmp/medium > /tmp/x/.SEALFS.LOG
 	checktest TEST3hesm -Dh
@@ -128,8 +128,6 @@ test3(){
 	cat /tmp/hdr /tmp/medium /tmp/end > /tmp/x/.SEALFS.LOG
 	checkfailtest TEST3hme -Dh
 	
-	#FAIL WITH RATCHET?
-	#SHOULD BE GOOD (truncated logs) IS THIS A BUG? SHOULD WE SEAL IN HDR?
 	echo hdr medium start
 	cat /tmp/hdr /tmp/medium /tmp/start > /tmp/x/.SEALFS.LOG
 	checktest TEST3hms -Dh
@@ -182,9 +180,11 @@ test6(){
 	checktest TEST6
 }
 
+#the fist one does not reset
 mandatorytest1
 test2
 test3
+exit 0
 test4
 test5
 test6

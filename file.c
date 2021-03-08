@@ -470,10 +470,12 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 	}
 	if(DEBUGENTRY)
 		dumpkey(key);
+
 	lentry.ratchetoffset = (uint64_t) roff;
 	lentry.koffset =  (uint64_t) keyoff;
 	if(DEBUGENTRY)
 		dumpentry(&lentry);
+
 	mutex_lock(&sb->hmac_mutex);	/* careful hash_tfm and hash_desc */
 	if(do_hmac(&sb->hmac, buf, key, &lentry) < 0){
 		printk(KERN_ERR "sealfs: do_hash failed\n");

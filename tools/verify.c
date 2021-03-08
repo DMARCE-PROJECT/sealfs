@@ -267,8 +267,10 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 	int szhdr = sizeof(struct sealfs_keyfile_header);
 	unsigned char key[FPR_SIZE];
 	uint64_t lastkeyoff;
+	uint64_t lastroff;
 
-	lastkeyoff = szhdr;
+	lastkeyoff = -1;
+	lastroff = 0;
 
 	scandirfiles(path, &ofiles, renames);
 	if(inode == 0)
@@ -282,7 +284,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		}
 		HASH_FIND(hh, ofiles, &e.inode, sizeof(uint64_t), o);
 		if(e.inode == FAKEINODE){
-			if(!isentryok(&e, -1, kf, key, lastkeyoff)){
+			if(!isentryok(&e, -1, kf, key, lastkeyoff, lastroff)){
 				fprintf(stderr, "can't verify entry: ");
 				fprintentry(stderr, &e);
 				exit(1);
@@ -309,13 +311,14 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			//printf("checking entry: ");
 			//fprintentry(stdout, &e);
 		}
-		if(checkjqueues(&e, o) < 0 || ! isentryok(&e, o->fd, kf, key, lastkeyoff)){
+		if(checkjqueues(&e, o) < 0 || ! isentryok(&e, o->fd, kf, key, lastkeyoff, lastroff)){
 			fprintf(stderr, "can't verify entry: ");
 			fprintentry(stderr, &e);
 			exit(1);
 		}
 done:
 		lastkeyoff = e.koffset;
+		lastroff = e.ratchetoffset;
 		/*
 		 * check continuity if we are checking the whole log
 		 * it may still be correct (see checkjqueue), but warn the user

@@ -14,6 +14,7 @@
 
 enum{
 	Maxpath=512,
+	DEBUG = 0,
 };
 
 void
@@ -34,6 +35,8 @@ dump(FILE* lf)
 			else
 				break; //we're done
 		}
+		if(DEBUG)
+			fprintf(stderr, "read %lu bytes\n", sizeof(e));
 		fprintf(stdout, "#%lld\n", (long long) c);
 		fprintentry(stdout, &e);
 		c++;
@@ -60,6 +63,8 @@ main(int argc, char *argv[])
 		err(1, "can't open %s", lpath);
  	if(fread(&lheader, sizeof(lheader), 1, lf) != 1)
 		err(1, "can't read lheader");
+	if(DEBUG)
+		fprintf(stderr, "read %lu bytes\n", sizeof(lheader));
 	printf("magic: %lld\n", (long long)lheader.magic);
 	dump(lf);
 	fclose(lf);

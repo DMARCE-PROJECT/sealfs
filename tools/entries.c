@@ -168,15 +168,18 @@ fail:
 	return ret;
 }
 int
-isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf, unsigned char *oldkey, uint64_t lastkeyoff)
+isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf, unsigned char *oldkey, uint64_t lastkeyoff, uint64_t lastroff)
 {
 	unsigned char h[FPR_SIZE];
 	unsigned char k[FPR_SIZE];
 	int isreratchet;
 	int i;
 	
+	int szhdr = sizeof(struct sealfs_keyfile_header);
 	isreratchet = lastkeyoff != e->koffset;
-	// TO DEBUG RERATCHET isreratchet = 1;
+	if(lastkeyoff == -1)
+		lastkeyoff = szhdr;
+	// TO HELP DEBUG RERATCHET isreratchet = 1;
 	if(e->ratchetoffset == 0 || isreratchet) {
 		if(fseek(kf, (long) e->koffset, SEEK_SET) < 0){
 			fprintf(stderr, "can't seek kbeta\n");
@@ -191,17 +194,12 @@ isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf, unsigned char *ol
 			fprintf(stderr, "read key\n");
 			dumpkey(k);
 		}
-		if(isreratchet){
-			for(i = 0; i < e->ratchetoffset; i++){
-				if(DEBUGENTRY){
-					fprintf(stderr, "RERATCHET %d, off: %lu\n", i+1, e->ratchetoffset);
-				}
-				ratchet_key(oldkey, k, (uint64_t)(i+1));
-				memmove(oldkey, k, FPR_SIZE);
-			}
+	}
+	for(i = lastroff; i < e->ratchetoffset; i++){
+		if(DEBUGENTRY){
+			fprintf(stderr, "RERATCHET %d, off: %lu\n", i+1, e->ratchetoffset);
 		}
-	}else{
-		ratchet_key(oldkey, k, e->ratchetoffset);
+		ratchet_key(oldkey, k, (uint64_t)(i+1));
 		memmove(oldkey, k, FPR_SIZE);
 	}
 	if(DEBUGENTRY){

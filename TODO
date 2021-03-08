@@ -1,11 +1,5 @@
-Add test for unmounting.
-
-	
-RETHINK:
-	Is the heap necessary?
-	The offset is already commited. It could be ignored if the
-		log file is append only (if it is not, it should be, it provides
-		more guarantees
+Important:
+	Write design document to remember everything.
 
 Burners are syncing with fsync is that working?
 	check invariants on fsync
