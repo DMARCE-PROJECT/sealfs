@@ -133,8 +133,8 @@ struct sealfs_sb_info {
 
 	//protected by readkey file/burn mutex (bbmutex)
 	struct sealfs_hmac_state ratchet_hmac;
-	unsigned char keys[2][FPR_SIZE];
-	int	currkey;
+	unsigned char key[FPR_SIZE];
+	unsigned char zkey[FPR_SIZE];
 	int ratchetoffset;
 
 	loff_t maxkfilesz;

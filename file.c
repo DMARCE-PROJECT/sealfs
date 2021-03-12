@@ -68,19 +68,22 @@ dumpkey(u8 *key)
 }
 
 static inline int ratchet_key(struct sealfs_hmac_state *hmacstate,
-			char * prevkey,
-	 		char *newkey, loff_t ratchet_offset)
+			char *key, char *zkey, loff_t ratchet_offset)
 {
 	int err = 0;
 
 	uint64_t roff;
 
+	if(DEBUGENTRY){
+		printk("sealfs: RATCHET: old, roff %llu ", ratchet_offset);
+		dumpkey(key);
+	}
 	roff = (uint64_t)ratchet_offset;
 	if(hmacstate->hash_tfm == NULL){
 		if(initshash(hmacstate) < 0)
 			return -1;
 	}
-	err = crypto_shash_setkey(hmacstate->hash_tfm, prevkey, FPR_SIZE);
+	err = crypto_shash_setkey(hmacstate->hash_tfm, key, FPR_SIZE);
 	if(err){
 		printk(KERN_ERR "sealfs: can't load hmac key\n");
 		return -1;
@@ -96,20 +99,16 @@ static inline int ratchet_key(struct sealfs_hmac_state *hmacstate,
 		printk(KERN_ERR "sealfs: can't updtate hmac: koffset\n");
 		return -1;
 	}
-	err = crypto_shash_final(hmacstate->hash_desc, (u8 *) newkey);
+	err = crypto_shash_final(hmacstate->hash_desc, (u8 *) key);
 	if(err){
 		printk(KERN_ERR "sealfs: can't final hmac\n");
 		return -1;
 	}
 	if(DEBUGENTRY){
-		printk("sealfs: RATCHET: old, roff %llu ", ratchet_offset);
-		dumpkey(prevkey);
 		printk("sealfs: RATCHET: new");
-		dumpkey(newkey);
+		dumpkey(key);
 	}
-	//zero the key and the internal data
-	memset(prevkey, 0, FPR_SIZE);
-	err = crypto_shash_setkey(hmacstate->hash_tfm, prevkey, FPR_SIZE);
+	err = crypto_shash_setkey(hmacstate->hash_tfm, zkey, FPR_SIZE);
 	if(err){
 		printk(KERN_ERR "sealfs: can't reset hmac key\n");
 		return -1;
@@ -118,7 +117,7 @@ static inline int ratchet_key(struct sealfs_hmac_state *hmacstate,
 }
 
 static int do_hmac(struct sealfs_hmac_state *hmacstate,
-			const char __user *data, char *key,
+			const char __user *data, char *key, char *zkey,
 	 		struct sealfs_logfile_entry *lentry)
 {
 	int err = 0;
@@ -188,8 +187,7 @@ static int do_hmac(struct sealfs_hmac_state *hmacstate,
 		printk(KERN_ERR "sealfs: can't final hmac\n");
 		return -1;
 	}
-	memset(key, 0, FPR_SIZE);
-	err = crypto_shash_setkey(hmacstate->hash_tfm, key, FPR_SIZE);
+	err = crypto_shash_setkey(hmacstate->hash_tfm, zkey, FPR_SIZE);
 	if(err){
 		printk(KERN_ERR "sealfs: can't reset hmac key\n");
 		return -1;
@@ -370,7 +368,6 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ra
 	loff_t nr;
 	loff_t t;
 	loff_t oldoff, keyoff;
-	int nextkey;
 	loff_t roff;
 
 	mutex_lock(&sb->bbmutex);
@@ -390,10 +387,8 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ra
 	if(likely(roff != 0)){
 		if(DEBUGENTRY)
 			printk("sealfs: RATCHET koff %lld, roff: %lld", oldoff, roff);
-		nextkey = (sb->currkey + 1) % 2;
-		ratchet_key(&sb->ratchet_hmac, sb->keys[sb->currkey], sb->keys[nextkey], roff);
-		sb->currkey = nextkey;
-		memmove(key, sb->keys[sb->currkey], FPR_SIZE);
+		ratchet_key(&sb->ratchet_hmac, sb->key, sb->zkey, roff);
+		memmove(key, sb->key, FPR_SIZE);
 		mutex_unlock(&sb->bbmutex);
 		return oldoff-FPR_SIZE;
 	}
@@ -427,7 +422,7 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ra
 	}
 	atomic_long_set(&sb->burnt, oldoff+FPR_SIZE);
 	//read a new key, no need to advance currkey
-	memmove(sb->keys[sb->currkey], key, FPR_SIZE);
+	memmove(sb->key, key, FPR_SIZE);
 	mutex_unlock(&sb->bbmutex);
 	return oldoff;
 }
@@ -477,7 +472,7 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 		dumpentry(&lentry);
 
 	mutex_lock(&sb->hmac_mutex);	/* careful hash_tfm and hash_desc */
-	if(do_hmac(&sb->hmac, buf, key, &lentry) < 0){
+	if(do_hmac(&sb->hmac, buf, key, sb->zkey, &lentry) < 0){
 		printk(KERN_ERR "sealfs: do_hash failed\n");
 		mutex_unlock(&sb->hmac_mutex);
 		return -1;
@@ -513,8 +508,8 @@ void sealfs_seal_ratchet(struct sealfs_sb_info *spd)
 			printk("sealfs: RATCHETSEAL roff: %d", spd->ratchetoffset);
 		burn_entry(NULL, &c, 0, 0, spd);
 	}
-	memset(spd->keys[0], 0, FPR_SIZE);
-	memset(spd->keys[1], 0, FPR_SIZE);
+	memset(spd->key, 0, FPR_SIZE);
+	memset(spd->zkey, 0, FPR_SIZE);
 }
 
 /*

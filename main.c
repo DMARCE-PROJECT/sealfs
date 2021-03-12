@@ -219,7 +219,6 @@ static int sealfs_read_super(struct super_block *sb,
 	mutex_init(&info->hmac_mutex);
 	info->hmac.hash_tfm = NULL;
 	info->ratchet_hmac.hash_tfm = NULL;
-	info->currkey = 0;
 	info->ratchetoffset = 0;
 	/* set the lower superblock field of upper superblock */
 	lower_sb = lower_path.dentry->d_sb;
