@@ -108,11 +108,13 @@ static inline int ratchet_key(struct sealfs_hmac_state *hmacstate,
 		printk("sealfs: RATCHET: new");
 		dumpkey(key);
 	}
-	err = crypto_shash_setkey(hmacstate->hash_tfm, zkey, FPR_SIZE);
-	if(err){
-		printk(KERN_ERR "sealfs: can't reset hmac key\n");
-		return -1;
-	}
+	//no need, the key is around until next ratchet, and then this will
+	//be overwritten yes?
+	//err = crypto_shash_setkey(hmacstate->hash_tfm, zkey, FPR_SIZE);
+	//if(err){
+	//	printk(KERN_ERR "sealfs: can't reset hmac key\n");
+	//	return -1;
+	//}
 	return 0;
 }
 
