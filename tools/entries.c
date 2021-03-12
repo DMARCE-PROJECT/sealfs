@@ -127,7 +127,7 @@ fail:
 }
 
 static int
-ratchet_key(unsigned char *prevkey, unsigned char *newkey, uint64_t roff)
+ratchet_key(unsigned char *prevkey, unsigned char *newkey, uint64_t roff, uint64_t nratchet)
 {
 	HMAC_CTX *c;
 	unsigned int sz;
@@ -144,7 +144,11 @@ ratchet_key(unsigned char *prevkey, unsigned char *newkey, uint64_t roff)
 		goto fail;
   	}
         if(HMAC_Update(c, (unsigned char*) &roff, sizeof(roff)) == 0){
-		fprintf(stderr, "HMAC_Update error: inode\n");
+		fprintf(stderr, "HMAC_Update error: roffset\n");
+		goto fail;
+	}
+        if(HMAC_Update(c, (unsigned char*) &nratchet, sizeof(nratchet)) == 0){
+		fprintf(stderr, "HMAC_Update error: nratchet\n");
 		goto fail;
 	}
 
@@ -204,7 +208,7 @@ isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf,
 		if(DEBUGENTRY){
 			fprintf(stderr, "RERATCHET %d, off: %lu\n", i+1, e->ratchetoffset);
 		}
-		ratchet_key(oldkey, k, (uint64_t)(i+1));
+		ratchet_key(oldkey, k, (uint64_t)(i+1), NRATCHET);
 		memmove(oldkey, k, FPR_SIZE);
 	}
 	if(DEBUGENTRY){

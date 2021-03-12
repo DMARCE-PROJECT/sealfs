@@ -189,7 +189,7 @@ static int sealfs_show_options(struct seq_file *m, struct dentry *root)
 {
 	struct sealfs_sb_info *sbi = root->d_sb->s_fs_info;
 
-	seq_printf(m, ",kpath=%s", sbi->kpathname);
+	seq_printf(m, ",kpath=%s, nratchet=%d", sbi->kpathname, sbi->nratchet);
 	if (sbi->sync)
 		seq_printf(m, ",syncio");
 	return 0;

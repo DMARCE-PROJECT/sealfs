@@ -295,12 +295,14 @@ out:
 enum {
 	Opt_kpath,
 	Opt_syncio,
-	Opt_err
+	Opt_nratchet,
+	Opt_err,
 };
 
 static const match_table_t tokens = {
 	{Opt_kpath, "kpath=%s"},
 	{Opt_syncio, "syncio"},
+	{Opt_nratchet, "nratchet=%d"},
 	{Opt_err, NULL}
 };
 
@@ -314,6 +316,7 @@ struct dentry *sealfs_mount(struct file_system_type *fs_type, int flags,
 	substring_t args[MAX_OPT_ARGS];
 	int ret = 0;
 	int sz;
+	int intarg;
 
 	if (!dev_name) {
 		printk(KERN_ERR
@@ -334,6 +337,7 @@ struct dentry *sealfs_mount(struct file_system_type *fs_type, int flags,
 		goto error;
 	}
 
+	info->nratchet = NRATCHET;
 	while((p = strsep(&options, ",")) != NULL){
 		if (!*p)
 			continue;
@@ -345,6 +349,15 @@ struct dentry *sealfs_mount(struct file_system_type *fs_type, int flags,
 				ret = -ENOMEM;
 				goto error;
 			}
+			break;
+		case Opt_nratchet:
+			if(match_int(&args[0], &intarg)){
+				ret = -EINVAL;
+				goto error;
+			}
+			info->nratchet = intarg;
+			if(info->nratchet <= 0)
+				info->nratchet = 1;
 			break;
 		case Opt_syncio:
 			info->sync++;

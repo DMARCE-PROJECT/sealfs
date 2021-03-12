@@ -76,13 +76,15 @@ dumpkey(u8 *key)
 	printk("sealfs: KEY %s\n", str);
 }
 
-static inline int ratchet_key(char *key, char *zkey, loff_t ratchet_offset)
+static inline int ratchet_key(char *key, char *zkey, loff_t ratchet_offset, int nratchet)
 {
 	int err = 0;
 
 	uint64_t roff;
+	uint64_t nr;
 
 	struct sealfs_hmac_state hmacstate;
+	nr = nratchet;
 	hmacstate.hash_tfm = NULL;
 	if(DEBUGENTRY){
 		printk("sealfs: RATCHET: old, roff %llu ", ratchet_offset);
@@ -106,7 +108,14 @@ static inline int ratchet_key(char *key, char *zkey, loff_t ratchet_offset)
 	err = crypto_shash_update(hmacstate.hash_desc,
 			(u8*) &roff, sizeof(uint64_t));
 	if(err){
-		printk(KERN_ERR "sealfs: can't updtate hmac: koffset\n");
+		printk(KERN_ERR "sealfs: can't updtate hmac: ratchet offset\n");
+		freehmac(&hmacstate);
+		return -1;
+	}
+	err = crypto_shash_update(hmacstate.hash_desc,
+			(u8*) &nr, sizeof(uint64_t));
+	if(err){
+		printk(KERN_ERR "sealfs: can't updtate hmac: nratchet\n");
 		freehmac(&hmacstate);
 		return -1;
 	}
@@ -411,11 +420,11 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ra
 	 */
 	oldoff = atomic_long_read(&sb->burnt);
 	roff = sb->ratchetoffset;
-	sb->ratchetoffset = (roff+1)%NRATCHET;
+	sb->ratchetoffset = (roff+1)%sb->nratchet;
 	if(likely(roff != 0)){
 		if(DEBUGENTRY)
 			printk("sealfs: RATCHET koff %lld, roff: %lld", oldoff, roff);
-		ratchet_key(sb->key, sb->zkey, roff);
+		ratchet_key(sb->key, sb->zkey, roff, sb->nratchet);
 		memmove(key, sb->key, FPR_SIZE);
 		ret = oldoff-FPR_SIZE;
 		goto end;
@@ -502,7 +511,7 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 	sz = sizeof(struct sealfs_logfile_entry);
 
 	nks = (keyoff-sizeof(struct sealfs_keyfile_header))/FPR_SIZE;
-	o = sizeof(struct sealfs_logfile_header) + (nks*NRATCHET+roff)*sz;
+	o = sizeof(struct sealfs_logfile_header) + (nks*sb->nratchet+roff)*sz;
 
 	if(kernel_write(sb->lfile, (void*)&lentry, sz, &o) != sz){
 		printk(KERN_ERR "sealfs: can't write log file\n");

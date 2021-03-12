@@ -112,6 +112,7 @@ struct sealfs_hmac_state {
 /* sealfs super-block data in memory */
 struct sealfs_sb_info {
 	struct super_block *lower_sb;
+	int nratchet;
 	struct mutex bbmutex;
 	//synchronize burners and make sure they write to disk
 	struct mutex burnsyncmutex;
