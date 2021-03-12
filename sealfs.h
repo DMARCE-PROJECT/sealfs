@@ -127,9 +127,6 @@ struct sealfs_sb_info {
 	//	burnt is tracked by the atomic above
 	struct sealfs_keyfile_header kheader;
 	struct sealfs_logfile_header lheader;
-	// context for the hash/hmac
-	struct mutex hmac_mutex;
-	struct sealfs_hmac_state hmac;
 
 	//protected by readkey file/burn mutex (bbmutex)
 	struct sealfs_hmac_state ratchet_hmac;

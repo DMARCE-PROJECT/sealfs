@@ -43,7 +43,6 @@ void sealfs_cleanup(struct sealfs_sb_info *spd)
 	if(spd->kfile){
 		fput(spd->kfile);
 	}
-	freehmac(&spd->hmac);
 	freehmac(&spd->ratchet_hmac);
 }
 
