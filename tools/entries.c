@@ -184,7 +184,7 @@ isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf,
 		lastroff = 0;
 		isrekey = 1;
 	}
-	// TO HELP DEBUG RERATCHET isrekey = 1;
+	// TO HELP DEBUG ISREKEY isrekey = 1;
 	if(e->ratchetoffset == 0 || isrekey) {
 		if(fseek(kf, (long) e->koffset, SEEK_SET) < 0){
 			fprintf(stderr, "can't seek kbeta\n");

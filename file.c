@@ -67,7 +67,7 @@ dumpkey(u8 *key)
 	printk("sealfs: KEY %s\n", str);
 }
 
-static int ratchet_key(struct sealfs_hmac_state *hmacstate,
+static inline int ratchet_key(struct sealfs_hmac_state *hmacstate,
 			char * prevkey,
 	 		char *newkey, loff_t ratchet_offset)
 {
@@ -387,7 +387,7 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ra
 	roff = sb->ratchetoffset;
 	*ratchetoff = roff;
 	sb->ratchetoffset = (roff+1)%NRATCHET;
-	if(roff != 0){
+	if(likely(roff != 0)){
 		if(DEBUGENTRY)
 			printk("sealfs: RATCHET koff %lld, roff: %lld", oldoff, roff);
 		nextkey = (sb->currkey + 1) % 2;
