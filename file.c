@@ -369,7 +369,9 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ra
 	loff_t t;
 	loff_t oldoff, keyoff;
 	loff_t roff;
+	loff_t	ret;
 
+	ret = -1;
 	mutex_lock(&sb->bbmutex);
 	/*
 	  * Atomically
@@ -382,49 +384,45 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ra
 	 */
 	oldoff = atomic_long_read(&sb->burnt);
 	roff = sb->ratchetoffset;
-	*ratchetoff = roff;
 	sb->ratchetoffset = (roff+1)%NRATCHET;
 	if(likely(roff != 0)){
 		if(DEBUGENTRY)
 			printk("sealfs: RATCHET koff %lld, roff: %lld", oldoff, roff);
 		ratchet_key(&sb->ratchet_hmac, sb->key, sb->zkey, roff);
 		memmove(key, sb->key, FPR_SIZE);
-		mutex_unlock(&sb->bbmutex);
-		return oldoff-FPR_SIZE;
+		ret = oldoff-FPR_SIZE;
+		goto end;
 	}
 	if(DEBUGENTRY)
 		printk("sealfs: BURN burn: %lld roff: %lld", oldoff, roff);
-	
 
 	if(oldoff + FPR_SIZE >= sb->maxkfilesz){
 			printk(KERN_ERR "sealfs: burnt key\n");
-			mutex_unlock(&sb->bbmutex);
-			return -1;
+			goto end;
 	}
 	keyoff = oldoff;
 	t = 0ULL;
 	
 	while(t < FPR_SIZE){
 		nr = kernel_read(sb->kfile, key+t, ((loff_t)FPR_SIZE)-t, &keyoff);
-		if(nr < 0) {
-			mutex_unlock(&sb->bbmutex);
+		if(unlikely(nr < 0)) {
 			printk(KERN_ERR "sealfs: error while reading\n");
-			mutex_unlock(&sb->bbmutex);
-			return -1;
+			goto end;
 		}
 		if(nr == 0){
-			mutex_unlock(&sb->bbmutex);
 			printk(KERN_ERR "sealfs: key file is burnt\n");
-			mutex_unlock(&sb->bbmutex);
-			return -1;
+			goto end;
 		}
   		t += nr;
 	}
 	atomic_long_set(&sb->burnt, oldoff+FPR_SIZE);
 	//read a new key, no need to advance currkey
 	memmove(sb->key, key, FPR_SIZE);
+	ret = oldoff;
+end:
 	mutex_unlock(&sb->bbmutex);
-	return oldoff;
+	*ratchetoff = roff;
+	return ret;
 }
 
 static void
