@@ -416,7 +416,6 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ra
   		t += nr;
 	}
 	atomic_long_set(&sb->burnt, oldoff+FPR_SIZE);
-	//read a new key, no need to advance currkey
 	memmove(sb->key, key, FPR_SIZE);
 	ret = oldoff;
 end:
