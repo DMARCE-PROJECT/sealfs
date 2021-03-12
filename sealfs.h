@@ -129,7 +129,6 @@ struct sealfs_sb_info {
 	struct sealfs_logfile_header lheader;
 
 	//protected by readkey file/burn mutex (bbmutex)
-	struct sealfs_hmac_state ratchet_hmac;
 	unsigned char key[FPR_SIZE];
 	unsigned char zkey[FPR_SIZE];
 	int ratchetoffset;

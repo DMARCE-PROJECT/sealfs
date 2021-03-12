@@ -38,6 +38,15 @@ static ssize_t sealfs_read(struct file *file, char __user *buf,
 	return err;
 }
 
+static void freehmac(struct sealfs_hmac_state *hmacstate)
+{
+	if(hmacstate->hash_tfm){
+		crypto_free_shash(hmacstate->hash_tfm);
+	}
+	kfree(hmacstate->hash_desc);
+}
+
+
 
 static int initshash(struct sealfs_hmac_state *hmacstate)
 {
@@ -67,54 +76,59 @@ dumpkey(u8 *key)
 	printk("sealfs: KEY %s\n", str);
 }
 
-static inline int ratchet_key(struct sealfs_hmac_state *hmacstate,
-			char *key, char *zkey, loff_t ratchet_offset)
+static inline int ratchet_key(char *key, char *zkey, loff_t ratchet_offset)
 {
 	int err = 0;
 
 	uint64_t roff;
 
+	struct sealfs_hmac_state hmacstate;
+	hmacstate.hash_tfm = NULL;
 	if(DEBUGENTRY){
 		printk("sealfs: RATCHET: old, roff %llu ", ratchet_offset);
 		dumpkey(key);
 	}
 	roff = (uint64_t)ratchet_offset;
-	if(hmacstate->hash_tfm == NULL){
-		if(initshash(hmacstate) < 0)
-			return -1;
-	}
-	err = crypto_shash_setkey(hmacstate->hash_tfm, key, FPR_SIZE);
+	if(initshash(&hmacstate) < 0)
+		return -1;
+	err = crypto_shash_setkey(hmacstate.hash_tfm, key, FPR_SIZE);
 	if(err){
 		printk(KERN_ERR "sealfs: can't load hmac key\n");
+		freehmac(&hmacstate);
 		return -1;
 	}
-	err = crypto_shash_init(hmacstate->hash_desc);
+	err = crypto_shash_init(hmacstate.hash_desc);
 	if(err){
 		printk(KERN_ERR "sealfs: can't init hmac\n");
+		freehmac(&hmacstate);
 		return -1;
 	}
-	err = crypto_shash_update(hmacstate->hash_desc,
+	err = crypto_shash_update(hmacstate.hash_desc,
 			(u8*) &roff, sizeof(uint64_t));
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: koffset\n");
+		freehmac(&hmacstate);
 		return -1;
 	}
-	err = crypto_shash_final(hmacstate->hash_desc, (u8 *) key);
+	err = crypto_shash_final(hmacstate.hash_desc, (u8 *) key);
 	if(err){
 		printk(KERN_ERR "sealfs: can't final hmac\n");
+		freehmac(&hmacstate);
 		return -1;
 	}
 	if(DEBUGENTRY){
 		printk("sealfs: RATCHET: new");
+		freehmac(&hmacstate);
 		dumpkey(key);
 	}
 	//no need, the key is around until next ratchet, and then this will
 	//be overwritten yes?
-	//err = crypto_shash_setkey(hmacstate->hash_tfm, zkey, FPR_SIZE);
+	//err = crypto_shash_setkey(hmacstate.hash_tfm, zkey, FPR_SIZE);
 	//if(err){
 	//	printk(KERN_ERR "sealfs: can't reset hmac key\n");
 	//	return -1;
 	//}
+	freehmac(&hmacstate);
 	return 0;
 }
 
@@ -131,17 +145,20 @@ static int do_hmac(const char __user *data, char *key, char *zkey,
 	err = crypto_shash_setkey(hmacstate.hash_tfm, key, FPR_SIZE);
 	if(err){
 		printk(KERN_ERR "sealfs: can't load hmac key\n");
+		freehmac(&hmacstate);
 		return -1;
 	}
 	err = crypto_shash_init(hmacstate.hash_desc);
 	if(err){
 		printk(KERN_ERR "sealfs: can't init hmac\n");
+		freehmac(&hmacstate);
 		return -1;
 	}
 	err = crypto_shash_update(hmacstate.hash_desc,
 			(u8*) &lentry->ratchetoffset, sizeof(lentry->ratchetoffset));
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: ratchetoffset\n");
+		freehmac(&hmacstate);
 		return -1;
 	}
 
@@ -149,24 +166,28 @@ static int do_hmac(const char __user *data, char *key, char *zkey,
 			(u8*) &lentry->inode, sizeof(lentry->inode));
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: inode\n");
+		freehmac(&hmacstate);
 		return -1;
 	}
 	err = crypto_shash_update(hmacstate.hash_desc,
 			(u8*) &lentry->offset, sizeof(lentry->offset));
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: offset\n");
+		freehmac(&hmacstate);
 		return -1;
 	}
 	err = crypto_shash_update(hmacstate.hash_desc,
 			(u8*) &lentry->count, sizeof(lentry->count));
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: count\n");
+		freehmac(&hmacstate);
 		return -1;
 	}
 	err = crypto_shash_update(hmacstate.hash_desc,
 			(u8*) &lentry->koffset, sizeof(lentry->koffset));
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: koffset\n");
+		freehmac(&hmacstate);
 		return -1;
 	}
 
@@ -175,25 +196,29 @@ static int do_hmac(const char __user *data, char *key, char *zkey,
 		return -1;
 	if (copy_from_user(buf, data, lentry->count)) {
 		printk(KERN_ERR "sealfs: cannot copy from user data\n");
+		freehmac(&hmacstate);
 		return -1;
 	}
 	err = crypto_shash_update(hmacstate.hash_desc, (u8*)buf, lentry->count);
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: data\n");
+		freehmac(&hmacstate);
 		return -1;
 	}
 	kfree(buf);
 	err = crypto_shash_final(hmacstate.hash_desc, (u8 *) lentry->fpr);
 	if(err){
 		printk(KERN_ERR "sealfs: can't final hmac\n");
+		freehmac(&hmacstate);
 		return -1;
 	}
 	err = crypto_shash_setkey(hmacstate.hash_tfm, zkey, FPR_SIZE);
 	if(err){
 		printk(KERN_ERR "sealfs: can't reset hmac key\n");
+		freehmac(&hmacstate);
 		return -1;
 	}
-	crypto_free_shash(hmacstate.hash_tfm);
+	freehmac(&hmacstate);
 	return 0;
 }
 static int has_advanced_burnt(struct sealfs_sb_info *sb, loff_t oldburnt)
@@ -390,7 +415,7 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ra
 	if(likely(roff != 0)){
 		if(DEBUGENTRY)
 			printk("sealfs: RATCHET koff %lld, roff: %lld", oldoff, roff);
-		ratchet_key(&sb->ratchet_hmac, sb->key, sb->zkey, roff);
+		ratchet_key(sb->key, sb->zkey, roff);
 		memmove(key, sb->key, FPR_SIZE);
 		ret = oldoff-FPR_SIZE;
 		goto end;
