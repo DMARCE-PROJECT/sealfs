@@ -137,15 +137,19 @@ static inline int ratchet_key(char *key, char *zkey, loff_t ratchet_offset, int 
 	//	printk(KERN_ERR "sealfs: can't reset hmac key\n");
 	//	return -1;
 	//}
+	//freehmac calls crypto_free which overwrites the memory
 	freehmac(&hmacstate);
 	return 0;
 }
-
+enum{
+	SMALLBUF=128,
+};
 static int do_hmac(const char __user *data, char *key, char *zkey,
 	 		struct sealfs_logfile_entry *lentry)
 {
 	int err = 0;
-	u8	*buf;
+	u8	buf[SMALLBUF];
+	uint64_t n, nc, nl;  
 
 	struct sealfs_hmac_state hmacstate;
 	hmacstate.hash_tfm = NULL;
@@ -200,21 +204,23 @@ static int do_hmac(const char __user *data, char *key, char *zkey,
 		return -1;
 	}
 
-	buf = kmalloc(lentry->count, GFP_KERNEL);
-	if (!buf)
-		return -1;
-	if (copy_from_user(buf, data, lentry->count)) {
-		printk(KERN_ERR "sealfs: cannot copy from user data\n");
-		freehmac(&hmacstate);
-		return -1;
+	n = lentry->count;
+	while(n > 0){
+		nc = SMALLBUF;
+		if(n < SMALLBUF)
+			nc = n;
+		n -= nc;
+		nl = copy_from_user(buf, data, nc);
+		if(nl < 0 || nl >= nc)
+			break;
+		n +=nl;
+		err = crypto_shash_update(hmacstate.hash_desc, buf, nc-nl);
+		if(err){
+			printk(KERN_ERR "sealfs: can't updtate hmac: data\n");
+			freehmac(&hmacstate);
+			return -1;
+		}
 	}
-	err = crypto_shash_update(hmacstate.hash_desc, (u8*)buf, lentry->count);
-	if(err){
-		printk(KERN_ERR "sealfs: can't updtate hmac: data\n");
-		freehmac(&hmacstate);
-		return -1;
-	}
-	kfree(buf);
 	err = crypto_shash_final(hmacstate.hash_desc, (u8 *) lentry->fpr);
 	if(err){
 		printk(KERN_ERR "sealfs: can't final hmac\n");
