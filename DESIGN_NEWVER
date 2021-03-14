@@ -1,0 +1,126 @@
+New version of SEALFS under development.
+Tested for linux kernel 5.4.0-66
+
+- Features:
+
+Ratchet:
+	There is an ratchetoffset, from 0 to NRATCHET-1 (nratchet is
+	a mount option and -r N to verify).  Each log entry has an
+	associated ratchet offset, when it is zero (rekeying), there
+	is a new key read from the file. When it is different than
+	zero the key is KeyN=HMAC(KeyN-1, [ratchetoffset|NRATCHET]).
+	The idea is that resynchronization can happen for each block
+	(i.e. with the key from the file one can regenerate the whole
+	block of keys). Note that NRATCHET is also hashed so that adding
+	an entry later is limited.
+	The tools try to keep the latest key0 or keyN and recalculate lazily,
+	hence the thousand parameters to isentryok() in entries.c
+
+	It is interesting that rekeying is slightly cheaper than
+	ratcheting (when NRATCHET gets bigger, the window for the lock is
+	bigger and hence it is slower, can be seen in the measurements). I
+	think this is due to readahead being done aggresively and how
+	fast the whole i/o stack is in linux. Because of readahead and
+	all the cache mechanisms, the cost of reads (which need to be done synchronously
+	because we have to wait for the keys) is amortized, and because
+	of that, rekeying cost is almost a memmove. Ratcheting is more expensive
+	(malloc of hash, hashing, freeing and zeroing...).  The state
+	of the last block of NRATCHET keys is the last key ratcheted.
+	We could keep it around between remounts. Instead of that, we burn
+	entries with count=0 for the rest of the block when we unmount.
+	If the number of burnt entries is not an integer multiple of
+	NRATCHET, mounting gives back an error.
+	Note NRATCHET is not written anywhere (it could be obtained automatically
+	with the first log (ratchetoffset = 1) by trying a key with different NRATCHET values. This is not
+	implemented, but should be.
+
+
+Tooling:
+	Added heap to verify tool in case the write in the logfile is out
+	of order. Each entry is signed with a key, so forging is not a
+	problem. We are writing at an offset which is calculated from
+	the ratchet offset and the key offset, so this could not happen,
+	but we may want to make the log a real log (append only or on a
+	special device which may ignore offset).  This would be possibly
+	faster and there would no be a race condition problem where zeroes
+	are written if a write is lost (due to reboot). In any case, the
+	locking can evolve and the log file is completely independent
+	because the order it taken care by the tools. This is nice.
+	The heap is a min heap which receives a pointer, implemented in
+	heap.c heap.h.	See checkjqueues() in verify.c
+
+	Anything to do with entries should be in entry.c entry.h, including ratcheting of
+	keys.
+
+	Testing with uroot:	https://github.com/u-root/u-root
+		- In Ubuntu (already have thing to compile a kernel and golang installed)
+		apt install qemu-system qemu-system-x86
+		apt install qemu-kvm libvirt-clients libvirt-daemon-system bridge-utils virt-manager
+		go get github.com/u-root/u-root
+		- cd tools/uroot; ./runtest.sh
+		Runs all tests implemented inside a qemu. Should say OK.
+
+	Verify remap of inodes. Important to copy between filesystems the files -32 43 remaps
+		old inode number 32 to 43. Remember that in sealfs files are addressed by inode number
+		so that logs can be rotated.
+Concurrency:
+	Threads:
+		There are N burner threads that have a burn counter
+		for the keystream and try to follow the atomic integer
+		shared with clients to burn until that point.  We have
+		a fast burner thread (zero). This is woken each second
+		and on each write.  It does not go to sleep if there is
+		something left to burn.
+		The rest of theads wake every P seconds (each P a different
+		prime in a cicada inspired anti-synchronization strategy).
+		These threads try as hard as possible to sync to disk by marking
+		the region burnt as dirty (fsync_range) with a lock. It may
+		have to be revisited. In any case, we try not to share any locks
+		with the clients (by using atomic operations).
+	Locking:
+		Four possible models:
+		Old: take a lock, do everything synchronously done.
+		First try (fast lock in git): Idea, take lock, pick an offset, burn that offset.
+			Can only be done in one thread.
+		Second try (implemented now): This version has an integer burnt to communicate
+			client processes and burn threads. We want to use burnt as a single integer
+			(with atomic operations). This needs to be moved without leaving holes (where
+			we have more freeedom to release locks). This means that a lock is taken,
+			key is read (or ratcheted), and burnt is advanced lock is released. The critical section
+			is quite big, but it is important to have a sequential order for clients or burnt does
+			not advance uniformly. Having the burners asynchronous from the clients is important
+			as we have to wait and make sure the writes for burning go to disk, which is potentially
+			slow.
+		Third try (not implemented): This version, not implemented and probably never (is current version
+			is fast enough already?: As of now 10x 15x nosealfs) would make it blazingly
+			fast but the memory cost is proportional to
+			the concurrent writes. Each read of key takes
+			an offset. This generates an operation which
+			goes to a queue. The burners unqueue and burn
+			that region. Maybe in order (heap) or randomly.
+			I feel this is too complex for kernel code,
+			but we may want to implement it. We could limit the
+			queue (channels, reader/writer ring...) but then the clients and
+			the burners would have to wait for each other.
+
+		No matter what, ratcheting has to be done with a lock key_n->key_n+1
+		so there is a causal dependency <there that cannot be changed whatever locking is used.
+
+		Log files are open append only and because of that offset is ignored. The offset has to be
+		manually updated in the inode. For that we take the lock of the: down_write(&ino->i_rwsem);
+		inode of the upper file to arbitrer this. Should we use the lower_file inode to make
+		hard links work? Does it matter (are there any other problems for hard locks?).
+Memory:
+	Measuring, it seems to be a bad idea to keep the hash state around
+	and reuse it.  I think it is pingponging data in L1 caches and so
+	on. Sligthly worse, and more complex.  The only problem may be
+	fragmentation. Hopefully taken care of. Still faster to malloc
+	and does not seem to degrade.
+
+	When hashing, the memory needs to be copied from user, only
+	to be hashed.  For that we need a fixed memory space which we
+	can reuse but big enough so that there are not many calls to
+	copy_from_user which may sleep and so on. We get a page, map
+	it and free it (fast, no fragmentation and 4K or so of memory
+	should be enough for most writes).
+
