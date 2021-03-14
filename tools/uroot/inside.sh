@@ -35,6 +35,21 @@ checkfailtest() {
 		echo $1 FAIL
 	fi
 }
+checktest17() {
+	if test "$3" = "-v"; then
+		if /var/tmp/verify /tmp/x /mount/hd/k1 /mount/hd/k2 -r 17 $2; then
+			echo $1 OK
+		else
+			echo $1 FAIL
+		fi
+		return
+	fi
+	if /var/tmp/verify /tmp/x /mount/hd/k1 /mount/hd/k2 -r 17 $2 > /dev/null 2>&1; then
+		echo $1 OK
+	else
+		echo $1 FAIL
+	fi
+}
 resettest() {
 	rm -r /tmp/x/*
 	cp /mount/hd/.SEALFS.LOG /tmp/x
@@ -163,20 +178,20 @@ test6(){
 	############################# 6 TEST
 	echo TEST 6 '----------------'
 	resettest
-	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	mount -o nratchet=17,kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
 	echo -n 01234567 >> /tmp/y/zzz
 	echo -n 01234567 >> /tmp/y/zzz
 	echo -n 0DD4567 >> /tmp/y/zzz
 	mv /tmp/y/zzz /tmp/y/zzz.1
 	echo -n 01234567 >> /tmp/y/zzz
 	umount /tmp/y
-	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	mount -o nratchet=17,kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
 	echo -n 0DD4567 >> /tmp/y/zzz
 	mv /tmp/y/zzz.1 /tmp/y/zzz.2
 	mv /tmp/y/zzz /tmp/y/zzz.1
 	umount /tmp/y
 	/var/tmp/dump /tmp/x|grep entries
-	checktest TEST6
+	checktest17 TEST6
 }
 
 #the fist one does not reset

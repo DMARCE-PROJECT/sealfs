@@ -96,12 +96,22 @@ scandirfiles(char *path, Ofile **ofiles, Rename *renames)
 	closedir(d);
 }
 
+static inline int logint2(uint64_t i)
+{
+	int n;
+	n = 0;
+	while(i > 0){
+		n++;
+		i >>= 1;
+	}
+	return n;
+}
 
 static uint64_t
-unifyoff(uint64_t koffset, uint64_t ratchetoffset)
+unifyoff(uint64_t offset, uint64_t ratchetoffset, uint64_t nratchet)
 {
 	//they should not overlap
-	return (koffset<<NRATCHETDIGITS)+ratchetoffset;
+	return (offset<<logint2(nratchet))+ratchetoffset;
 }
 
 //	Ensure that the file doesn't have holes and it starts at offset 0.
@@ -111,7 +121,7 @@ unifyoff(uint64_t koffset, uint64_t ratchetoffset)
 //		jump-queue.
 // 	Keep a minheap of offset and advance it when it is contiguous.
 static int
-checkjqueues(struct sealfs_logfile_entry *e, Ofile *o)
+checkjqueues(struct sealfs_logfile_entry *e, Ofile *o, int nratchet)
 {
 	uint64_t min;
 	Heap *heap;
@@ -129,7 +139,7 @@ checkjqueues(struct sealfs_logfile_entry *e, Ofile *o)
 		if(!ec)
 			err(1, "cannot allocate entry");
 		memmove(ec, e, sizeof(struct sealfs_logfile_entry));
-		if(insertheap(heap, unifyoff(ec->offset, ec->ratchetoffset), ec) < 0){
+		if(insertheap(heap, unifyoff(ec->offset, ec->ratchetoffset, nratchet), ec) < 0){
 			free(ec);
 			ec = NULL;
 			fprintf(stderr, "read %d entries without fixing a jqueue\n", MaxHeapSz);
@@ -159,7 +169,7 @@ checkjqueues(struct sealfs_logfile_entry *e, Ofile *o)
 }
 
 static void
-dumpheap(Heap *heap)
+dumpheap(Heap *heap, int nratchet)
 {
 	uint64_t min;
 	struct sealfs_logfile_entry *e;
@@ -169,8 +179,8 @@ dumpheap(Heap *heap)
 		if(e == NULL)
 			break;
 		fprintf(stderr, "\t");
-		fprintf(stderr, "min: %ld %ld %ld ->",
-			min, (e->koffset<<NRATCHETDIGITS), e->ratchetoffset);
+		fprintf(stderr, "min: %ld %ld  ->",
+			min, unifyoff(e->offset, e->ratchetoffset, nratchet));
 		fprintentry(stderr, e);
 	}
 	fprintf(stderr, "]\n");
@@ -178,19 +188,19 @@ dumpheap(Heap *heap)
 }
 
 static void
-checktailofiles(Ofile *ofiles)
+checktailofiles(Ofile *ofiles, int nratchet)
 {
 	Ofile *o;
 	int err = 0;
     	for(o = ofiles; o != NULL;) {
-		if(o->heap != NULL && checkjqueues(NULL, o) < 0){
+		if(o->heap != NULL && checkjqueues(NULL, o, nratchet) < 0){
 			err = 1;
 		}
 		if(o->heap->count != 0){
 			fprintf(stderr, 
 				"disordered offsets pend for ofile inode: %lld fd: %d\n\t",
 	 			(long long)o->inode, o->fd);
-			dumpheap(o->heap);
+			dumpheap(o->heap, nratchet);
 			err=1;
 		}
 		free(o->heap);
@@ -258,7 +268,7 @@ inrange(struct sealfs_logfile_entry *e, uint64_t begin, uint64_t end)
  */
 static void
 verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
-	uint64_t begin, uint64_t end, Rename *renames)
+	uint64_t begin, uint64_t end, Rename *renames, int nratchet)
 {
 	struct sealfs_logfile_entry e;
 	Ofile *ofiles = NULL;
@@ -284,7 +294,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		}
 		HASH_FIND(hh, ofiles, &e.inode, sizeof(uint64_t), o);
 		if(e.inode == FAKEINODE){
-			if(!isentryok(&e, -1, kf, key, lastkeyoff, lastroff)){
+			if(!isentryok(&e, -1, kf, key, lastkeyoff, lastroff, nratchet)){
 				fprintf(stderr, "can't verify entry: ");
 				fprintentry(stderr, &e);
 				exit(1);
@@ -311,7 +321,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			//printf("checking entry: ");
 			//fprintentry(stdout, &e);
 		}
-		if(checkjqueues(&e, o) < 0 || ! isentryok(&e, o->fd, kf, key, lastkeyoff, lastroff)){
+		if(checkjqueues(&e, o, nratchet) < 0 || ! isentryok(&e, o->fd, kf, key, lastkeyoff, lastroff, nratchet)){
 			fprintf(stderr, "can't verify entry: ");
 			fprintentry(stderr, &e);
 			exit(1);
@@ -323,18 +333,18 @@ done:
 		 * check continuity if we are checking the whole log
 		 * it may still be correct (see checkjqueue), but warn the user
 		 */
-		if(inode == 0 && e.koffset != szhdr + (c/NRATCHET)*FPR_SIZE){
+		if(inode == 0 && e.koffset != szhdr + (c/nratchet)*FPR_SIZE){
 			fprintf(stderr, "warning: koffset not correct: %lld "
 					"should be %lld for entry: ",
 					(long long) e.koffset,
 					(long long) sizeof(struct sealfs_keyfile_header)
-						+  (c*NRATCHET + e.ratchetoffset)*FPR_SIZE);
+						+  (c*nratchet + e.ratchetoffset)*FPR_SIZE);
 			fprintentry(stderr, &e);
 			//exit(1);
 		}
 		c++;
 	}
-	checktailofiles(ofiles);
+	checktailofiles(ofiles, nratchet);
 	freeofiles(ofiles);
 	freerenames(renames);
 	if(c == 0)
@@ -396,7 +406,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "USAGE: verify dir kalpha kbeta"
-			" [-Dh] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n");
+			" [-Dh] [-r nratchet] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n");
 	exit(1);
 }
 
@@ -420,6 +430,7 @@ main(int argc, char *argv[])
 	FILE *betaf;
 	FILE *alphaf;
 
+	int nratchet;
 	int64_t inode = 0;
 	int64_t begin = 0;
 	int64_t end = 0;
@@ -435,6 +446,7 @@ main(int argc, char *argv[])
 	Rename *renames;
 	Rename *r;
 	renames = NULL;
+	nratchet = NRATCHET;
 	if(argc < 3)
 		usage();
 
@@ -464,6 +476,13 @@ main(int argc, char *argv[])
 		}else if(strncmp(argv[i], "-n", 2) == 0){
 			if(argc > i+1){
 				lname = argv[i+1];
+				i++;
+			}else{
+				usage();
+			}
+		}else if(strncmp(argv[i], "-r", 2) == 0){
+			if(argc > i+1){
+				nratchet = atoi(argv[i+1]);
 				i++;
 			}else{
 				usage();
@@ -508,7 +527,7 @@ main(int argc, char *argv[])
 		errx(1, "magic numbers don't match");
 	printf("k1 burnt: %lld\n", (long long)kalphahdr.burnt);
 	checkkeystreams(alphaf, betaf, kalphahdr.burnt);
-	verify(betaf, lf, dir, inode, begin, end, renames);
+	verify(betaf, lf, dir, inode, begin, end, renames, nratchet);
 	if(inode != 0)
 		fprintf(stderr, "WARNING: you SHOULD run a"
 			" complete verification"

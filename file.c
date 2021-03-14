@@ -360,7 +360,7 @@ int sealfs_update_hdr(struct sealfs_sb_info *sb)
 	loff_t zoff;
 	size_t x;
 	zoff = 0;
-	hdr = sb->kheader;	//only for the magic
+	hdr = sb->kheader;	//only for the magic and nratchet
 	hdr.burnt = atomic_long_read(&sb->burnt);
 	/* hdr may be old by the time it is written
 	 *  this is a benign race condition, we write the current version.

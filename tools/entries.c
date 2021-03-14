@@ -173,7 +173,7 @@ fail:
 }
 int
 isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf,
-		unsigned char *oldkey, uint64_t lastkeyoff, uint64_t lastroff)
+		unsigned char *oldkey, uint64_t lastkeyoff, uint64_t lastroff, int nratchet)
 {
 	unsigned char h[FPR_SIZE];
 	unsigned char k[FPR_SIZE];
@@ -208,7 +208,7 @@ isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf,
 		if(DEBUGENTRY){
 			fprintf(stderr, "RERATCHET %d, off: %lu\n", i+1, e->ratchetoffset);
 		}
-		ratchet_key(oldkey, k, (uint64_t)(i+1), NRATCHET);
+		ratchet_key(oldkey, k, (uint64_t)(i+1), nratchet);
 		memmove(oldkey, k, FPR_SIZE);
 	}
 	if(DEBUGENTRY){
