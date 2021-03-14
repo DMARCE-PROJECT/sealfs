@@ -483,6 +483,8 @@ main(int argc, char *argv[])
 		}else if(strncmp(argv[i], "-r", 2) == 0){
 			if(argc > i+1){
 				nratchet = atoi(argv[i+1]);
+				if(nratchet <= 0)
+					usage();
 				i++;
 			}else{
 				usage();
