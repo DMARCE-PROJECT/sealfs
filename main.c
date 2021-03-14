@@ -116,12 +116,20 @@ static int read_headers(struct sealfs_sb_info *info)
 	size_t lsz = sizeof(struct sealfs_logfile_header);
 	size_t ksz = sizeof(struct sealfs_keyfile_header);
 	loff_t o;
+	loff_t nentries;
 
 	o = 0;
 	nr = kernel_read(info->kfile, (char*) &info->kheader, ksz, &o);
 	if(nr != ksz){
 		printk(KERN_ERR	"sealfs: error reading"
 		" kheader: %lld bytes\n", nr);
+		return -1;
+	}
+	nentries = (info->kheader.burnt-sizeof(struct sealfs_keyfile_header))/FPR_SIZE;
+	if(nentries%info->nratchet != 0){
+		printk(KERN_ERR	"sealfs: error nratchet is wrong or bad unmount"
+		" nentries: %lld nentries%%nratchet: %lld nratchet: %d\n",
+		nentries, nentries%info->nratchet, info->nratchet);
 		return -1;
 	}
 	atomic_long_set(&info->burnt, info->kheader.burnt);
