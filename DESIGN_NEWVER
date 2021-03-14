@@ -29,7 +29,7 @@ Ratchet:
 	We could keep it around between remounts. Instead of that, we burn
 	entries with count=0 for the rest of the block when we unmount.
 	If the number of burnt entries is not an integer multiple of
-	NRATCHET, mounting gives back an error.
+	NRATCHET, mounting gives back an error. The inode for these entries is FAKEINODE.
 	Note NRATCHET is not written anywhere (it could be obtained automatically
 	with the first log (ratchetoffset = 1) by trying a key with different NRATCHET values. This is not
 	implemented, but should be.
