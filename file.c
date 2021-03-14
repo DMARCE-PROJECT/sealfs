@@ -342,14 +342,18 @@ static int sealfs_thread(void *data)
 	return sealfs_thread_main(data, HZ, 1);
 }
 
-
+enum {
+	NPRIMES=10,
+};
 static int sealfs_slow_thread(void *data)
 {
-	pid_t tid = current->pid;
 	int period;
+	int i;
+	struct sealfs_sb_info *sb=(struct sealfs_sb_info *)data;
 	/* sleeping cicada strategy, minimize wakeup collisions */
-	int primes[10]={11, 17, 31, 37, 43, 59, 73, 97, 139, 157};
-	period = primes[tid%8];	//seconds
+	int primes[NPRIMES]={11, 17, 31, 37, 43, 59, 73, 97, 139, 157};
+	i = sb->nthreads - 1;	//first one is fast
+	period = primes[i%NPRIMES];	//seconds
 	return sealfs_thread_main(data, period*HZ, 0);
 }
 
@@ -364,11 +368,14 @@ void sealfs_stop_thread(struct sealfs_sb_info *sb)
 void sealfs_start_thread(struct sealfs_sb_info *sb)
 {
 	int i;
+	sb->nthreads = 0;
 	init_waitqueue_head(&sb->thread_q);
 	sb->sync_thread[0] = kthread_run(sealfs_thread, sb, "sealfs");
+	sb->nthreads++;
 	init_waitqueue_head(&sb->slow_thread_q);
 	for(i = 1; i < NBURNTHREADS; i++){
 		sb->sync_thread[i] = kthread_run(sealfs_slow_thread, sb, "sealfs");
+		sb->nthreads++;
 	}
 }
 

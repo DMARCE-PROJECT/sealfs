@@ -137,6 +137,7 @@ struct sealfs_sb_info {
 	loff_t maxkfilesz;
 	wait_queue_head_t thread_q;	//first is different, higher freq and woken by clients
 	wait_queue_head_t slow_thread_q;
+	int nthreads;
 	struct task_struct *sync_thread[NBURNTHREADS];
 };
 
