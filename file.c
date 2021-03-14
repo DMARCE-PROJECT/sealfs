@@ -76,7 +76,7 @@ dumpkey(u8 *key)
 	printk("sealfs: KEY %s\n", str);
 }
 
-static inline int ratchet_key(char *key, char *zkey, loff_t ratchet_offset, int nratchet)
+static inline int ratchet_key(char *key, loff_t ratchet_offset, int nratchet)
 {
 	int err = 0;
 
@@ -144,7 +144,7 @@ static inline int ratchet_key(char *key, char *zkey, loff_t ratchet_offset, int 
 enum{
 	SMALLBUF=128,
 };
-static int do_hmac(const char __user *data, char *key, char *zkey,
+static int do_hmac(const char __user *data, char *key,
 	 		struct sealfs_logfile_entry *lentry)
 {
 	int err = 0;
@@ -227,12 +227,13 @@ static int do_hmac(const char __user *data, char *key, char *zkey,
 		freehmac(&hmacstate);
 		return -1;
 	}
-	err = crypto_shash_setkey(hmacstate.hash_tfm, zkey, FPR_SIZE);
-	if(err){
-		printk(KERN_ERR "sealfs: can't reset hmac key\n");
-		freehmac(&hmacstate);
-		return -1;
-	}
+	//err = crypto_shash_setkey(hmacstate.hash_tfm, zkey, FPR_SIZE);
+	//if(err){
+	//	printk(KERN_ERR "sealfs: can't reset hmac key\n");
+	//	freehmac(&hmacstate);
+	//	return -1;
+	//}
+	//freehmac calls crypto_free which overwrites the memory
 	freehmac(&hmacstate);
 	return 0;
 }
@@ -430,7 +431,7 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ra
 	if(likely(roff != 0)){
 		if(DEBUGENTRY)
 			printk("sealfs: RATCHET koff %lld, roff: %lld", oldoff, roff);
-		ratchet_key(sb->key, sb->zkey, roff, sb->nratchet);
+		ratchet_key(sb->key, roff, sb->nratchet);
 		memmove(key, sb->key, FPR_SIZE);
 		ret = oldoff-FPR_SIZE;
 		goto end;
@@ -510,7 +511,7 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 	if(DEBUGENTRY)
 		dumpentry(&lentry);
 
-	if(do_hmac(buf, key, sb->zkey, &lentry) < 0){
+	if(do_hmac(buf, key, &lentry) < 0){
 		printk(KERN_ERR "sealfs: do_hash failed\n");
 		return -1;
       	}
@@ -545,7 +546,6 @@ void sealfs_seal_ratchet(struct sealfs_sb_info *spd)
 		burn_entry(NULL, &c, 0, 0, spd);
 	}
 	memset(spd->key, 0, FPR_SIZE);
-	memset(spd->zkey, 0, FPR_SIZE);
 }
 
 /*

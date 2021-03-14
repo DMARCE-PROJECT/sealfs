@@ -131,7 +131,6 @@ struct sealfs_sb_info {
 
 	//protected by readkey file/burn mutex (bbmutex)
 	unsigned char key[FPR_SIZE];
-	unsigned char zkey[FPR_SIZE];
 	int ratchetoffset;
 
 	loff_t maxkfilesz;
