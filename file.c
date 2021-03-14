@@ -141,14 +141,12 @@ static inline int ratchet_key(char *key, loff_t ratchet_offset, int nratchet)
 	freehmac(&hmacstate);
 	return 0;
 }
-enum{
-	SMALLBUF=128,
-};
 static int do_hmac(const char __user *data, char *key,
 	 		struct sealfs_logfile_entry *lentry)
 {
 	int err = 0;
-	u8	buf[SMALLBUF];
+	u8	*buf;
+	struct page *p;
 	uint64_t n, nc, nl;  
 
 	struct sealfs_hmac_state hmacstate;
@@ -204,15 +202,24 @@ static int do_hmac(const char __user *data, char *key,
 		return -1;
 	}
 
+	p = alloc_page(GFP_KERNEL);
+	if(!p){
+		printk(KERN_ERR "sealfs: can't allocate buf for hmac: koffset\n");
+		freehmac(&hmacstate);
+		return -1;
+	}
+	buf=kmap(p);
 	n = lentry->count;
 	while(n > 0){
-		nc = SMALLBUF;
-		if(n < SMALLBUF)
+		nc = PAGE_SIZE;
+		if(n < PAGE_SIZE)
 			nc = n;
 		n -= nc;
 		nl = copy_from_user(buf, data, nc);
 		if(nl < 0 || nl >= nc){
 			printk(KERN_ERR "sealfs: can't copy_from_user hmac: data\n");
+			kunmap(p);
+			__free_page(p);
 			freehmac(&hmacstate);
 			return -1;
 		}
@@ -220,10 +227,14 @@ static int do_hmac(const char __user *data, char *key,
 		err = crypto_shash_update(hmacstate.hash_desc, buf, nc-nl);
 		if(err){
 			printk(KERN_ERR "sealfs: can't updtate hmac: data\n");
+			kunmap(p);
+			__free_page(p);
 			freehmac(&hmacstate);
 			return -1;
 		}
 	}
+	kunmap(p);
+	__free_page(p);
 	err = crypto_shash_final(hmacstate.hash_desc, (u8 *) lentry->fpr);
 	if(err){
 		printk(KERN_ERR "sealfs: can't final hmac\n");

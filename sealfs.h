@@ -26,6 +26,7 @@
 #include <linux/file.h>
 #include <linux/fs.h>
 #include <linux/mm.h>
+#include <linux/highmem.h>	//kmap
 #include <linux/mount.h>
 #include <linux/mutex.h>
 #include <linux/namei.h>
