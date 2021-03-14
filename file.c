@@ -342,12 +342,15 @@ static int sealfs_thread(void *data)
 	return sealfs_thread_main(data, HZ, 1);
 }
 
-enum {
-	PERIOD_BURN_RUN=30,	//SECS
-};
+
 static int sealfs_slow_thread(void *data)
 {
-	return sealfs_thread_main(data, PERIOD_BURN_RUN*HZ, 0);
+	pid_t tid = current->pid;
+	int period;
+	/* sleeping cicada strategy, minimize wakeup collisions */
+	int primes[10]={11, 17, 31, 37, 43, 59, 73, 97, 139, 157};
+	period = primes[tid%8];	//seconds
+	return sealfs_thread_main(data, period*HZ, 0);
 }
 
 void sealfs_stop_thread(struct sealfs_sb_info *sb)
