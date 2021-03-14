@@ -260,6 +260,9 @@ inrange(struct sealfs_logfile_entry *e, uint64_t begin, uint64_t end)
 		(begin <= e->offset && e->offset+e->count <= end);
 }
 
+enum {
+	MAXNRATCHET=512
+};
 
 /*
  *  inode == 0, check all files, else check only the inode
@@ -278,9 +281,12 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 	unsigned char key[FPR_SIZE];
 	uint64_t lastkeyoff;
 	uint64_t lastroff;
+	int nratchet_detected;
+	int fd;
 
 	lastkeyoff = -1;
 	lastroff = 0;
+	nratchet_detected = 0;
 
 	scandirfiles(path, &ofiles, renames);
 	if(inode == 0)
@@ -293,17 +299,46 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 				break; //we're done
 		}
 		HASH_FIND(hh, ofiles, &e.inode, sizeof(uint64_t), o);
+
+		if(o == NULL && e.inode != FAKEINODE)
+			errx(1, "file with inode %lld not found!",
+				(long long) e.inode);
+
+
+		if(e.inode == FAKEINODE)
+			fd = -1;
+		else
+			fd = o->fd;
+		if(!nratchet_detected && e.ratchetoffset >= 1){
+			lastkeyoff = -1;	//work without key cache, rekey each time
+			lastroff = 0;
+			nratchet_detected = 1;
+			if(isentryok(&e, fd, kf, key, lastkeyoff, lastroff, nratchet)){
+				fprintf(stderr, "default nratchet: %d\n", nratchet);
+				break;
+			}
+			nratchet = 1;
+			while(!isentryok(&e, fd, kf, key, lastkeyoff, lastroff, nratchet)){
+				nratchet++;
+				if(nratchet > MAXNRATCHET){
+					fprintf(stderr, "can't find an nratchet that works\n");
+					nratchet = NRATCHET;	//continue as before
+					nratchet_detected = 0;
+					break;
+				}
+			}
+			if(nratchet_detected)
+				fprintf(stderr, "nratchet detected: %d\n", nratchet);
+		}
+
 		if(e.inode == FAKEINODE){
-			if(!isentryok(&e, -1, kf, key, lastkeyoff, lastroff, nratchet)){
+			if(!isentryok(&e, fd, kf, key, lastkeyoff, lastroff, nratchet)){
 				fprintf(stderr, "can't verify entry: ");
 				fprintentry(stderr, &e);
 				exit(1);
 			}
 			goto done;
 		}
-		if(o == NULL)
-			errx(1, "file with inode %lld not found!",
-				(long long) e.inode);
 
 		if(inode != 0){
 			if(e.inode != inode)
@@ -321,7 +356,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			//printf("checking entry: ");
 			//fprintentry(stdout, &e);
 		}
-		if(checkjqueues(&e, o, nratchet) < 0 || ! isentryok(&e, o->fd, kf, key, lastkeyoff, lastroff, nratchet)){
+		if(checkjqueues(&e, o, nratchet) < 0 || ! isentryok(&e, fd, kf, key, lastkeyoff, lastroff, nratchet)){
 			fprintf(stderr, "can't verify entry: ");
 			fprintentry(stderr, &e);
 			exit(1);

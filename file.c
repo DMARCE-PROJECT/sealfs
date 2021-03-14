@@ -40,9 +40,10 @@ static ssize_t sealfs_read(struct file *file, char __user *buf,
 
 static void freehmac(struct sealfs_hmac_state *hmacstate)
 {
-	if(hmacstate->hash_tfm){
-		crypto_free_shash(hmacstate->hash_tfm);
+	if(!hmacstate->hash_tfm){
+		return;
 	}
+	crypto_free_shash(hmacstate->hash_tfm);
 	kfree(hmacstate->hash_desc);
 }
 
@@ -562,8 +563,11 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 void sealfs_seal_ratchet(struct sealfs_sb_info *spd)
 {
 	unsigned char c;
+	long burnt;
 	c = 0;
 
+	if(DEBUGENTRY)
+		printk("sealfs: RATCHETSEAL to go %d", spd->ratchetoffset);
 	while(spd->ratchetoffset != 0) {
 		if(DEBUGENTRY)
 			printk("sealfs: RATCHETSEAL roff: %d", spd->ratchetoffset);

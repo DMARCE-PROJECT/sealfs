@@ -110,6 +110,18 @@ static loff_t get_keysz(struct sealfs_sb_info *info)
 	return kst.size;
 }
 
+static loff_t get_nentries(struct file *lfile)
+{
+	struct kstat kst;
+	int err;
+	err = file_inode(lfile)->i_op->getattr(&lfile->f_path, &kst,
+		STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT);
+	if(err){
+		printk(KERN_ERR "sealfs: can't get attr from key file\n");
+		return -1;
+	}
+	return (kst.size-sizeof(struct sealfs_logfile_header))/sizeof(struct sealfs_logfile_entry);
+}
 static int read_headers(struct sealfs_sb_info *info)
 {
 	loff_t nr;
@@ -125,7 +137,7 @@ static int read_headers(struct sealfs_sb_info *info)
 		" kheader: %lld bytes\n", nr);
 		return -1;
 	}
-	nentries = (info->kheader.burnt-sizeof(struct sealfs_keyfile_header))/FPR_SIZE;
+	nentries = get_nentries(info->lfile);
 	if(nentries%info->nratchet != 0){
 		printk(KERN_ERR	"sealfs: error nratchet is wrong or bad unmount"
 		" nentries: %lld nentries%%nratchet: %lld nratchet: %d\n",
@@ -264,6 +276,7 @@ static int sealfs_read_super(struct super_block *sb,
 		goto out_freeroot;
 
 	/* if get here: cannot have error */
+	sealfs_start_thread(info);
 
 	/* set the lower dentries for s_root */
 	sealfs_set_lower_path(sb->s_root, &lower_path);
@@ -295,7 +308,6 @@ out_free:
   	sealfs_cleanup(info);
 	path_put(&lower_path);
 out:
-	sealfs_start_thread(info);
 	return err;
 }
 
