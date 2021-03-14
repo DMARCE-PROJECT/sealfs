@@ -211,8 +211,11 @@ static int do_hmac(const char __user *data, char *key,
 			nc = n;
 		n -= nc;
 		nl = copy_from_user(buf, data, nc);
-		if(nl < 0 || nl >= nc)
-			break;
+		if(nl < 0 || nl >= nc){
+			printk(KERN_ERR "sealfs: can't copy_from_user hmac: data\n");
+			freehmac(&hmacstate);
+			return -1;
+		}
 		n +=nl;
 		err = crypto_shash_update(hmacstate.hash_desc, buf, nc-nl);
 		if(err){
@@ -483,7 +486,7 @@ dumpentry(struct sealfs_logfile_entry *e)
 }
 
 static int burn_entry(struct file *f, const char __user *buf, size_t count,
-			loff_t offset, 	struct sealfs_sb_info *sb)
+			loff_t offset, struct sealfs_sb_info *sb)
 {
 	int  sz;
 	unsigned char key[FPR_SIZE];
