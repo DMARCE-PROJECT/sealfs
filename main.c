@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2019  Enrique Soriano
+ *  Copyright (c) 2019  Enrique Soriano, Gorka Guardiola
  *
  *  Based on Wrapfs:
  * Copyright (c) 1998-2017 Erez Zadok
@@ -426,6 +426,7 @@ static void __exit exit_sealfs_fs(void)
 }
 
 MODULE_AUTHOR("Enrique Soriano <esoriano@gsyc.urjc.es>");
+MODULE_AUTHOR("Gorka Guardiola <gorka.guardiola@urjc.es>");
 MODULE_DESCRIPTION("Sealfs " SEALFS_VERSION);
 MODULE_LICENSE("GPL");
 

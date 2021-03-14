@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2019  Enrique Soriano
+ *  Copyright (c) 2019  Enrique Soriano, Gorka Guardiola
  *
  *  Based on Wrapfs:
  * Copyright (c) 1998-2017 Erez Zadok
