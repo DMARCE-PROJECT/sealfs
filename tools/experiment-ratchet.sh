@@ -2,10 +2,10 @@
 
 ksize=$((1024 * 1024 * 1024))
 nossd=/var/tmp
-ssd=/var/tmp/ssd
-once=/home/paurea/tmp/once
+ssd=/var/tmp/ssd	#not really
+once=$HOME/tmp/once
 datadir=/var/tmp/data
-code=/home/paurea/gits/sealfs
+code=$HOME/gits/sealfs
 wrounds=1000
 
 if mount | grep -q 'type sealfs'
@@ -41,7 +41,7 @@ fi
 shared='-s'
 nprocs=1
 
-for r in $ssd
+for r in $ssd	#$nossd
 do
         for shared in '-s' '-p'
         do
