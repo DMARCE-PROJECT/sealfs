@@ -65,7 +65,7 @@ main(int argc, char *argv[])
 		err(1, "can't read lheader");
 	if(DEBUG)
 		fprintf(stderr, "read %lu bytes\n", sizeof(lheader));
-	printf("magic: %ld\n", lheader.magic);
+	printf("magic: %#lx\n", lheader.magic);
 	dump(lf);
 	fclose(lf);
 	exit(EXIT_SUCCESS);

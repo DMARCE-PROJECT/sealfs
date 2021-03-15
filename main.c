@@ -158,10 +158,10 @@ static int read_headers(struct sealfs_sb_info *info)
 		return -1;
 	}
 	pr_notice("sealfs: maxkfilesz: %lld\n", info->maxkfilesz);
-	pr_notice("sealfs: kheader magic: %lld burnt: %lld\n",
+	pr_notice("sealfs: kheader magic: %#llx burnt: %lld\n",
 			info->kheader.magic,
 			info->kheader.burnt);
-	pr_notice("sealfs: lheader magic: %lld\n",
+	pr_notice("sealfs: lheader magic: %#llx\n",
 			info->lheader.magic);
 	return 0;
 }
