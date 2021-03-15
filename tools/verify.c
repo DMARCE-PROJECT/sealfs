@@ -48,6 +48,19 @@ struct Rename {
 };
 typedef struct Rename Rename;
 
+Rename *
+newrename(uint64_t inode, uint64_t newinode)
+{
+	Rename *r;
+	r = malloc(sizeof(Rename));
+	memset(r, 0, sizeof(Rename));
+	if(r == NULL)
+		err(1, "out of memory");
+	r->inode = inode;
+	r->newinode = newinode;
+	return r;
+}
+
 static void
 scandirfiles(char *path, Ofile **ofiles, Rename *renames)
 {
@@ -300,12 +313,10 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		if(o == NULL && e.inode != FAKEINODE)
 			errx(1, "file with inode %ld not found!",
 				e.inode);
-
-
-		if(e.inode == FAKEINODE)
-			fd = -1;
-		else
+		fd = -1;
+		if(e.inode != FAKEINODE)
 			fd = o->fd;
+			
 		if(!nratchet_detected && e.ratchetoffset >= 1){
 			nratchet_detected = nratchet_detect(&e, fd, kf, &nratchet);
 		}
@@ -471,15 +482,10 @@ main(int argc, char *argv[])
 			if(argv[i][0] == '-' && argv[i][1] == 'D')
 				setdebugs(argv[i]+2); 
 			else if(argv[i][0] == '-' && atoi(argv[i]+1) != 0){
-				if(i+1 == argc) {
+				if(i+1 >= argc) {
 					usage();
 				}
-				r = malloc(sizeof(Rename));
-				memset(r, 0, sizeof(Rename));
-				if(r == NULL)
-					err(1, "out of memory");
-				r->inode = atoi(argv[i]+1);
-				r->newinode = atoi(argv[i+1]);
+				r = newrename(atoi(argv[i]+1), atoi(argv[i+1]));
 				HASH_ADD(hh, renames, inode, sizeof(uint64_t), r);
 				i++;
 			}else
@@ -499,11 +505,8 @@ main(int argc, char *argv[])
 				if(inode <= 0 || begin < 0 || end < begin)
  					usage();
 				fprintf(stderr, "WARNING: verifying only "
-					"one inode: %ld from byte %ld"
-					" to byte %ld\n",
-					inode,
-					begin,
-					end);
+					"one inode: %ld from byte %ld to byte %ld\n",
+					inode, begin, end);
 				i+=3;
 			}else
 				usage();
