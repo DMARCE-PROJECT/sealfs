@@ -48,7 +48,8 @@ dd if=/dev/zero of=$SEALHD bs=1 count=1 seek=4G > /dev/null 2>&1
 mkfs.ext3 $SEALHD > /dev/null 2>&1
 mkdir -p /tmp/hd
 sudo mount -o loop,user $SEALHD /tmp/hd || exit 1
-ksize=$((1024 * 1024 * 1024))
+#used to be 1G.
+ksize=$((128 * 1024 * 1024))
 sudo /var/tmp/prep /tmp/hd/.SEALFS.LOG /tmp/hd/k1 /tmp/hd/k2 $ksize
 sudo umount $SEALHD
 

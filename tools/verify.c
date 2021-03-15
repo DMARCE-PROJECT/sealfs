@@ -261,7 +261,7 @@ inrange(struct sealfs_logfile_entry *e, uint64_t begin, uint64_t end)
 }
 
 enum {
-	MAXNRATCHET=512
+	MAXNRATCHET = 512
 };
 
 /*
@@ -311,26 +311,25 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			fd = o->fd;
 		if(!nratchet_detected && e.ratchetoffset >= 1){
 			lastkeyoff = -1;	//work without key cache, rekey each time
-			lastroff = 0;
+			lastroff = e.ratchetoffset + 1;
 			nratchet_detected = 1;
 			if(isentryok(&e, fd, kf, key, lastkeyoff, lastroff, nratchet)){
 				fprintf(stderr, "default nratchet: %d\n", nratchet);
-				break;
-			}
-			nratchet = 1;
-			while(!isentryok(&e, fd, kf, key, lastkeyoff, lastroff, nratchet)){
-				nratchet++;
-				if(nratchet > MAXNRATCHET){
-					fprintf(stderr, "can't find an nratchet that works\n");
-					nratchet = NRATCHET;	//continue as before
-					nratchet_detected = 0;
-					break;
+			}else{
+				nratchet = 1;
+				while(!isentryok(&e, fd, kf, key, lastkeyoff, lastroff, nratchet)){
+					nratchet++;
+					if(nratchet > MAXNRATCHET){
+						fprintf(stderr, "can't find an nratchet that works\n");
+						nratchet = NRATCHET;	//continue as before
+						nratchet_detected = 0;
+						break;
+					}
 				}
 			}
 			if(nratchet_detected)
 				fprintf(stderr, "nratchet detected: %d\n", nratchet);
 		}
-
 		if(e.inode == FAKEINODE){
 			if(!isentryok(&e, fd, kf, key, lastkeyoff, lastroff, nratchet)){
 				fprintf(stderr, "can't verify entry: ");

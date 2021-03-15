@@ -184,7 +184,7 @@ isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf,
 	isrekey = lastkeyoff != e->koffset;
 	if(lastkeyoff == -1)
 		lastkeyoff = szhdr;
-	if(lastroff < e->ratchetoffset){
+	if(lastroff > e->ratchetoffset){
 		lastroff = 0;
 		isrekey = 1;
 	}
