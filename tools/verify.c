@@ -440,7 +440,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "USAGE: verify dir kalpha kbeta"
-			" [-Dh] [-r nratchet] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n");
+			" [-Dh] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n");
 	exit(1);
 }
 
@@ -510,15 +510,6 @@ main(int argc, char *argv[])
 		}else if(strncmp(argv[i], "-n", 2) == 0){
 			if(argc > i+1){
 				lname = argv[i+1];
-				i++;
-			}else{
-				usage();
-			}
-		}else if(strncmp(argv[i], "-r", 2) == 0){
-			if(argc > i+1){
-				nratchet = atoi(argv[i+1]);
-				if(nratchet <= 0)
-					usage();
 				i++;
 			}else{
 				usage();
