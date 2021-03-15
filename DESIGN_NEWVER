@@ -5,7 +5,7 @@ Tested for linux kernel 5.4.0-66
 
 Ratchet:
 	There is an ratchetoffset, from 0 to NRATCHET-1 (nratchet is
-	a mount option and -r N to verify).  Each log entry has an
+	a mount option and autodetection to verify).  Each log entry has an
 	associated ratchet offset, when it is zero (rekeying), there
 	is a new key read from the file. When it is different than
 	zero the key is KeyN=HMAC(KeyN-1, [ratchetoffset|NRATCHET]).
