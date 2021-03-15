@@ -639,24 +639,22 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 
 	if(burn_entry(file, buf, wr, woffset, sbinfo) < 0){
 		printk(KERN_CRIT "sealfs: fatal error! "
-			"can't burn entry for inode: %lld)\n",
-			(long long) ino->i_ino);
+			"can't burn entry for inode: %ld)\n",
+			ino->i_ino);
 		wr = -EIO;
 	}
 	if(debug)
 		printk(KERN_INFO
 			"sealfs: append-only write  "
-			"to file %s offset: %lld count: %lld\n",
+			"to file %s offset: %lld count: %ld\n",
 			file->f_path.dentry->d_name.name,
-			(long long) woffset,
-			(long long) count);	
+			woffset,
+			count);	
 	if(wr != count) {
-		printk(KERN_INFO "sealfs: warning! %lld bytes "
-			"of %lld bytes have been written"
-			" (inode: %lld)\n",
-			(long long) wr,
-			(long long) count,
-			(long long) ino->i_ino);
+		printk(KERN_INFO "sealfs: warning! %ld bytes "
+			"of %ld bytes have been written"
+			" (inode: %ld)\n",
+			wr, count, ino->i_ino);
 	}
 	return wr;
 }
