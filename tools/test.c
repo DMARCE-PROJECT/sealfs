@@ -99,17 +99,15 @@ child(int fd, int wsize, int wrounds)
 		end = ( ((uint64_t)cycles_high1 << 32) | cycles_low1 );
 
 		if ( (end - start) < 0) {
-			errx(1, "CRITICAL ERROR: loop:%d  start = %llu, end = %llu\n",
-				i,
-				(long long unsigned int) start,
-				(long long unsigned int) end);
+			errx(1, "CRITICAL ERROR: loop:%d  start = %lu, end = %lu\n",
+				i, start, end);
  		} else {
 			times[i] = end - start;
 		}
 	}
 	close(fd);
 	for(i=0; i<wrounds; i++){
-		printf("%lld\n", (long long) times[i]);
+		printf("%ld\n", times[i]);
 	}
 }
 
