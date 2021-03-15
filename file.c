@@ -563,7 +563,6 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 void sealfs_seal_ratchet(struct sealfs_sb_info *spd)
 {
 	unsigned char c;
-	long burnt;
 	c = 0;
 
 	if(DEBUGENTRY)
