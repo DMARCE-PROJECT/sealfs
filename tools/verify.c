@@ -278,14 +278,11 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 	Ofile *o = NULL;
 	uint64_t c = 0;
 	int szhdr = sizeof(struct sealfs_keyfile_header);
-	unsigned char key[FPR_SIZE];
-	uint64_t lastkeyoff;
-	uint64_t lastroff;
+	KeyCache kc;
 	int nratchet_detected;
 	int fd;
 
-	lastkeyoff = -1;
-	lastroff = 0;
+	drop(&kc);
 	nratchet_detected = 0;
 
 	scandirfiles(path, &ofiles, renames);
@@ -310,14 +307,15 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		else
 			fd = o->fd;
 		if(!nratchet_detected && e.ratchetoffset >= 1){
-			lastkeyoff = -1;	//work without key cache, rekey each time
-			lastroff = e.ratchetoffset + 1;
+			drop(&kc);
 			nratchet_detected = 1;
-			if(isentryok(&e, fd, kf, key, lastkeyoff, lastroff, nratchet)){
+			if(isentryok(&e, fd, kf, &kc, nratchet)){
 				fprintf(stderr, "default nratchet: %d\n", nratchet);
 			}else{
 				nratchet = 1;
-				while(!isentryok(&e, fd, kf, key, lastkeyoff, lastroff, nratchet)){
+				drop(&kc);
+				while(!isentryok(&e, fd, kf, &kc, nratchet)){
+					drop(&kc);
 					nratchet++;
 					if(nratchet > MAXNRATCHET){
 						fprintf(stderr, "can't find an nratchet that works\n");
@@ -331,7 +329,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 				fprintf(stderr, "nratchet detected: %d\n", nratchet);
 		}
 		if(e.inode == FAKEINODE){
-			if(!isentryok(&e, fd, kf, key, lastkeyoff, lastroff, nratchet)){
+			if(!isentryok(&e, fd, kf, &kc, nratchet)){
 				fprintf(stderr, "can't verify entry: ");
 				fprintentry(stderr, &e);
 				exit(1);
@@ -355,14 +353,12 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			//printf("checking entry: ");
 			//fprintentry(stdout, &e);
 		}
-		if(checkjqueues(&e, o, nratchet) < 0 || ! isentryok(&e, fd, kf, key, lastkeyoff, lastroff, nratchet)){
+		if(checkjqueues(&e, o, nratchet) < 0 || ! isentryok(&e, fd, kf, &kc, nratchet)){
 			fprintf(stderr, "can't verify entry: ");
 			fprintentry(stderr, &e);
 			exit(1);
 		}
 done:
-		lastkeyoff = e.koffset;
-		lastroff = e.ratchetoffset;
 		/*
 		 * check continuity if we are checking the whole log
 		 * it may still be correct (see checkjqueue), but warn the user

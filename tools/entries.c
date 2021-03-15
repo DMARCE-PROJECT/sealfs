@@ -127,19 +127,23 @@ fail:
 }
 
 static int
-ratchet_key(unsigned char *prevkey, unsigned char *newkey, uint64_t roff, uint64_t nratchet)
+ratchet_key(unsigned char *key, uint64_t roff, uint64_t nratchet)
 {
 	HMAC_CTX *c;
 	unsigned int sz;
 	int ret = -1;
 
 
+	if(DEBUGENTRY){
+		fprintf(stderr, "RATCHET: old, roff %lu ", roff);
+		dumpkey(key);
+	}
 	c = HMAC_CTX_new();
 	if(c == NULL){
 	        fprintf(stderr, "HMAC_init: error\n");
 		return -1;
 	}
- 	if(HMAC_Init_ex(c, prevkey, FPR_SIZE, EVP_sha256(), NULL) == 0){
+ 	if(HMAC_Init_ex(c, key, FPR_SIZE, EVP_sha256(), NULL) == 0){
                 fprintf(stderr, "HMAC_init: error\n");
 		goto fail;
   	}
@@ -152,7 +156,7 @@ ratchet_key(unsigned char *prevkey, unsigned char *newkey, uint64_t roff, uint64
 		goto fail;
 	}
 
- 	if(HMAC_Final(c, newkey, &sz) == 0){
+ 	if(HMAC_Final(c, key, &sz) == 0){
 		fprintf(stderr, "HMAC_Final: error");
 		goto fail;
 	}
@@ -162,60 +166,83 @@ ratchet_key(unsigned char *prevkey, unsigned char *newkey, uint64_t roff, uint64
 	}
 	ret = 0;
 	if(DEBUGENTRY){
-		fprintf(stderr, "RATCHET: old, roff %lu ", roff);
-		dumpkey(prevkey);
 		fprintf(stderr, "RATCHET: new");
-		dumpkey(newkey);
+		dumpkey(key);
 	}
 fail:
 	HMAC_CTX_free(c);
 	return ret;
 }
-int
-isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf,
-		unsigned char *oldkey, uint64_t lastkeyoff, uint64_t lastroff, int nratchet)
+
+void
+drop(KeyCache *kc)
 {
-	unsigned char h[FPR_SIZE];
-	unsigned char k[FPR_SIZE];
-	int isrekey;
+	kc->lastkeyoff = -1;
+	kc->lastroff = -1;
+	memset(kc->key, 0, FPR_SIZE);
+}
+int
+isrekey(KeyCache *kc, struct sealfs_logfile_entry *e)
+{
+	return kc->lastkeyoff != e->koffset;
+}
+
+int
+ismiss(KeyCache *kc, struct sealfs_logfile_entry *e)
+{
+	return isrekey(kc, e) || kc->lastroff != e->ratchetoffset;
+}
+
+int
+loadkey(KeyCache *kc, struct sealfs_logfile_entry *e, FILE *kf)
+{
+	if(fseek(kf, (long) e->koffset, SEEK_SET) < 0){
+		fprintf(stderr, "can't seek kbeta\n");
+		return -1;
+	}
+	if(fread(kc->key, FPR_SIZE, 1, kf) != 1){
+		fprintf(stderr, "can't read kbeta\n");
+		return -1;
+	}
+	if(DEBUGENTRY){
+		fprintf(stderr, "read key\n");
+		dumpkey(kc->key);
+	}
+	kc->lastkeyoff = e->koffset;
+	kc->lastroff = 0;
+	return 0;
+}
+
+void
+ratchet(KeyCache *kc, FILE *kf, struct sealfs_logfile_entry *e, int nratchet)
+{
 	int i;
-	
-	int szhdr = sizeof(struct sealfs_keyfile_header);
-	isrekey = lastkeyoff != e->koffset;
-	if(lastkeyoff == -1)
-		lastkeyoff = szhdr;
-	if(lastroff > e->ratchetoffset){
-		lastroff = 0;
-		isrekey = 1;
-	}
-	// TO HELP DEBUG ISREKEY isrekey = 1;
-	if(e->ratchetoffset == 0 || isrekey) {
-		if(fseek(kf, (long) e->koffset, SEEK_SET) < 0){
-			fprintf(stderr, "can't seek kbeta\n");
-			return 0;
-		}
-		if(fread(k, FPR_SIZE, 1, kf) != 1){
-			fprintf(stderr, "can't read kbeta\n");
-			return 0;
-		}
-		memmove(oldkey, k, FPR_SIZE);
-		if(DEBUGENTRY){
-			fprintf(stderr, "read key\n");
-			dumpkey(k);
-		}
-	}
-	for(i = lastroff; i < e->ratchetoffset; i++){
+	for(i = kc->lastroff; i < e->ratchetoffset; i++){
 		if(DEBUGENTRY){
 			fprintf(stderr, "RERATCHET %d, off: %lu\n", i+1, e->ratchetoffset);
 		}
-		ratchet_key(oldkey, k, (uint64_t)(i+1), nratchet);
-		memmove(oldkey, k, FPR_SIZE);
+		ratchet_key(kc->key, (uint64_t)(i+1), nratchet);
 	}
+	kc->lastroff = e->ratchetoffset;
+}
+
+
+int
+isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf,
+		KeyCache *kc, int nratchet)
+{
+	unsigned char h[FPR_SIZE];
+
+	// TO HELP DEBUG ISREKEY isrekey = 1;
+	if(e->ratchetoffset == 0 || isrekey(kc, e)) {
+		loadkey(kc, e, kf);
+	}
+	ratchet(kc, kf, e, nratchet);
 	if(DEBUGENTRY){
 		fprintf(stderr, "verifying key: ");
-		dumpkey(k);
+		dumpkey(kc->key);
 	}
-	if(makehmac(logfd, k, e, h) < 0){
+	if(makehmac(logfd, kc->key, e, h) < 0){
 		fprintf(stderr, "can't make hmac\n");
 		return 0;
 	}
