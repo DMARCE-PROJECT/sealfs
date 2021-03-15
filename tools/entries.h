@@ -17,3 +17,4 @@ extern int isrekey(KeyCache *kc, struct sealfs_logfile_entry *e);
 extern int ismiss(KeyCache *kc, struct sealfs_logfile_entry *e);
 extern int loadkey(KeyCache *kc, struct sealfs_logfile_entry *e, FILE *kf);
 extern void ratchet(KeyCache *kc, FILE *kf, struct sealfs_logfile_entry *e, int nratchet);
+extern int nratchet_detect(struct sealfs_logfile_entry *e, int logfd, FILE *kf, int *nratchet);

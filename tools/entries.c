@@ -248,3 +248,40 @@ isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf,
 	}
 	return memcmp(h, e->fpr, FPR_SIZE) == 0;
 }
+
+enum {
+	MAXNRATCHET = 512
+};
+
+int
+nratchet_detect(struct sealfs_logfile_entry *e, int logfd, FILE *kf, int *nratchet)
+{
+	int nratchet_detected;
+	int nr;
+	KeyCache kc;
+
+	nr = *nratchet;
+	drop(&kc);
+	nratchet_detected = 1;
+	if(isentryok(e, logfd, kf, &kc, nr)){
+		fprintf(stderr, "default nratchet: %d\n", nr);
+	}else{
+		nr = 1;
+		drop(&kc);
+		while(!isentryok(e, logfd, kf, &kc, nr)){
+			nr++;
+			if(nr > MAXNRATCHET){
+				fprintf(stderr, "can't find an nratchet that works\n");
+				nr = NRATCHET;	//continue as before
+				nratchet_detected = 0;
+				break;
+			}
+			drop(&kc);
+		}
+	}
+	drop(&kc);
+	if(nratchet_detected)
+		fprintf(stderr, "nratchet detected: %d\n", nr);
+	*nratchet = nr;
+	return nratchet_detected;
+}

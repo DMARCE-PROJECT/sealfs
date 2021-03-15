@@ -307,26 +307,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		else
 			fd = o->fd;
 		if(!nratchet_detected && e.ratchetoffset >= 1){
-			drop(&kc);
-			nratchet_detected = 1;
-			if(isentryok(&e, fd, kf, &kc, nratchet)){
-				fprintf(stderr, "default nratchet: %d\n", nratchet);
-			}else{
-				nratchet = 1;
-				drop(&kc);
-				while(!isentryok(&e, fd, kf, &kc, nratchet)){
-					drop(&kc);
-					nratchet++;
-					if(nratchet > MAXNRATCHET){
-						fprintf(stderr, "can't find an nratchet that works\n");
-						nratchet = NRATCHET;	//continue as before
-						nratchet_detected = 0;
-						break;
-					}
-				}
-			}
-			if(nratchet_detected)
-				fprintf(stderr, "nratchet detected: %d\n", nratchet);
+			nratchet_detect(&e, fd, kf, &nratchet);
 		}
 		if(e.inode == FAKEINODE){
 			if(!isentryok(&e, fd, kf, &kc, nratchet)){
