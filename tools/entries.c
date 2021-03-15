@@ -27,16 +27,16 @@ dumpkey(unsigned char *key)
 void
 fprintentry(FILE *f, struct sealfs_logfile_entry *e)
 {
-	fprintf(f, "ratchetoffset: %lld "
-		"inode: %lld "
-		"offset: %lld "
-		"count: %lld "
-		"koffset: %lld\n",
-		(long long) e->ratchetoffset,
-		(long long) e->inode,
-		(long long) e->offset,
-		(long long) e->count,
-		(long long) e->koffset);
+	fprintf(f, "ratchetoffset: %ld "
+		"inode: %ld "
+		"offset: %ld "
+		"count: %ld "
+		"koffset: %ld\n",
+		e->ratchetoffset,
+		e->inode,
+		e->offset,
+		e->count,
+		e->koffset);
 }
 
 int
@@ -99,10 +99,10 @@ makehmac(int fd, unsigned char *key,
 			else
 				l = pread(fd, buf, Bufsz, e->offset+t);
 			if(l <= 0){
-		 	       fprintf(stderr, "can't read from file, offset: %lld "
+		 	       fprintf(stderr, "can't read from file, offset: %ld "
 			       		"premature EOF or error, "
 			       		" return value: %d\n",
-		 		       (long long)e->offset+t, l);
+		 		       e->offset+t, l);
 		 	       goto fail;
 			}
 	                if(HMAC_Update(c, buf, l) == 0){

@@ -37,11 +37,11 @@ dump(FILE* lf)
 		}
 		if(DEBUG)
 			fprintf(stderr, "read %lu bytes\n", sizeof(e));
-		fprintf(stdout, "#%lld\n", (long long) c);
+		fprintf(stdout, "#%ld\n", c);
 		fprintentry(stdout, &e);
 		c++;
 	}
- 	printf("%lld entries dumped\n", (long long) c);
+ 	printf("%ld entries dumped\n", c);
 }
 
 int
@@ -65,7 +65,7 @@ main(int argc, char *argv[])
 		err(1, "can't read lheader");
 	if(DEBUG)
 		fprintf(stderr, "read %lu bytes\n", sizeof(lheader));
-	printf("magic: %lld\n", (long long)lheader.magic);
+	printf("magic: %ld\n", lheader.magic);
 	dump(lf);
 	fclose(lf);
 	exit(EXIT_SUCCESS);

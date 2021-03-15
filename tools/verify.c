@@ -198,8 +198,8 @@ checktailofiles(Ofile *ofiles, int nratchet)
 		}
 		if(o->heap->count != 0){
 			fprintf(stderr, 
-				"disordered offsets pend for ofile inode: %lld fd: %d\n\t",
-	 			(long long)o->inode, o->fd);
+				"disordered offsets pend for ofile inode: %ld fd: %d\n\t",
+	 			o->inode, o->fd);
 			dumpheap(o->heap, nratchet);
 			err=1;
 		}
@@ -245,8 +245,8 @@ dumpofiles(Ofile *ofiles)
 
 	fprintf(stderr, "Ofiles: \n");
     	for(o = ofiles; o != NULL; o = o->hh.next)
-		 fprintf(stderr, "ofile inode: %lld fd: %d\n",
-	 		(long long)o->inode, o->fd);
+		 fprintf(stderr, "ofile inode: %ld fd: %d\n",
+	 		o->inode, o->fd);
 }
 
 
@@ -298,8 +298,8 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		HASH_FIND(hh, ofiles, &e.inode, sizeof(uint64_t), o);
 
 		if(o == NULL && e.inode != FAKEINODE)
-			errx(1, "file with inode %lld not found!",
-				(long long) e.inode);
+			errx(1, "file with inode %ld not found!",
+				e.inode);
 
 
 		if(e.inode == FAKEINODE)
@@ -307,7 +307,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		else
 			fd = o->fd;
 		if(!nratchet_detected && e.ratchetoffset >= 1){
-			nratchet_detect(&e, fd, kf, &nratchet);
+			nratchet_detected = nratchet_detect(&e, fd, kf, &nratchet);
 		}
 		if(e.inode == FAKEINODE){
 			if(!isentryok(&e, fd, kf, &kc, nratchet)){
@@ -345,10 +345,10 @@ done:
 		 * it may still be correct (see checkjqueue), but warn the user
 		 */
 		if(inode == 0 && e.koffset != szhdr + (c/nratchet)*FPR_SIZE){
-			fprintf(stderr, "warning: koffset not correct: %lld "
-					"should be %lld for entry: ",
-					(long long) e.koffset,
-					(long long) sizeof(struct sealfs_keyfile_header)
+			fprintf(stderr, "warning: koffset not correct: %ld "
+					"should be %ld for entry: ",
+					 e.koffset,
+					sizeof(struct sealfs_keyfile_header)
 						+  (c*nratchet + e.ratchetoffset)*FPR_SIZE);
 			fprintentry(stderr, &e);
 			//exit(1);
@@ -360,7 +360,7 @@ done:
 	freerenames(renames);
 	if(c == 0)
  		errx(1, "error, no entries in the log\n");
-	printf("%lld entries verified, correct logs\n", (long long) c);
+	printf("%ld entries verified, correct logs\n", c);
 }
 
 static void
@@ -499,11 +499,11 @@ main(int argc, char *argv[])
 				if(inode <= 0 || begin < 0 || end < begin)
  					usage();
 				fprintf(stderr, "WARNING: verifying only "
-					"one inode: %lld from byte %lld"
-					" to byte %lld\n",
-					(long long) inode,
-					(long long) begin,
-					(long long) end);
+					"one inode: %ld from byte %ld"
+					" to byte %ld\n",
+					inode,
+					begin,
+					end);
 				i+=3;
 			}else
 				usage();
@@ -529,7 +529,7 @@ main(int argc, char *argv[])
 		err(1, "can't read lheader");
 	if(lheader.magic != kalphahdr.magic || lheader.magic != kbetahdr.magic)
 		errx(1, "magic numbers don't match");
-	printf("k1 burnt: %lld\n", (long long)kalphahdr.burnt);
+	printf("k1 burnt: %ld\n", kalphahdr.burnt);
 	checkkeystreams(alphaf, betaf, kalphahdr.burnt);
 	verify(betaf, lf, dir, inode, begin, end, renames, nratchet);
 	if(inode != 0)
