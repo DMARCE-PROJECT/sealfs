@@ -27,6 +27,7 @@ static struct kmem_cache *sealfs_inode_cachep;
  */
 void sealfs_cleanup(struct sealfs_sb_info *spd)
 {
+	memset(spd->buf, 0, sizeof(spd->buf));
  	kfree(spd->kpathname);
 	kfree(spd->lpathname);
 	if(spd->lfile){
@@ -55,6 +56,9 @@ static void sealfs_put_super(struct super_block *sb)
 	if (waitqueue_active(&spd->thread_q))
 		wake_up(&spd->thread_q);
 	sealfs_seal_ratchet(spd);
+	kthread_stop(spd->ratchet_thread);
+	if (waitqueue_active(&spd->producerq))
+		wake_up(&spd->producerq);
 	sealfs_update_hdr(spd);
 	/* Q free the extra info resources */
  	sealfs_cleanup(spd);
