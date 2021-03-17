@@ -1,7 +1,7 @@
 
-
 This is the first SealFS prototype, based on wrapfs. The module has
-been ported to 5.4.0-65 (the first version was for 4.8.17, then 4.15.0, see the tags, though some important BUGS have been removed since then).
+been ported to 5.4.0-65 (the first version was for 4.8.17, then 4.15.0, 
+see the tags, though some important BUGS have been removed since then).
 
 SealFS is a Linux kernel module that implements a stackable file system
 that authenticates the written data to provide tamper-evident logs. It
@@ -12,4 +12,7 @@ When SealFS is mounted on top of another file system, it protects
 all the files under the mount point. It only allows append-only write
 operations and authenticates the data written to the underlying files
 (served by other file system).
+
+If you are interested in the version described by the paper, go to
+the tag "submitted".
 
