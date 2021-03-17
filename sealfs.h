@@ -43,6 +43,7 @@
 #include <crypto/hash.h>
 #include <linux/random.h>
 #include <linux/stat.h>
+#include <linux/circ_buf.h>
 #include "sealfstypes.h" //shared with userland tools
 
 
@@ -110,6 +111,17 @@ struct sealfs_hmac_state {
 	struct shash_desc *hash_desc;
 };
 
+enum{
+	NBUFRATCHET=64,	//must be 2^n
+};
+
+struct sealfs_keydesc{
+	unsigned char key[FPR_SIZE];
+	loff_t	roff;
+	loff_t	keyoff;
+	
+};
+
 /* sealfs super-block data in memory */
 struct sealfs_sb_info {
 	struct super_block *lower_sb;
@@ -129,10 +141,18 @@ struct sealfs_sb_info {
 	//	burnt is tracked by the atomic above
 	struct sealfs_keyfile_header kheader;
 	struct sealfs_logfile_header lheader;
-
-	//protected by readkey file/burn mutex (bbmutex)
-	unsigned char key[FPR_SIZE];
 	int ratchetoffset;
+
+
+	spinlock_t consumer_lock;
+	spinlock_t producer_lock;
+	unsigned long head;
+	unsigned long tail;
+	unsigned long size;
+	struct sealfs_keydesc buf[NBUFRATCHET];
+	wait_queue_head_t consumerq;
+	wait_queue_head_t producerq;
+	struct task_struct *ratchet_thread;
 
 	loff_t maxkfilesz;
 	wait_queue_head_t thread_q;	//first is different, higher freq and woken by clients

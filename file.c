@@ -343,6 +343,86 @@ static int sealfs_thread(void *data)
 	return sealfs_thread_main(data, HZ, 1);
 }
 
+static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ratchetoff)
+{
+	loff_t nr;
+	loff_t t;
+	loff_t oldoff, keyoff;
+	loff_t roff;
+	loff_t	ret;
+
+	ret = -1;
+	oldoff = atomic_long_read(&sb->burnt);
+	roff = sb->ratchetoffset;
+	sb->ratchetoffset = (roff+1)%sb->nratchet;
+	if(likely(roff != 0)){
+		if(DEBUGENTRY)
+			printk("sealfs: RATCHET koff %lld, roff: %lld", oldoff, roff);
+		ratchet_key(key, roff, sb->nratchet);
+		ret = oldoff-FPR_SIZE;
+		goto end;
+	}
+	if(DEBUGENTRY)
+		printk("sealfs: BURN burn: %lld roff: %lld", oldoff, roff);
+
+	if(oldoff + FPR_SIZE >= sb->maxkfilesz){
+			printk(KERN_ERR "sealfs: burnt key\n");
+			goto end;
+	}
+	keyoff = oldoff;
+	t = 0ULL;
+	
+	while(t < FPR_SIZE){
+		nr = kernel_read(sb->kfile, key+t, ((loff_t)FPR_SIZE)-t, &keyoff);
+		if(unlikely(nr < 0)) {
+			printk(KERN_ERR "sealfs: error while reading\n");
+			goto end;
+		}
+		if(nr == 0){
+			printk(KERN_ERR "sealfs: key file is burnt\n");
+			goto end;
+		}
+  		t += nr;
+	}
+	ret = oldoff;
+end:
+	*ratchetoff = roff;
+	return ret;
+}
+
+static int sealfs_ratchet_thread(void *data)
+{
+	loff_t roff, keyoff;
+	unsigned char key[FPR_SIZE];
+
+	struct sealfs_sb_info *sb=(struct sealfs_sb_info *)data;
+		unsigned long head;
+		unsigned long tail;
+	while(!kthread_should_stop()){
+		spin_lock(&sb->producer_lock);
+		head = sb->head;
+		tail = READ_ONCE(sb->tail);
+
+		if (CIRC_SPACE(head, tail, sb->size) >= 1) {
+
+			keyoff = read_key(sb, key, &roff);
+
+			sb->buf[tail].roff = roff;
+			sb->buf[tail].keyoff = keyoff;
+			memmove(sb->buf[tail].key, key, FPR_SIZE);
+
+			smp_store_release(&sb->head, (head + 1) & (sb->size - 1));
+			wake_up(&sb->consumerq);
+			spin_unlock(&sb->producer_lock);
+		}else{
+			spin_unlock(&sb->producer_lock);
+			wait_event_interruptible(sb->producerq, kthread_should_stop()
+				|| CIRC_SPACE(head, tail, sb->size) >= 1);
+		}
+	}
+	return 0;
+}
+
 enum {
 	NPRIMES=10,
 };
@@ -364,6 +444,7 @@ void sealfs_stop_thread(struct sealfs_sb_info *sb)
 	for(i = 0; i < NBURNTHREADS; i++){
 		kthread_stop(sb->sync_thread[i]);
 	}
+	kthread_stop(sb->ratchet_thread);
 	
 }
 void sealfs_start_thread(struct sealfs_sb_info *sb)
@@ -371,13 +452,23 @@ void sealfs_start_thread(struct sealfs_sb_info *sb)
 	int i;
 	sb->nthreads = 0;
 	init_waitqueue_head(&sb->thread_q);
-	sb->sync_thread[0] = kthread_run(sealfs_thread, sb, "sealfs");
+	sb->sync_thread[0] = kthread_run(sealfs_slow_thread, sb, "sealfs");
 	sb->nthreads++;
 	init_waitqueue_head(&sb->slow_thread_q);
 	for(i = 1; i < NBURNTHREADS; i++){
-		sb->sync_thread[i] = kthread_run(sealfs_slow_thread, sb, "sealfs");
+		sb->sync_thread[i] = kthread_run(sealfs_thread, sb, "sealfs");
 		sb->nthreads++;
 	}
+
+	init_waitqueue_head(&sb->consumerq);
+	init_waitqueue_head(&sb->producerq);
+	sb->head = 1;
+	sb->tail = 0;
+	sb->size = NBUFRATCHET;
+	spin_lock_init(&sb->consumer_lock);
+	spin_lock_init(&sb->producer_lock);
+	sb->ratchet_thread = kthread_run(sealfs_ratchet_thread, sb, "sealfs");
+
 }
 
 int sealfs_update_hdr(struct sealfs_sb_info *sb)
@@ -404,92 +495,38 @@ int sealfs_update_hdr(struct sealfs_sb_info *sb)
 	return 0;
 }
 
-/*
- * This operation need to be atomic for clients, bbmutex needs to be taken when called
- *	if it wasn't, one client overtaking other would provoke Burn before reading key (bad)
- * There are 3 ways to go about this:
- * 	- The one implemented and described in this code.
- *		The operation to and advance sb->burnt locks the file until read finishes (burn after read)
- *			then the variable is updated with atomic operations.
- *		Other thread(s) can asynchronously consult sb->burnt with atomic operations
- *			to know until what offset to burn.
- *		Kheader needs to be composed when writing.
- *	- NOT IMPLEMENTED:
- *		Then the client burns advances  sb->burnt and burns its own key 
- * 		in the same thread guaranteeing causal dependency. PRO: the lock is only
- *		taken when advancing burnt (a variable) which commits
- *		the offset for reading and burning. Can use a spin lock. Really simple.
- *		CON: cannot be burnt asynchronously, so the client pays for everything inline
- *		has to wait for read and burn to finish (with cache it may not be so bad).
- *		To implement: uncomment file.c:321,326 change the locking and don't run the thread.
- *			not compatible with what is implemented. You release the lock before read and
- *			the burning thread may overcome the reading thread and
- *				Read before burning
- *	- NOT IMPLEMENTED: use a heap like verify does. Read an offset and add to heap. The burner
- *		thread takes from heap in order and when possible burns and advances.
- *		Secondary threads can use the burnt advanced by primary thread.
- *		PRO: really fast.
- *		CON: too complex, specially the case when the heap is full and the client needs to block.
- */
-static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ratchetoff)
+
+static loff_t get_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ratchetoff)
 {
-	loff_t nr;
-	loff_t t;
-	loff_t oldoff, keyoff;
-	loff_t roff;
-	loff_t	ret;
-
-	ret = -1;
-	mutex_lock(&sb->bbmutex);
-	/*
-	  * Atomically
-	 * 	- FPR_SIZE reading in key file (out of reach for futures reads)
-	 *	- Advance sb->kheader.burnt (Then burn *after* reading when bbmutex lock is released)
-	 *	- Later (without lock) writing sizeof(struct sealfs_logfile_entry) in log entry in the correct offset
-	 *	- Updating offset header at start of key file at some point in the future
-	 *	- We will burn what is read asynchronously in the kthread driven by sb->kheader.burnt
-	 *	-> NEW, with ratchet, we only advance burns when we run out of ratchets.
-	 */
-	oldoff = atomic_long_read(&sb->burnt);
-	roff = sb->ratchetoffset;
-	sb->ratchetoffset = (roff+1)%sb->nratchet;
-	if(likely(roff != 0)){
-		if(DEBUGENTRY)
-			printk("sealfs: RATCHET koff %lld, roff: %lld", oldoff, roff);
-		ratchet_key(sb->key, roff, sb->nratchet);
-		memmove(key, sb->key, FPR_SIZE);
-		ret = oldoff-FPR_SIZE;
-		goto end;
-	}
-	if(DEBUGENTRY)
-		printk("sealfs: BURN burn: %lld roff: %lld", oldoff, roff);
-
-	if(oldoff + FPR_SIZE >= sb->maxkfilesz){
-			printk(KERN_ERR "sealfs: burnt key\n");
-			goto end;
-	}
-	keyoff = oldoff;
-	t = 0ULL;
-	
-	while(t < FPR_SIZE){
-		nr = kernel_read(sb->kfile, key+t, ((loff_t)FPR_SIZE)-t, &keyoff);
-		if(unlikely(nr < 0)) {
-			printk(KERN_ERR "sealfs: error while reading\n");
-			goto end;
+	loff_t keyoff;
+	unsigned long head;
+	unsigned long tail;
+	int got;
+	got = 0;
+	while(!got){	
+		spin_lock(&sb->consumer_lock);
+		/* Read index before reading contents at that index. */
+		head = smp_load_acquire(&sb->head);
+		tail = sb->tail;
+		
+		if (CIRC_CNT(head, tail, sb->size) >= 1) {
+		
+			/* consume item */
+			got++;
+			*ratchetoff = sb->buf[tail].roff;
+			keyoff = sb->buf[tail].keyoff;
+			memmove(key, sb->buf[tail].key, FPR_SIZE);
+		        /* Finish reading descriptor before incrementing tail. */
+			smp_store_release(&sb->tail, (sb->tail + 1) & (sb->size - 1));
+			spin_unlock(&sb->consumer_lock);
+			wake_up(&sb->producerq);
+		}else{
+			spin_unlock(&sb->consumer_lock);
+			wait_event_interruptible(sb->consumerq, kthread_should_stop()
+				|| CIRC_SPACE(head, tail, sb->size) >= 1);
 		}
-		if(nr == 0){
-			printk(KERN_ERR "sealfs: key file is burnt\n");
-			goto end;
-		}
-  		t += nr;
 	}
-	atomic_long_set(&sb->burnt, oldoff+FPR_SIZE);
-	memmove(sb->key, key, FPR_SIZE);
-	ret = oldoff;
-end:
-	mutex_unlock(&sb->bbmutex);
-	*ratchetoff = roff;
-	return ret;
+	return keyoff;
 }
 
 static void
@@ -523,11 +560,14 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 	lentry.offset = (uint64_t) offset;
 	lentry.count = (uint64_t) count;
 
-	keyoff = read_key(sb, key, &roff);
+	mutex_lock(&sb->bbmutex);
+	keyoff = get_key(sb, key, &roff);
 	if(keyoff < 0) {
 		printk(KERN_ERR "sealfs: readkey failed\n");
 		return -1;
 	}
+	atomic_long_set(&sb->burnt, keyoff-FPR_SIZE);
+	mutex_unlock(&sb->bbmutex);
 	if(DEBUGENTRY)
 		dumpkey(key);
 
@@ -572,7 +612,7 @@ void sealfs_seal_ratchet(struct sealfs_sb_info *spd)
 			printk("sealfs: RATCHETSEAL roff: %d", spd->ratchetoffset);
 		burn_entry(NULL, &c, 0, 0, spd);
 	}
-	memset(spd->key, 0, FPR_SIZE);
+	memset(spd->buf, 0, sizeof(spd->buf));
 }
 
 /*
