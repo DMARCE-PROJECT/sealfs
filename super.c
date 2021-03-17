@@ -53,12 +53,8 @@ static void sealfs_put_super(struct super_block *sb)
 	atomic_dec(&s->s_active);
 
 	sealfs_stop_thread(spd);
-	if (waitqueue_active(&spd->thread_q))
-		wake_up(&spd->thread_q);
 	sealfs_seal_ratchet(spd);
 	kthread_stop(spd->ratchet_thread);
-	if (waitqueue_active(&spd->producerq))
-		wake_up(&spd->producerq);
 	sealfs_update_hdr(spd);
 	/* Q free the extra info resources */
  	sealfs_cleanup(spd);

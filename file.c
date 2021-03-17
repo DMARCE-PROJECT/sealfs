@@ -418,7 +418,7 @@ static int sealfs_ratchet_thread(void *data)
 			smp_store_release(&sb->head, (head + 1) & (sb->size - 1));
 			wake_up(&sb->consumerq);
 			spin_unlock(&sb->producer_lock);
-			printk("produced keyoff: %lld roff: %lld\n", keyoff, roff);
+			//printk("produced keyoff: %lld roff: %lld\n", keyoff, roff);
 			roff = (roff+1)%sb->nratchet;
 			if(roff == 0)
 				keyoff = nextkeyoff;
@@ -533,7 +533,7 @@ static loff_t get_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *rat
 			wait_event_interruptible(sb->consumerq, CIRC_SPACE(head, tail, sb->size) >= 1);
 		}
 	}while(!got);
-	printk("consumed keyoff: %lld roff: %lld\n", keyoff, *ratchetoff);
+	//printk("consumed keyoff: %lld roff: %lld\n", keyoff, *ratchetoff);
 	return keyoff;
 }
 
