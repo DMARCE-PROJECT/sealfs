@@ -404,8 +404,8 @@ static int sealfs_ratchet_thread(void *data)
 				nextkeyoff = read_key(sb, key, roff, keyoff);
 			else
 				read_key(sb, key, roff, keyoff);
+			got++;
 		}
-		got++;
 		spin_lock(&sb->producer_lock);
 		head = sb->head;
 		tail = READ_ONCE(sb->tail);
