@@ -556,7 +556,7 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 	 *  batching of burnts possible, the kthread if fully asynchronous.
 	 */
 	if (waitqueue_active(&sb->thread_q))
-		wake_up(&sb->thread_q);
+		wake_up_interruptible_sync(&sb->thread_q);	//sync, do not schedule
 	return 0;
 }
 
