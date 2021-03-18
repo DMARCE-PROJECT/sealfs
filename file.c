@@ -385,6 +385,11 @@ end:
 	return ret;
 }
 
+static int isbuffull(struct sealfs_sb_info *sb) {
+	 return CIRC_SPACE(sb->head, sb->tail, sb->size) >= 1;
+}
+
+
 static int sealfs_ratchet_thread(void *data)
 {
 	loff_t roff, nextkeyoff, keyoff;
@@ -424,9 +429,12 @@ static int sealfs_ratchet_thread(void *data)
 				keyoff = nextkeyoff;
 			got--;
 		}else{
+			wake_up(&sb->consumerq);
 			spin_unlock(&sb->producer_lock);
+			//printk("producer full\n");
 			wait_event_interruptible(sb->producerq, kthread_should_stop()
-				|| CIRC_SPACE(head, tail, sb->size) >= 1);
+				|| isbuffull(sb));
+			//printk("producer up\n");
 		}
 	}
 	return 0;
@@ -503,6 +511,9 @@ int sealfs_update_hdr(struct sealfs_sb_info *sb)
 	return 0;
 }
 
+static int isbufempty(struct sealfs_sb_info *sb, unsigned long head, unsigned long tail) {
+	 return CIRC_CNT(sb->head, sb->tail, sb->size) >= 1;
+}
 
 static loff_t get_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ratchetoff)
 {
@@ -529,8 +540,11 @@ static loff_t get_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *rat
 			spin_unlock(&sb->consumer_lock);
 			wake_up(&sb->producerq);
 		}else{
+			wake_up(&sb->producerq);
 			spin_unlock(&sb->consumer_lock);
-			wait_event_interruptible(sb->consumerq, CIRC_SPACE(head, tail, sb->size) >= 1);
+			//printk("consumer empty\n");
+			wait_event_interruptible(sb->consumerq, isbufempty(sb, head, tail));
+			//printk("consumer up\n");
 		}
 	}while(!got);
 	//printk("consumed keyoff: %lld roff: %lld\n", keyoff, *ratchetoff);
@@ -616,14 +630,12 @@ void sealfs_seal_ratchet(struct sealfs_sb_info *spd)
 
 	if(DEBUGENTRY)
 		printk("sealfs: RATCHETSEAL to go %d", spd->ratchetoffset);
-printk("seal\n");
 	do{
-printk("seal roff: %d", spd->ratchetoffset);
 		if(DEBUGENTRY)
 			printk("sealfs: RATCHETSEAL roff: %d", spd->ratchetoffset);
 		burn_entry(NULL, &c, 0, 0, spd);
 	}while(spd->ratchetoffset != spd->nratchet - 1);
-printk("seal DONE %ld\n", atomic_long_read(&spd->burnt));
+	//printk("seal DONE %ld\n", atomic_long_read(&spd->burnt));
 	memset(spd->buf, 0, sizeof(spd->buf));
 }
 
