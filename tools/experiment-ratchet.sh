@@ -49,7 +49,7 @@ do
                 do
                         for wsize in 100 1000 10000
 			do
-				for nratchet in 1 8 16 64
+				for nratchet in 32 1 8 16 64
 					do		
 						disk=SSD
 						echo 3 > /proc/sys/vm/drop_caches	#free pagecache and slab
