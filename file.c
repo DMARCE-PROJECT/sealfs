@@ -411,7 +411,7 @@ static int sealfs_ratchet_thread(void *data)
 				read_key(sb, key, roff, keyoff);
 			got++;
 		}
-		spin_lock(&sb->producer_lock);
+		//spin_lock(&sb->producer_lock);
 		head = sb->head;
 		tail = READ_ONCE(sb->tail);
 		if (CIRC_SPACE(head, tail, sb->size) >= 1) {
@@ -422,7 +422,7 @@ static int sealfs_ratchet_thread(void *data)
 
 			smp_store_release(&sb->head, (head + 1) & (sb->size - 1));
 			wake_up(&sb->consumerq);
-			spin_unlock(&sb->producer_lock);
+			//spin_unlock(&sb->producer_lock);
 			//printk("produced keyoff: %lld roff: %lld\n", keyoff, roff);
 			roff = (roff+1)%sb->nratchet;
 			if(roff == 0)
@@ -430,7 +430,7 @@ static int sealfs_ratchet_thread(void *data)
 			got--;
 		}else{
 			wake_up(&sb->consumerq);
-			spin_unlock(&sb->producer_lock);
+			//spin_unlock(&sb->producer_lock);
 			//printk("producer full\n");
 			wait_event_interruptible(sb->producerq, kthread_should_stop()
 				|| isbuffull(sb));
@@ -481,8 +481,8 @@ void sealfs_start_thread(struct sealfs_sb_info *sb)
 	sb->head = 0;
 	sb->tail = 0;
 	sb->size = NBUFRATCHET;
-	spin_lock_init(&sb->consumer_lock);
-	spin_lock_init(&sb->producer_lock);
+	//spin_lock_init(&sb->consumer_lock);
+	//spin_lock_init(&sb->producer_lock);
 	sb->ratchet_thread = kthread_run(sealfs_ratchet_thread, sb, "sealfs");
 
 }
@@ -518,13 +518,15 @@ static int isbufempty(struct sealfs_sb_info *sb, unsigned long head, unsigned lo
 static loff_t get_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ratchetoff)
 {
 	loff_t keyoff;
+	loff_t roff;
 	unsigned long head;
 	unsigned long tail;
 	int got;
 	got = 0;
 	
 	do{	
-		spin_lock(&sb->consumer_lock);
+		mutex_lock(&sb->bbmutex);
+		//spin_lock(&sb->consumer_lock);
 		/* Read index before reading contents at that index. */
 		head = smp_load_acquire(&sb->head);
 		tail = sb->tail;
@@ -532,16 +534,21 @@ static loff_t get_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *rat
 		if (CIRC_CNT(head, tail, sb->size) >= 1) {
 			/* consume item */
 			got++;
-			*ratchetoff = sb->buf[tail].roff;
+			roff = sb->buf[tail].roff;
 			keyoff = sb->buf[tail].keyoff;
 			memmove(key, sb->buf[tail].key, FPR_SIZE);
 		        /* Finish reading descriptor before incrementing tail. */
 			smp_store_release(&sb->tail, (sb->tail + 1) & (sb->size - 1));
-			spin_unlock(&sb->consumer_lock);
+			sb->ratchetoffset = roff;
+			atomic_long_set(&sb->burnt, keyoff+FPR_SIZE);
+			mutex_unlock(&sb->bbmutex);
+			//spin_unlock(&sb->consumer_lock);
 			wake_up(&sb->producerq);
+			*ratchetoff = sb->buf[tail].roff;
 		}else{
 			wake_up(&sb->producerq);
-			spin_unlock(&sb->consumer_lock);
+			mutex_unlock(&sb->bbmutex);
+			//spin_unlock(&sb->consumer_lock);
 			//printk("consumer empty\n");
 			wait_event_interruptible(sb->consumerq, isbufempty(sb, head, tail));
 			//printk("consumer up\n");
@@ -582,15 +589,11 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 	lentry.offset = (uint64_t) offset;
 	lentry.count = (uint64_t) count;
 
-	mutex_lock(&sb->bbmutex);
 	keyoff = get_key(sb, key, &roff);
 	if(keyoff < 0) {
 		printk(KERN_ERR "sealfs: readkey failed\n");
 		return -1;
 	}
-	sb->ratchetoffset = roff;
-	atomic_long_set(&sb->burnt, keyoff+FPR_SIZE);
-	mutex_unlock(&sb->bbmutex);
 	if(DEBUGENTRY)
 		dumpkey(key);
 

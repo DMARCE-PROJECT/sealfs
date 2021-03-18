@@ -126,7 +126,7 @@ struct sealfs_keydesc{
 struct sealfs_sb_info {
 	struct super_block *lower_sb;
 	int nratchet;
-	struct mutex bbmutex;
+
 	//synchronize burners and make sure they write to disk
 	struct mutex burnsyncmutex;
 	char *dev_name;
@@ -143,8 +143,8 @@ struct sealfs_sb_info {
 	struct sealfs_logfile_header lheader;
 	int ratchetoffset;
 
-
-	spinlock_t consumer_lock;
+	struct mutex bbmutex;
+	//spinlock_t consumer_lock;
 	spinlock_t producer_lock;
 	unsigned long head;
 	unsigned long tail;

@@ -3,9 +3,9 @@
 ksize=$((1024 * 1024 * 1024))
 nossd=/var/tmp
 ssd=/var/tmp/ssd	#not really
-once=$HOME/tmp/once
+once=/home/paurea/tmp/once
 datadir=/var/tmp/data
-code=$HOME/gits/sealfs
+code=/home/paurea/gits/sealfs
 wrounds=1000
 
 if mount | grep -q 'type sealfs'
@@ -56,7 +56,7 @@ do
 		
 						echo '#running without sealfs:' $shared disk:$disk nprocs:$nprocs nratchet:$nratchet wsize:$wsize wrounds:$wrounds
 						rm $r/sealfs/* 2> /dev/null
-						$code/tools/test $shared $nprocs $wsize $wrounds $r/sealfs > $datadir/$nprocs-$wsize$shared-RATCHET-$disk-NOSEALFS.data
+						$code/tools/test $shared $nprocs $wsize $wrounds $r/sealfs > $datadir/$nprocs-$wsize$shared-RATCHETX-$disk-NOSEALFS.data
 		
 						echo '#running with sealfs:' $shared disk:$disk nprocs:$nprocs wsize:$wsize wrounds:$wrounds
 						rm $r/sealfs/* 2> /dev/null
@@ -74,7 +74,7 @@ do
 						        exit 1
 						fi
 						wnratchet=`seq -w $nratchet 100 | head -1`
-						$code/tools/test $shared $nprocs $wsize $wrounds $r/sealfs > $datadir/$nprocs-$wsize$shared-RATCHET$wnratchet-$disk-SEALFS.data
+						$code/tools/test $shared $nprocs $wsize $wrounds $r/sealfs > $datadir/$nprocs-$wsize$shared-RATCHETX$wnratchet-$disk-SEALFS.data
 		
 					        x=$(grep -v 'HEATING' $r/sealfs/file??? | wc -l)
 					        if test $x -ne $(($nprocs * $wrounds))
