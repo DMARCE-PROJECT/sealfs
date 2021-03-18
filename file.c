@@ -421,7 +421,8 @@ static int sealfs_ratchet_thread(void *data)
 			memmove(sb->buf[head].key, key, FPR_SIZE);
 
 			smp_store_release(&sb->head, (head + 1) & (sb->size - 1));
-			wake_up(&sb->consumerq);
+			//sync, do not sleep, continue if possible
+			wake_up_interruptible_sync(&sb->consumerq);
 			//spin_unlock(&sb->producer_lock);
 			//printk("produced keyoff: %lld roff: %lld\n", keyoff, roff);
 			roff = (roff+1)%sb->nratchet;
@@ -546,7 +547,7 @@ static loff_t get_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *rat
 			wake_up(&sb->producerq);
 			*ratchetoff = sb->buf[tail].roff;
 		}else{
-			wake_up(&sb->producerq);
+			wake_up_interruptible(&sb->producerq);
 			mutex_unlock(&sb->bbmutex);
 			//spin_unlock(&sb->consumer_lock);
 			//printk("consumer empty\n");
@@ -622,7 +623,7 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 	 *  batching of burnts possible, the kthread if fully asynchronous.
 	 */
 	if (waitqueue_active(&sb->thread_q))
-		wake_up(&sb->thread_q);
+		wake_up_interruptible(&sb->thread_q);
 	return 0;
 }
 
