@@ -249,8 +249,6 @@ freerenames(Rename *renames)
     }
 }
 
-
-
 static void
 dumpofiles(Ofile *ofiles)
 {
@@ -261,7 +259,6 @@ dumpofiles(Ofile *ofiles)
 		 fprintf(stderr, "ofile inode: %ld fd: %d\n",
 	 		o->inode, o->fd);
 }
-
 
 #define included(N, A, B) (((A) <= (N)) && ((N) < (B)))
 
@@ -289,14 +286,16 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 	struct sealfs_logfile_entry e;
 	Ofile *ofiles = NULL;
 	Ofile *o = NULL;
-	uint64_t c = 0;
-	int szhdr = sizeof(struct sealfs_keyfile_header);
+	uint64_t c;
+	int szhdr;
 	KeyCache kc;
-	int nratchet_detected;
+	int gotnratchet;
 	int fd;
 
+	c = 0;
+	szhdr = sizeof(struct sealfs_keyfile_header);
 	drop(&kc);
-	nratchet_detected = 0;
+	gotnratchet = 0;
 
 	scandirfiles(path, &ofiles, renames);
 	if(inode == 0)
@@ -305,8 +304,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		if(freadentry(lf, &e) < 0){
 			if(ferror(lf))
 				err(1, "can't read from lfile");
-			else
-				break; //we're done
+			break; //we're done
 		}
 		HASH_FIND(hh, ofiles, &e.inode, sizeof(uint64_t), o);
 
@@ -317,8 +315,8 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		if(e.inode != FAKEINODE)
 			fd = o->fd;
 			
-		if(!nratchet_detected && e.ratchetoffset >= 1){
-			nratchet_detected = nratchet_detect(&e, fd, kf, &nratchet);
+		if(!gotnratchet && e.ratchetoffset >= 1){
+			gotnratchet = nratchet_detect(&e, fd, kf, &nratchet);
 		}
 		if(e.inode == FAKEINODE){
 			if(!isentryok(&e, fd, kf, &kc, nratchet)){
@@ -330,9 +328,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		}
 
 		if(inode != 0){
-			if(e.inode != inode)
-				continue;
-			if(end != 0 && !inrange(&e, begin, end))
+			if(e.inode != inode || (end != 0 && !inrange(&e, begin, end)))
 				continue;	
 			/*
 			 * init o->offset
@@ -444,6 +440,18 @@ setdebugs(char *arg)
 	}
 }
 
+void
+setinode_begend(char *argv[], int64_t *inode, int64_t *begin, int64_t *end)
+{
+	*inode = atoll(argv[0]);
+	*begin = atoll(argv[1]);
+	*end = atoll(argv[2]);
+	if(inode <= 0 || begin < 0 || end < begin)
+			usage();
+	fprintf(stderr, "WARNING: verifying only "
+		"one inode: %ld from byte %ld to byte %ld\n",
+		*inode, *begin, *end);
+}
 
 int
 main(int argc, char *argv[])
@@ -478,35 +486,18 @@ main(int argc, char *argv[])
 	argc-=4;
 	argv+=4;
 	for(i=0; i<argc; i++){
-		if(strnlen(argv[i], 2) >= 2) {
-			if(argv[i][0] == '-' && argv[i][1] == 'D')
+		if(strnlen(argv[i], 2) >= 2 && argv[i][0] == '-' ) {
+			if(argv[i][1] == 'D'){
 				setdebugs(argv[i]+2); 
-			else if(argv[i][0] == '-' && atoi(argv[i]+1) != 0){
-				if(i+1 >= argc) {
-					usage();
-				}
+			}else if(atoi(argv[i]+1) != 0 && argc > i+1) {	
 				r = newrename(atoi(argv[i]+1), atoi(argv[i+1]));
 				HASH_ADD(hh, renames, inode, sizeof(uint64_t), r);
 				i++;
-			}else
-				usage();
-		}else if(strncmp(argv[i], "-n", 2) == 0){
-			if(argc > i+1){
+			} else if(argv[i][1] == 'n' && argc > i+1){
 				lname = argv[i+1];
 				i++;
-			}else{
-				usage();
-			}
-		}else if(strncmp(argv[i], "-i", 2) == 0){
-			if(argc > i+3){
-				inode = atoll(argv[i+1]);
-				begin = atoll(argv[i+2]);
-				end = atoll(argv[i+3]);
-				if(inode <= 0 || begin < 0 || end < begin)
- 					usage();
-				fprintf(stderr, "WARNING: verifying only "
-					"one inode: %ld from byte %ld to byte %ld\n",
-					inode, begin, end);
+			} else if(argv[i][1] == 'i' && argc > i+3){
+				setinode_begend(argv+i+1, &inode, &begin, &end);
 				i+=3;
 			}else
 				usage();
