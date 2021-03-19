@@ -34,7 +34,6 @@ static ssize_t sealfs_read(struct file *file, char __user *buf,
 	if (err >= 0)
 		fsstack_copy_attr_atime(d_inode(dentry),
 					file_inode(lower_file));
-
 	return err;
 }
 
@@ -132,12 +131,7 @@ static inline int ratchet_key(char *key, loff_t ratchet_offset, int nratchet)
 		dumpkey(key);
 	}
 	//no need, the key is around until next ratchet, and then this will
-	//be overwritten yes?
-	//err = crypto_shash_setkey(hmacstate.hash_tfm, zkey, FPR_SIZE);
-	//if(err){
-	//	printk(KERN_ERR "sealfs: can't reset hmac key\n");
-	//	return -1;
-	//}
+	//be overwritten
 	//freehmac calls crypto_free which overwrites the memory
 	freehmac(&hmacstate);
 	return 0;
@@ -242,12 +236,6 @@ static int do_hmac(const char __user *data, char *key,
 		freehmac(&hmacstate);
 		return -1;
 	}
-	//err = crypto_shash_setkey(hmacstate.hash_tfm, zkey, FPR_SIZE);
-	//if(err){
-	//	printk(KERN_ERR "sealfs: can't reset hmac key\n");
-	//	freehmac(&hmacstate);
-	//	return -1;
-	//}
 	//freehmac calls crypto_free which overwrites the memory
 	freehmac(&hmacstate);
 	return 0;
@@ -311,31 +299,26 @@ static int sealfs_thread_main(void *data, int freq, int do_update_hdr)
 	/* starts after header */
 	unburnt = sizeof(struct sealfs_keyfile_header);
 
-repeat:
-	burnt = atomic_long_read(&sb->burnt);
-	oldunburnt = unburnt;
-	// This lock is to make sure things are marked to go
-	// to disk before someone else burns them
-	mutex_lock(&sb->burnsyncmutex);
-	unburnt = advance_burn(sb, burnt, unburnt);
-	isadvance = oldunburnt != unburnt;
-	vfs_fsync_range(sb->kfile, oldunburnt, unburnt, 1);
-	mutex_unlock(&sb->burnsyncmutex);
-	if(isadvance && do_update_hdr){
-		sealfs_update_hdr(sb);
-		isadvance = 0;
+	while(!kthread_should_stop()){	
+		burnt = atomic_long_read(&sb->burnt);
+		oldunburnt = unburnt;
+		// This lock is to make sure things are marked to go
+		// to disk before someone else burns them
+		mutex_lock(&sb->burnsyncmutex);
+		unburnt = advance_burn(sb, burnt, unburnt);
+		isadvance = oldunburnt != unburnt;
+		vfs_fsync_range(sb->kfile, oldunburnt, unburnt, 1);
+		mutex_unlock(&sb->burnsyncmutex);
+		if(isadvance && do_update_hdr){
+			sealfs_update_hdr(sb);
+			isadvance = 0;
+		}
+		wait_event_interruptible_timeout(*q,
+			kthread_should_stop() || has_advanced_burnt(sb, unburnt), freq);
 	}
-	if (kthread_should_stop()){
-		if(!has_advanced_burnt(sb, unburnt)){
-			printk(KERN_ERR "sealfs: done oldburnt: %lld burnt: %lld\n",
-				unburnt, burnt);
-			return 0;
-		}else
-			goto repeat;
-	}
-	wait_event_interruptible_timeout(*q,
-		kthread_should_stop() || has_advanced_burnt(sb, unburnt), freq);
-	goto repeat;
+	printk(KERN_ERR "sealfs: done oldburnt: %lld burnt: %lld\n",
+		unburnt, burnt);
+	return 0;
 }
 
 static int sealfs_thread(void *data)
@@ -404,33 +387,6 @@ int sealfs_update_hdr(struct sealfs_sb_info *sb)
 	return 0;
 }
 
-/*
- * This operation need to be atomic for clients, bbmutex needs to be taken when called
- *	if it wasn't, one client overtaking other would provoke Burn before reading key (bad)
- * There are 3 ways to go about this:
- * 	- The one implemented and described in this code.
- *		The operation to and advance sb->burnt locks the file until read finishes (burn after read)
- *			then the variable is updated with atomic operations.
- *		Other thread(s) can asynchronously consult sb->burnt with atomic operations
- *			to know until what offset to burn.
- *		Kheader needs to be composed when writing.
- *	- NOT IMPLEMENTED:
- *		Then the client burns advances  sb->burnt and burns its own key 
- * 		in the same thread guaranteeing causal dependency. PRO: the lock is only
- *		taken when advancing burnt (a variable) which commits
- *		the offset for reading and burning. Can use a spin lock. Really simple.
- *		CON: cannot be burnt asynchronously, so the client pays for everything inline
- *		has to wait for read and burn to finish (with cache it may not be so bad).
- *		To implement: uncomment file.c:321,326 change the locking and don't run the thread.
- *			not compatible with what is implemented. You release the lock before read and
- *			the burning thread may overcome the reading thread and
- *				Read before burning
- *	- NOT IMPLEMENTED: use a heap like verify does. Read an offset and add to heap. The burner
- *		thread takes from heap in order and when possible burns and advances.
- *		Secondary threads can use the burnt advanced by primary thread.
- *		PRO: really fast.
- *		CON: too complex, specially the case when the heap is full and the client needs to block.
- */
 static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ratchetoff)
 {
 	loff_t nr;
@@ -444,11 +400,11 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ra
 	/*
 	  * Atomically
 	 * 	- FPR_SIZE reading in key file (out of reach for futures reads)
-	 *	- Advance sb->kheader.burnt (Then burn *after* reading when bbmutex lock is released)
+	 *	- After reading key advance sb->burnt so that burners can see it.
 	 *	- Later (without lock) writing sizeof(struct sealfs_logfile_entry) in log entry in the correct offset
-	 *	- Updating offset header at start of key file at some point in the future
-	 *	- We will burn what is read asynchronously in the kthread driven by sb->kheader.burnt
-	 *	-> NEW, with ratchet, we only advance burns when we run out of ratchets.
+	 *	- Updating offset header at start of key file at some point in the future (slow burner will do it)
+	 *	- We will burn what is read asynchronously in the kthread driven by sb->burnt
+	 *	-> With ratchet, we only advance burns when we run out of ratchets.
 	 */
 	oldoff = atomic_long_read(&sb->burnt);
 	roff = sb->ratchetoffset;
@@ -556,7 +512,7 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 	 *  batching of burnts possible, the kthread if fully asynchronous.
 	 */
 	if (waitqueue_active(&sb->thread_q))
-		wake_up_interruptible_sync(&sb->thread_q);	//sync, do not schedule
+		wake_up_interruptible_sync(&sb->thread_q);	//sync, do not schedule this thread
 	return 0;
 }
 
@@ -576,8 +532,8 @@ void sealfs_seal_ratchet(struct sealfs_sb_info *spd)
 }
 
 /*
- * TO FIX: if the task is signaled or killed while it's executiing burnt_entry
- * the log may become corrupted.
+ *	TO FIX: if the task is signaled or killed while it's executiing burnt_entry
+ *		the log my have zero entries (tooling needs to check for zero entries)
  */
 static ssize_t sealfs_write(struct file *file, const char __user *buf,
 			    size_t count, loff_t *ppos)
@@ -586,14 +542,15 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 	ssize_t wr;
  	struct sealfs_sb_info *sbinfo;
 	struct file *lower_file;
-	struct dentry *dentry = file->f_path.dentry;
+	struct dentry *dentry;
 	loff_t woffset = -1;
 	int debug;
 
+	dentry = file->f_path.dentry;
 	lower_file = sealfs_lower_file(file);
 
 	if((file->f_flags & O_APPEND) == 0){
-		 // NO APPEND-ONLY, NOT ALLOWED.
+		 // Only append only. Do not allow anything else.
 		 printk(KERN_INFO "sealfs: error, non append-only write on file %s\n",
 	 		file->f_path.dentry->d_name.name);
 		 return -EBADF;
@@ -616,10 +573,11 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 	* depend on the corresponding offset for each append-only write.
 	*/
 
-
 	ino = d_inode(dentry);
 
-	/* Note: we use the inode to lock both lower_file and upper file to update offset */
+	/* Note: we use the upper inode to
+	 *	lock both lower_file and upper file to update offset
+	 */
 	down_write(&ino->i_rwsem);
 	wr = vfs_write(lower_file, buf, count, ppos); //ppos is ignored
 	if(wr >= 0){
@@ -632,7 +590,7 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 	 * NOTE: here, a write with a greater offset can overtake
 	 * a write with a smaller offset FOR THE SAME FILE. Not
 	 * probable, but possible. The verify tool compensates
-	 *  for this (by using a small heap)
+	 *  for this (by using a small heap).
 	 */
 	if(wr < 0)
 		return wr;

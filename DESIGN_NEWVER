@@ -36,16 +36,14 @@ Ratchet:
 	NRATCHET values, essentially brute forcing it.
 
 Tooling:
-	Added heap to verify tool in case the write in the logfile is out
-	of order. Each entry is signed with a key, so forging is not a
-	problem. We are writing at an offset which is calculated from
-	the ratchet offset and the key offset, so this could (probably) not happen,
-	but we may want to make the log a real log (append-only or on a
-	special device which may ignore offset).  This would be possibly
-	faster and there would no be a race condition problem where zeroes
-	are written if a write is lost (due to reboot). In any case, the
-	locking can evolve and the log file is completely independent
-	because the order it taken care by the tools. This is nice.
+	Added heap to verify tool the entries in the logs are out of order
+	(logs earlier in the file refer to offsets in the file out of order).
+	This means, for example, for inode 7, there can be an entry
+	for offset 32 and then one for offset 21. When we take out
+	the entries we reorder them. With one caveat, if the offset of
+	the file is the same, they can be dummy entries (for sealing the
+	log). To keep these in order, we combine the offset with the ratchet
+	offset when we put it in the heap.
 	The heap is a min heap which receives a pointer, implemented in
 	heap.c heap.h.	See checkjqueues() in verify.c
 
