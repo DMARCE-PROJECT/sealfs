@@ -49,6 +49,49 @@ freadentry(FILE *f, struct sealfs_logfile_entry *e)
 	return 1;
 }
 
+static char *colred = "\x1b[31m";
+static char *colgreen = "\x1b[32m";
+static char *colend = "\x1b[0m";
+
+int
+dumplog(struct sealfs_logfile_entry *e, int fd, int typelog, int isok)
+{
+	FILE *s;
+	char line[Bufsz];
+	int fdx;
+	fdx = dup(fd);
+	if(fd < 0)
+		return -1;
+	s = fdopen(fdx, "r");
+	if(s == NULL)
+		return -1;
+	if(fseek(s, e->offset, SEEK_SET) < 0){
+		fclose(s);
+		return -1;
+	}
+        while (fgets(line, Bufsz, s) != NULL) {
+		if(strlen(line) >= e->count){
+			line[e->count] = '\0';
+		}
+		if(typelog == LOGCOLOR){
+			if(isok)
+				printf("%ld: [OK] %s\n", e->inode, line);
+			else
+				printf("%ld: [BAD] %s\n", e->inode, line);
+		}else{
+			if(isok)
+				printf("%ld: %s%s%s\n", e->inode, colgreen, line, colend);
+			else
+				printf("%ld: %s%s%s\n", e->inode, colred, line, colend);
+		}
+		
+		if(ftell(s) - e->offset >= e->count)
+			break;
+        }
+	fclose(s);
+	return 0;
+}
+
 static int
 makehmac(int fd, unsigned char *key,
 	struct sealfs_logfile_entry *e , unsigned char *h)
@@ -93,7 +136,7 @@ makehmac(int fd, unsigned char *key,
 	}
 
 	if(fd > 0){
-  	     	while(t < e->count){
+		while(t < e->count){
 			if(e->count-t < Bufsz)
 				l = pread(fd, buf, e->count-t, e->offset+t);
 			else

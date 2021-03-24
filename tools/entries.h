@@ -1,5 +1,6 @@
 extern void fprintentry(FILE *f, struct sealfs_logfile_entry *e);
 extern int freadentry(FILE *f, struct sealfs_logfile_entry *e);
+extern int dumplog(struct sealfs_logfile_entry *e, int fd, int typelog, int isok);
 enum{
 	Bufsz = 8 * 1024,
 };
@@ -18,3 +19,9 @@ extern int ismiss(KeyCache *kc, struct sealfs_logfile_entry *e);
 extern int loadkey(KeyCache *kc, struct sealfs_logfile_entry *e, FILE *kf);
 extern void ratchet(KeyCache *kc, FILE *kf, struct sealfs_logfile_entry *e, int nratchet);
 extern int nratchet_detect(struct sealfs_logfile_entry *e, int logfd, FILE *kf, int *nratchet);
+
+enum {
+	LOGNONE = 0,
+	LOGTEXT,
+	LOGCOLOR,
+};

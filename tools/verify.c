@@ -24,6 +24,7 @@
  */
 
 int	DEBUGJQUEUE;	//true only to debug jQUEUE
+int	DUMPLOG = LOGNONE;
 
 #define dhfprintf if(DEBUGJQUEUE)fprintf
 
@@ -92,9 +93,9 @@ scandirfiles(char *path, Ofile **ofiles, Rename *renames)
 			o->inode = ent->d_ino;
 			HASH_FIND(hh, renames, &o->inode, sizeof(uint64_t), r);
 			if(r != NULL) {
-				o->inode = r->newinode;
 				fprintf(stderr, "rename inode fs:%lu -> log:%lu\n",
 					o->inode, r->newinode);
+				o->inode = r->newinode;
 			}
 			snprintf(fpath, Maxpath, "%s/%s", path, ent->d_name);
 			o->fd = open(fpath, O_RDONLY);
@@ -291,7 +292,10 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 	KeyCache kc;
 	int gotnratchet;
 	int fd;
+	int iseok;
+	int nbad;
 
+	nbad = 0;
 	c = 0;
 	szhdr = sizeof(struct sealfs_keyfile_header);
 	drop(&kc);
@@ -319,11 +323,14 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			gotnratchet = nratchet_detect(&e, fd, kf, &nratchet);
 		}
 		if(e.inode == FAKEINODE){
-			if(!isentryok(&e, fd, kf, &kc, nratchet)){
+			iseok = isentryok(&e, fd, kf, &kc, nratchet);
+			if(!iseok && DUMPLOG == LOGNONE){
 				fprintf(stderr, "can't verify entry: ");
 				fprintentry(stderr, &e);
 				exit(1);
 			}
+			if(!iseok)
+				nbad++;
 			goto done;
 		}
 
@@ -341,8 +348,21 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			//printf("checking entry: ");
 			//fprintentry(stdout, &e);
 		}
-		if(checkjqueues(&e, o, nratchet) < 0 || ! isentryok(&e, fd, kf, &kc, nratchet)){
+		if(checkjqueues(&e, o, nratchet) < 0 && DUMPLOG == LOGNONE){
+			fprintf(stderr, "can't order entries for entry");
+			fprintentry(stderr, &e);
+			exit(1);
+		}
+		iseok = isentryok(&e, fd, kf, &kc, nratchet);
+		if(!iseok && DUMPLOG == LOGNONE){
 			fprintf(stderr, "can't verify entry: ");
+			fprintentry(stderr, &e);
+			exit(1);
+		}
+		if(!iseok)
+			nbad ++;
+		if(dumplog(&e, fd, DUMPLOG, iseok) < 0){
+			fprintf(stderr, "can't dup log entry");
 			fprintentry(stderr, &e);
 			exit(1);
 		}
@@ -367,7 +387,15 @@ done:
 	freerenames(renames);
 	if(c == 0)
  		errx(1, "error, no entries in the log\n");
-	printf("%ld entries verified, correct logs\n", c);
+	if(nbad == 0)
+		printf("%ld entries verified, correct logs\n", c);
+	else{
+		//only here when dumping logs, else we have exited
+		printf("error: %ld entries verified, some bad "
+			"logs: %ld correct,  %d incorrect\n", c, c-nbad, nbad);
+		fprintf(stderr, "error: did not verify\n");
+		exit(1);
+	}
 }
 
 static void
@@ -489,7 +517,7 @@ main(int argc, char *argv[])
 		if(strnlen(argv[i], 2) >= 2 && argv[i][0] == '-' ) {
 			if(argv[i][1] == 'D'){
 				setdebugs(argv[i]+2); 
-			}else if(atoi(argv[i]+1) != 0 && argc > i+1) {	
+			} else if((atoi(argv[i]+1) != 0 || (argv[i][1] == '0' && strnlen(argv[i]+1, 2) == 2)) && argc > i+1) {	
 				r = newrename(atoi(argv[i]+1), atoi(argv[i+1]));
 				HASH_ADD(hh, renames, inode, sizeof(uint64_t), r);
 				i++;
@@ -499,7 +527,12 @@ main(int argc, char *argv[])
 			} else if(argv[i][1] == 'i' && argc > i+3){
 				setinode_begend(argv+i+1, &inode, &begin, &end);
 				i+=3;
-			}else
+			} else if(argv[i][1] == 't' && strnlen(argv[i], 2) == 2){
+				DUMPLOG = LOGCOLOR;
+				if(isatty(1)) {
+					DUMPLOG = LOGTEXT;
+				}
+			} else
 				usage();
 		}else
 			usage();

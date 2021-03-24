@@ -25,8 +25,6 @@ A) Solve being able to copy the files to another FS and verify (maybe continue w
 				verify -f /var/log/x
 			or pass to verify -inode filename (good for scripting)
 				verify -12 fich.log
-B) Print log files in order (when checkjqueue advances)
-with visible mark of whether they are wrong [OK][FAIL] and or color.
 
 
 Implemented:
