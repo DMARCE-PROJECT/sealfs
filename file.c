@@ -299,7 +299,7 @@ static int sealfs_thread_main(void *data, int freq, int do_update_hdr)
 	/* starts after header */
 	unburnt = sizeof(struct sealfs_keyfile_header);
 
-	while(!kthread_should_stop()){	
+	do{	
 		burnt = atomic_long_read(&sb->burnt);
 		oldunburnt = unburnt;
 		// This lock is to make sure things are marked to go
@@ -315,7 +315,7 @@ static int sealfs_thread_main(void *data, int freq, int do_update_hdr)
 		}
 		wait_event_interruptible_timeout(*q,
 			kthread_should_stop() || has_advanced_burnt(sb, unburnt), freq);
-	}
+	}while(!kthread_should_stop()|| has_advanced_burnt(sb, unburnt));
 	printk(KERN_ERR "sealfs: done oldburnt: %lld burnt: %lld\n",
 		unburnt, burnt);
 	return 0;
