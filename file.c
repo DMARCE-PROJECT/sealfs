@@ -347,7 +347,6 @@ void sealfs_stop_thread(struct sealfs_sb_info *sb)
 	for(i = 0; i < NBURNTHREADS; i++){
 		kthread_stop(sb->sync_thread[i]);
 	}
-	
 }
 void sealfs_start_thread(struct sealfs_sb_info *sb)
 {
@@ -538,13 +537,15 @@ void sealfs_seal_ratchet(struct sealfs_sb_info *spd)
 static ssize_t sealfs_write(struct file *file, const char __user *buf,
 			    size_t count, loff_t *ppos)
 {
-	struct inode *ino;
+	struct inode *ino, *low_ino;
 	ssize_t wr;
  	struct sealfs_sb_info *sbinfo;
 	struct file *lower_file;
 	struct dentry *dentry;
 	loff_t woffset = -1;
 	int debug;
+	loff_t our_ppos;
+	loff_t new_ppos;
 
 	dentry = file->f_path.dentry;
 	lower_file = sealfs_lower_file(file);
@@ -558,34 +559,24 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 
 	sbinfo = (struct sealfs_sb_info*)
 		file->f_path.mnt->mnt_sb->s_fs_info;
-	/*
-	* We can't trust ppos, it's the offset mantained by
-	* the file descriptor, but it's not used by the write operation.
-	* E.g.: the first write has always ppos=0, and it appends
-	* the data correctly. After the first write, the offset in the
-	* file descriptor is updated, but it may not be coherent with the
-	* end of the file if other procs are using it.
-	*
-	* If we use ppos, we will have a race condition
-	* for concurrent write operations over the same file.
-	*
-	* We can't allow concurrent writes for the same file if we
-	* depend on the corresponding offset for each append-only write.
-	*/
 
 	ino = d_inode(dentry);
 
-	/* Note: we use the upper inode to
+	/* Note: we use the lower inode to
 	 *	lock both lower_file and upper file to update offset
+	 *	on error, we already commited the offset.
 	 */
-	down_write(&ino->i_rwsem);
-	wr = vfs_write(lower_file, buf, count, ppos); //ppos is ignored
+	low_ino = file_inode(lower_file);
+	our_ppos = ino->i_size;
+	new_ppos = our_ppos + wr;
+	ino->i_size=new_ppos;
+	woffset = our_ppos;
+	wr = vfs_write(lower_file, buf, count, &woffset);
 	if(wr >= 0){
-		fsstack_copy_inode_size(ino, file_inode(lower_file));
-		fsstack_copy_attr_times(ino, file_inode(lower_file));
-		woffset = ino->i_size - wr;
+		fsstack_copy_inode_size(ino, low_ino);
+		fsstack_copy_attr_times(ino, low_ino);
 	}
-	up_write(&ino->i_rwsem);
+	*ppos = new_ppos;
 	/*
 	 * NOTE: here, a write with a greater offset can overtake
 	 * a write with a smaller offset FOR THE SAME FILE. Not
@@ -595,6 +586,7 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 	if(wr < 0)
 		return wr;
 
+	woffset = our_ppos;
 	if(burn_entry(file, buf, wr, woffset, sbinfo) < 0){
 		printk(KERN_CRIT "sealfs: fatal error! "
 			"can't burn entry for inode: %ld)\n",
@@ -702,7 +694,8 @@ static int sealfs_open(struct inode *inode, struct file *file)
 
 	/* open lower object and link sealfs's file struct to lower's */
 	sealfs_get_lower_path(file->f_path.dentry, &lower_path);
-	lower_file = dentry_open(&lower_path, file->f_flags, current_cred());
+	/* open without append so we can trust the offset (we take care of it) */
+	lower_file = dentry_open(&lower_path, file->f_flags&~O_APPEND, current_cred());
 	path_put(&lower_path);
 	if (IS_ERR(lower_file)) {
 		err = PTR_ERR(lower_file);
