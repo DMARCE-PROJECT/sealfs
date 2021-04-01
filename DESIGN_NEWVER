@@ -124,6 +124,13 @@ Concurrency:
 		arbitrer this. Should we use the lower_file inode to
 		make hard links work? Does it matter (are there any
 		other problems for hard locks?).
+		New version:
+			We open the log files without append. We deal
+		with the offset, down_write(&ino->i_rwsem);
+		commit to an offset by setting inode size,
+		up_write(&ino->i_rwsem); then write to the
+		underlying offset. As the file was opened without
+		append, the offset is actually honored.
 
 Memory:
 	After some measuring, it seems to be a bad idea to keep the hash
