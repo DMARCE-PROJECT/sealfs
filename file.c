@@ -567,14 +567,18 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 	 *	on error, we already commited the offset.
 	 */
 	low_ino = file_inode(lower_file);
+	down_write(&ino->i_rwsem);
 	our_ppos = ino->i_size;
 	new_ppos = our_ppos + wr;
 	ino->i_size=new_ppos;
+	up_write(&ino->i_rwsem);
 	woffset = our_ppos;
 	wr = vfs_write(lower_file, buf, count, &woffset);
 	if(wr >= 0){
-		fsstack_copy_inode_size(ino, low_ino);
+		fsstack_copy_inode_size(ino, low_ino); // no need for lock (see comment in function)
+		down_write(&ino->i_rwsem);
 		fsstack_copy_attr_times(ino, low_ino);
+		up_write(&ino->i_rwsem);
 	}
 	*ppos = new_ppos;
 	/*

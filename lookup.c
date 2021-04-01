@@ -23,7 +23,8 @@ int sealfs_init_dentry_cache(void)
 	sealfs_dentry_cachep =
 		kmem_cache_create("sealfs_dentry",
 				  sizeof(struct sealfs_dentry_info),
-				  0, SLAB_RECLAIM_ACCOUNT, NULL);
+				  0, SLAB_RECLAIM_ACCOUNT|
+					      SLAB_MEM_SPREAD|SLAB_ACCOUNT, NULL);
 	return sealfs_dentry_cachep ? 0 : -ENOMEM;
 }
 
@@ -61,15 +62,15 @@ int new_dentry_private_data(struct dentry *dentry)
 static int sealfs_inode_test(struct inode *inode, void *candidate_lower_inode)
 {
 	struct inode *current_lower_inode = sealfs_lower_inode(inode);
-	if (current_lower_inode == (struct inode *)candidate_lower_inode)
-		return 1; /* found a match */
-	else
-		return 0; /* no match */
+	return current_lower_inode == (struct inode *)candidate_lower_inode;
 }
 
 static int sealfs_inode_set(struct inode *inode, void *lower_inode)
 {
-	/* we do actual inode initialization in sealfs_iget */
+	/* we do most inode initialization in sealfs_iget */
+
+	/* no need for lock (see comment in function) */
+	fsstack_copy_inode_size(inode, lower_inode);
 	return 0;
 }
 
@@ -139,8 +140,6 @@ struct inode *sealfs_iget(struct super_block *sb, struct inode *lower_inode)
 
 	/* all well, copy inode attributes */
 	fsstack_copy_attr_all(inode, lower_inode);
-	fsstack_copy_inode_size(inode, lower_inode);
-
 	unlock_new_inode(inode);
 	return inode;
 }
