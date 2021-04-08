@@ -98,7 +98,6 @@ struct inode *sealfs_iget(struct super_block *sb, struct inode *lower_inode)
 	/* if found a cached inode, then just return it (after iput) */
 	if (!(inode->i_state & I_NEW)) {
 		iput(lower_inode);
-		unlock_new_inode(inode);
 		return inode;
 	}
 
