@@ -69,8 +69,6 @@ static int sealfs_inode_set(struct inode *inode, void *lower_inode)
 {
 	/* we do most inode initialization in sealfs_iget */
 
-	/* no need for lock (see comment in function) */
-	fsstack_copy_inode_size(inode, lower_inode);
 	return 0;
 }
 
@@ -141,6 +139,8 @@ struct inode *sealfs_iget(struct super_block *sb, struct inode *lower_inode)
 	/* all well, copy inode attributes */
 	fsstack_copy_attr_all(inode, lower_inode);
 	unlock_new_inode(inode);
+	/* no need for lock (see comment in function) */
+	fsstack_copy_inode_size(inode, lower_inode);
 	return inode;
 }
 
