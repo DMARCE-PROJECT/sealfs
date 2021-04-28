@@ -76,9 +76,11 @@ test2(){
 	/var/tmp/test -s 2 17 2 /tmp/y
 	mv /tmp/y/file000  /tmp/y/file000.1
 	/var/tmp/test -s 128 17 1000 /tmp/y
+#to debug, can take down until unmount
 	mv /tmp/y/file000  /tmp/y/file000.2
 	/var/tmp/test -s 2 17 2 /tmp/y
 	mv /tmp/y/file000  /tmp/y/file000.3
+
 	umount /tmp/y
 	
 	checktest TEST2
@@ -181,6 +183,17 @@ test6(){
 	/var/tmp/dump /tmp/x|grep entries
 	checktest TEST6
 }
+test7(){	
+	echo TEST 7 '----------------'
+	############################# 7 TEST
+	resettest
+	
+	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	/var/tmp/test -s 32 1 1 /tmp/y
+	umount /tmp/y
+	
+	checktest TEST7
+}
 
 #the fist one does not reset
 mandatorytest1
@@ -189,6 +202,7 @@ test3
 test4
 test5
 test6
+test7
 
 
 echo ENDTEST
