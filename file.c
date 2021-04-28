@@ -462,7 +462,7 @@ dumpentry(struct sealfs_logfile_entry *e)
 		e->koffset);
 }
 
-static int burn_entry(struct file *f, const char __user *buf, size_t count,
+static int burn_entry(struct inode *ino, const char __user *buf, size_t count,
 			loff_t offset, struct sealfs_sb_info *sb)
 {
 	int  sz;
@@ -473,8 +473,8 @@ static int burn_entry(struct file *f, const char __user *buf, size_t count,
 	int nks;
 
 	lentry.inode = FAKEINODE;
-	if(f != NULL)
-		lentry.inode = (uint64_t) file_inode(f)->i_ino;
+	if(ino != NULL)
+		lentry.inode = (uint64_t) ino->i_ino;
 	lentry.offset = (uint64_t) offset;
 	lentry.count = (uint64_t) count;
 
@@ -560,7 +560,7 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 	sbinfo = (struct sealfs_sb_info*)
 		file->f_path.mnt->mnt_sb->s_fs_info;
 
-	ino = d_inode(dentry);
+	ino = file_inode(file);
 
 	/* Note: we use the lower inode to
 	 *	lock both lower_file and upper file to update offset
@@ -571,16 +571,16 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 	our_ppos = ino->i_size;
 	new_ppos = our_ppos + wr;
 	ino->i_size=new_ppos;
-	up_write(&ino->i_rwsem);
 	woffset = our_ppos;
+	up_write(&ino->i_rwsem);
 	wr = vfs_write(lower_file, buf, count, &woffset);
 	if(wr >= 0){
 		fsstack_copy_inode_size(ino, low_ino); // no need for lock (see comment in function)
 		down_write(&ino->i_rwsem);
+		*ppos = new_ppos;
 		fsstack_copy_attr_times(ino, low_ino);
 		up_write(&ino->i_rwsem);
 	}
-	*ppos = new_ppos;
 	/*
 	 * NOTE: here, a write with a greater offset can overtake
 	 * a write with a smaller offset FOR THE SAME FILE. Not
@@ -591,7 +591,7 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 		return wr;
 
 	woffset = our_ppos;
-	if(burn_entry(file, buf, wr, woffset, sbinfo) < 0){
+	if(burn_entry(ino, buf, wr, woffset, sbinfo) < 0){
 		printk(KERN_CRIT "sealfs: fatal error! "
 			"can't burn entry for inode: %ld)\n",
 			ino->i_ino);
@@ -711,11 +711,11 @@ static int sealfs_open(struct inode *inode, struct file *file)
 	} else {
 		sealfs_set_lower_file(file, lower_file);
 	}
-
 	if (err)
 		kfree(SEALFS_F(file));
 	else
 		fsstack_copy_attr_all(inode, sealfs_lower_inode(inode));
+
 out_err:
 	return err;
 }
