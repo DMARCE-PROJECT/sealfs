@@ -76,64 +76,50 @@ dumpkey(u8 *key)
 	printk("sealfs: KEY %s\n", str);
 }
 
-static inline int ratchet_key(char *key, loff_t ratchet_offset, int nratchet)
+static inline int ratchet_key(char *key, loff_t ratchet_offset, int nratchet, struct sealfs_hmac_state *hmacstate)
 {
 	int err = 0;
 
 	uint64_t roff;
 	uint64_t nr;
 
-	struct sealfs_hmac_state hmacstate;
 	nr = nratchet;
-	hmacstate.hash_tfm = NULL;
 	if(DEBUGENTRY){
 		printk("sealfs: RATCHET: old, roff %llu ", ratchet_offset);
 		dumpkey(key);
 	}
 	roff = (uint64_t)ratchet_offset;
-	if(initshash(&hmacstate) < 0)
-		return -1;
-	err = crypto_shash_setkey(hmacstate.hash_tfm, key, FPR_SIZE);
+	err = crypto_shash_setkey(hmacstate->hash_tfm, key, FPR_SIZE);
 	if(err){
 		printk(KERN_ERR "sealfs: can't load hmac key\n");
-		freehmac(&hmacstate);
 		return -1;
 	}
-	err = crypto_shash_init(hmacstate.hash_desc);
+	err = crypto_shash_init(hmacstate->hash_desc);
 	if(err){
 		printk(KERN_ERR "sealfs: can't init hmac\n");
-		freehmac(&hmacstate);
 		return -1;
 	}
-	err = crypto_shash_update(hmacstate.hash_desc,
+	err = crypto_shash_update(hmacstate->hash_desc,
 			(u8*) &roff, sizeof(uint64_t));
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: ratchet offset\n");
-		freehmac(&hmacstate);
 		return -1;
 	}
-	err = crypto_shash_update(hmacstate.hash_desc,
+	err = crypto_shash_update(hmacstate->hash_desc,
 			(u8*) &nr, sizeof(uint64_t));
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: nratchet\n");
-		freehmac(&hmacstate);
 		return -1;
 	}
-	err = crypto_shash_final(hmacstate.hash_desc, (u8 *) key);
+	err = crypto_shash_final(hmacstate->hash_desc, (u8 *) key);
 	if(err){
 		printk(KERN_ERR "sealfs: can't final hmac\n");
-		freehmac(&hmacstate);
 		return -1;
 	}
 	if(DEBUGENTRY){
 		printk("sealfs: RATCHET: new");
-		freehmac(&hmacstate);
 		dumpkey(key);
 	}
-	//no need, the key is around until next ratchet, and then this will
-	//be overwritten
-	//freehmac calls crypto_free which overwrites the memory
-	freehmac(&hmacstate);
 	return 0;
 }
 
@@ -142,70 +128,58 @@ enum {
 };
 
 static int do_hmac(const char __user *data, char *key,
-	 		struct sealfs_logfile_entry *lentry)
+	 		struct sealfs_logfile_entry *lentry, struct sealfs_hmac_state *hmacstate)
 {
 	int err = 0;
 	u8	*buf;
 	struct page *p;
 	uint64_t n, nc, nl;  
 
-	struct sealfs_hmac_state hmacstate;
-	hmacstate.hash_tfm = NULL;
-	if(initshash(&hmacstate) < 0)
-		return -1;
-	err = crypto_shash_setkey(hmacstate.hash_tfm, key, FPR_SIZE);
+	err = crypto_shash_setkey(hmacstate->hash_tfm, key, FPR_SIZE);
 	if(err){
 		printk(KERN_ERR "sealfs: can't load hmac key\n");
-		freehmac(&hmacstate);
 		return -1;
 	}
-	err = crypto_shash_init(hmacstate.hash_desc);
+	err = crypto_shash_init(hmacstate->hash_desc);
 	if(err){
 		printk(KERN_ERR "sealfs: can't init hmac\n");
-		freehmac(&hmacstate);
 		return -1;
 	}
-	err = crypto_shash_update(hmacstate.hash_desc,
+	err = crypto_shash_update(hmacstate->hash_desc,
 			(u8*) &lentry->ratchetoffset, sizeof(lentry->ratchetoffset));
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: ratchetoffset\n");
-		freehmac(&hmacstate);
 		return -1;
 	}
 
- 	err = crypto_shash_update(hmacstate.hash_desc,
+ 	err = crypto_shash_update(hmacstate->hash_desc,
 			(u8*) &lentry->inode, sizeof(lentry->inode));
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: inode\n");
-		freehmac(&hmacstate);
 		return -1;
 	}
-	err = crypto_shash_update(hmacstate.hash_desc,
+	err = crypto_shash_update(hmacstate->hash_desc,
 			(u8*) &lentry->offset, sizeof(lentry->offset));
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: offset\n");
-		freehmac(&hmacstate);
 		return -1;
 	}
-	err = crypto_shash_update(hmacstate.hash_desc,
+	err = crypto_shash_update(hmacstate->hash_desc,
 			(u8*) &lentry->count, sizeof(lentry->count));
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: count\n");
-		freehmac(&hmacstate);
 		return -1;
 	}
-	err = crypto_shash_update(hmacstate.hash_desc,
+	err = crypto_shash_update(hmacstate->hash_desc,
 			(u8*) &lentry->koffset, sizeof(lentry->koffset));
 	if(err){
 		printk(KERN_ERR "sealfs: can't updtate hmac: koffset\n");
-		freehmac(&hmacstate);
 		return -1;
 	}
 
 	p = alloc_page(GFP_KERNEL);
 	if(!p){
 		printk(KERN_ERR "sealfs: can't allocate buf for hmac: koffset\n");
-		freehmac(&hmacstate);
 		return -1;
 	}
 	buf=kmap(p);
@@ -220,31 +194,27 @@ static int do_hmac(const char __user *data, char *key,
 			printk(KERN_ERR "sealfs: can't copy_from_user hmac: data\n");
 			kunmap(p);
 			__free_page(p);
-			freehmac(&hmacstate);
 			return -1;
 		}
 		n +=nl;
-		err = crypto_shash_update(hmacstate.hash_desc, buf, nc-nl);
+		err = crypto_shash_update(hmacstate->hash_desc, buf, nc-nl);
 		if(err){
 			printk(KERN_ERR "sealfs: can't updtate hmac: data\n");
 			kunmap(p);
 			__free_page(p);
-			freehmac(&hmacstate);
 			return -1;
 		}
 	}
 	kunmap(p);
 	__free_page(p);
-	err = crypto_shash_final(hmacstate.hash_desc, (u8 *) lentry->fpr);
+	err = crypto_shash_final(hmacstate->hash_desc, (u8 *) lentry->fpr);
 	if(err){
 		printk(KERN_ERR "sealfs: can't final hmac\n");
-		freehmac(&hmacstate);
 		return -1;
 	}
-	//freehmac calls crypto_free which overwrites the memory
-	freehmac(&hmacstate);
 	return 0;
 }
+
 static int has_advanced_burnt(struct sealfs_sb_info *sb, loff_t oldburnt)
 {
 	loff_t newburnt;
@@ -391,7 +361,7 @@ int sealfs_update_hdr(struct sealfs_sb_info *sb)
 	return 0;
 }
 
-static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ratchetoff)
+static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ratchetoff, struct sealfs_hmac_state *hmacstate)
 {
 	loff_t nr;
 	loff_t t;
@@ -416,7 +386,7 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ra
 	if(likely(roff != 0)){
 		if(DEBUGENTRY)
 			printk("sealfs: RATCHET koff %lld, roff: %lld", oldoff, roff);
-		ratchet_key(sb->key, roff, sb->nratchet);
+		ratchet_key(sb->key, roff, sb->nratchet, hmacstate);
 		memmove(key, sb->key, FPR_SIZE);
 		ret = oldoff-FPR_SIZE;
 		goto end;
@@ -468,7 +438,7 @@ dumpentry(struct sealfs_logfile_entry *e)
 }
 
 static int burn_entry(struct inode *ino, const char __user *buf, size_t count,
-			loff_t offset, struct sealfs_sb_info *sb)
+			loff_t offset, struct sealfs_sb_info *sb, struct sealfs_hmac_state *hmacstate)
 {
 	int  sz;
 	unsigned char key[FPR_SIZE];
@@ -483,7 +453,7 @@ static int burn_entry(struct inode *ino, const char __user *buf, size_t count,
 	lentry.offset = (uint64_t) offset;
 	lentry.count = (uint64_t) count;
 
-	keyoff = read_key(sb, key, &roff);
+	keyoff = read_key(sb, key, &roff, hmacstate);
 	if(keyoff < 0) {
 		printk(KERN_ERR "sealfs: readkey failed\n");
 		return -1;
@@ -496,7 +466,7 @@ static int burn_entry(struct inode *ino, const char __user *buf, size_t count,
 	if(DEBUGENTRY)
 		dumpentry(&lentry);
 
-	if(do_hmac(buf, key, &lentry) < 0){
+	if(do_hmac(buf, key, &lentry, hmacstate) < 0){
 		printk(KERN_ERR "sealfs: do_hash failed\n");
 		return -1;
       	}
@@ -523,16 +493,22 @@ static int burn_entry(struct inode *ino, const char __user *buf, size_t count,
 void sealfs_seal_ratchet(struct sealfs_sb_info *spd)
 {
 	unsigned char c;
+	struct sealfs_hmac_state hmacstate;
 	c = 0;
 
 	if(DEBUGENTRY)
 		printk("sealfs: RATCHETSEAL to go %d", spd->ratchetoffset);
+	if(initshash(&hmacstate) < 0){
+		printk("sealfs: RATCHETSEAL could not seal");
+		return;
+	}
 	while(spd->ratchetoffset != 0) {
 		if(DEBUGENTRY)
 			printk("sealfs: RATCHETSEAL roff: %d", spd->ratchetoffset);
-		burn_entry(NULL, &c, 0, 0, spd);
+		burn_entry(NULL, &c, 0, 0, spd, &hmacstate);
 	}
 	memset(spd->key, 0, FPR_SIZE);
+	freehmac(&hmacstate);
 }
 
 /*
@@ -552,14 +528,19 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 	loff_t our_ppos;
 	loff_t new_ppos;
 
+	struct sealfs_hmac_state hmacstate;	//for ratchet and content both
+	if(initshash(&hmacstate) < 0)
+		return -ENOMEM;
+
 	dentry = file->f_path.dentry;
 	lower_file = sealfs_lower_file(file);
 
 	if((file->f_flags & O_APPEND) == 0){
-		 // Only append only. Do not allow anything else.
-		 printk(KERN_INFO "sealfs: error, non append-only write on file %s\n",
+		// Only append only. Do not allow anything else.
+		printk(KERN_INFO "sealfs: error, non append-only write on file %s\n",
 	 		file->f_path.dentry->d_name.name);
-		 return -EBADF;
+		freehmac(&hmacstate);
+		return -EBADF;
 	}
 
 	sbinfo = (struct sealfs_sb_info*)
@@ -592,11 +573,13 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 	 * probable, but possible. The verify tool compensates
 	 *  for this (by using a small heap).
 	 */
-	if(wr < 0)
+	if(wr < 0){
+		freehmac(&hmacstate);
 		return wr;
+	}
 
 	woffset = our_ppos;
-	if(burn_entry(ino, buf, wr, woffset, sbinfo) < 0){
+	if(burn_entry(ino, buf, wr, woffset, sbinfo, &hmacstate) < 0){
 		printk(KERN_CRIT "sealfs: fatal error! "
 			"can't burn entry for inode: %ld)\n",
 			ino->i_ino);
@@ -615,6 +598,7 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 			" (inode: %ld)\n",
 			wr, count, ino->i_ino);
 	}
+	freehmac(&hmacstate);
 	return wr;
 }
 
