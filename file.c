@@ -136,6 +136,11 @@ static inline int ratchet_key(char *key, loff_t ratchet_offset, int nratchet)
 	freehmac(&hmacstate);
 	return 0;
 }
+
+enum {
+	HASHBUFSZ=PAGE_SIZE/4	//to make it cache friendlier
+};
+
 static int do_hmac(const char __user *data, char *key,
 	 		struct sealfs_logfile_entry *lentry)
 {
@@ -206,8 +211,8 @@ static int do_hmac(const char __user *data, char *key,
 	buf=kmap(p);
 	n = lentry->count;
 	while(n > 0){
-		nc = PAGE_SIZE;
-		if(n < PAGE_SIZE)
+		nc = HASHBUFSZ;
+		if(n < HASHBUFSZ)
 			nc = n;
 		n -= nc;
 		nl = copy_from_user(buf, data, nc);
@@ -716,6 +721,9 @@ static int sealfs_open(struct inode *inode, struct file *file)
 	else
 		fsstack_copy_attr_all(inode, sealfs_lower_inode(inode));
 
+	//if(S_ISREG(file_inode(file)->i_mode) && !(file->f_mode & FMODE_CAN_READ)) {
+	//	file->f_mode &= ~FMODE_ATOMIC_POS;
+	//}
 out_err:
 	return err;
 }
