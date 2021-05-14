@@ -124,16 +124,56 @@ static inline int ratchet_key(char *key, loff_t ratchet_offset, int nratchet, st
 }
 
 enum {
-	HASHBUFSZ=PAGE_SIZE/4	//to make it cache friendlier
+	MAX_PAGES=100
 };
+static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user *data, uint64_t count)
+{
+	u8	*buf;
+	struct page *pages[MAX_PAGES];
+	int npages, np;
+	int err = 0;
+	int res = 0;
+	unsigned long start;
+
+	npages = (count + PAGE_SIZE - 1) / PAGE_SIZE;
+	if(npages > MAX_PAGES){
+		/* limitation, each write < 100*PAGE_SIZE */
+		printk(KERN_ERR "sealfs: too many pages to hash\n");
+		return 1;
+	}
+	res = get_user_pages(PAGE_MASK&(unsigned long) data,
+				npages, /* Only want one page */
+				0, /* Do not want to write into it */
+				pages,
+				NULL);
+	if(res != npages){
+		npages = res;
+		res = -1;
+		goto Err;
+	}
+	buf=kmap(pages[0]);
+	start = (unsigned long)data;
+	for(np=1; np < npages; np++){
+		kmap(pages[np]);
+	}
+	err = crypto_shash_update(hmacstate->hash_desc, buf+(start-(start&PAGE_MASK)), count);
+	if(err){
+		res = -1;
+		goto Err;
+	}
+	res = 0;
+Err:
+	for(np=0; np < npages; np++){
+		kunmap(pages[np]);
+		put_user_page(pages[np]);
+	}
+	return res;
+}
 
 static int do_hmac(const char __user *data, char *key,
 	 		struct sealfs_logfile_entry *lentry, struct sealfs_hmac_state *hmacstate)
 {
 	int err = 0;
-	u8	*buf;
-	struct page *p;
-	uint64_t n, nc, nl;  
 
 	err = crypto_shash_setkey(hmacstate->hash_tfm, key, FPR_SIZE);
 	if(err){
@@ -177,36 +217,11 @@ static int do_hmac(const char __user *data, char *key,
 		return -1;
 	}
 
-	p = alloc_page(GFP_KERNEL);
-	if(!p){
-		printk(KERN_ERR "sealfs: can't allocate buf for hmac: koffset\n");
+	if(hash_userbuf(hmacstate, data, lentry->count) < 0){
+		printk(KERN_ERR "sealfs: can't hash user buf\n");
 		return -1;
 	}
-	buf=kmap(p);
-	n = lentry->count;
-	while(n > 0){
-		nc = HASHBUFSZ;
-		if(n < HASHBUFSZ)
-			nc = n;
-		n -= nc;
-		nl = copy_from_user(buf, data, nc);
-		if(nl < 0 || nl >= nc){
-			printk(KERN_ERR "sealfs: can't copy_from_user hmac: data\n");
-			kunmap(p);
-			__free_page(p);
-			return -1;
-		}
-		n +=nl;
-		err = crypto_shash_update(hmacstate->hash_desc, buf, nc-nl);
-		if(err){
-			printk(KERN_ERR "sealfs: can't updtate hmac: data\n");
-			kunmap(p);
-			__free_page(p);
-			return -1;
-		}
-	}
-	kunmap(p);
-	__free_page(p);
+
 	err = crypto_shash_final(hmacstate->hash_desc, (u8 *) lentry->fpr);
 	if(err){
 		printk(KERN_ERR "sealfs: can't final hmac\n");
