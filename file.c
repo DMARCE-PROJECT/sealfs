@@ -134,8 +134,14 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 	int err = 0;
 	int res = 0;
 	unsigned long start;
+	unsigned long offset;
 
-	npages = 1+ (count + PAGE_SIZE - 1) / PAGE_SIZE;	//one extra in case it spans.
+	start = (unsigned long)data;
+	npages =  (count + PAGE_SIZE - 1) / PAGE_SIZE;
+	offset = start-(start&PAGE_MASK);
+	if(offset > 0 && ((start+count)&PAGE_MASK) !=  (start&PAGE_MASK)){
+		npages++;	//one extra if not aligned
+	}
 	if(npages > MAX_PAGES){
 		/* limitation, each write < 100*PAGE_SIZE */
 		printk(KERN_ERR "sealfs: too many pages to hash\n");
@@ -152,11 +158,10 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 		goto Err;
 	}
 	buf=kmap(pages[0]);
-	start = (unsigned long)data;
 	for(np=1; np < npages; np++){
 		kmap(pages[np]);
 	}
-	err = crypto_shash_update(hmacstate->hash_desc, buf+(start-(start&PAGE_MASK)), count);
+	err = crypto_shash_update(hmacstate->hash_desc, buf+offset, count);
 	if(err){
 		res = -1;
 		goto Err;
