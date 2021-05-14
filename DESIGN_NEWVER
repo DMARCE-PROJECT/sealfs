@@ -146,4 +146,10 @@ Memory:
 	copy_from_user which may sleep and so on. We get a page, map
 	it and free it (fast, no fragmentation and 4K or so of memory
 	should be enough for most writes). Should we add it to the hot page cache?
+Optimizations:
+	- Reuse hmacstate for ratchet and for hmac.
+	- Flip pages and hash directly from user memory instead of
+		copy_from_user. One alloc of a page less. No copying.
+		May kmap more adresses into kernel space (TLB misses?).
+
 
