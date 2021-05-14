@@ -135,7 +135,7 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 	int res = 0;
 	unsigned long start;
 
-	npages = (count + PAGE_SIZE - 1) / PAGE_SIZE;
+	npages = 1+ (count + PAGE_SIZE - 1) / PAGE_SIZE;	//one extra in case it spans.
 	if(npages > MAX_PAGES){
 		/* limitation, each write < 100*PAGE_SIZE */
 		printk(KERN_ERR "sealfs: too many pages to hash\n");
