@@ -132,47 +132,54 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 	struct page *pages[MAX_PAGES];
 	int npages, np;
 	int err = 0;
-	int res = 0;
+	int res;
 	unsigned long start;
 	unsigned long offset;
+	uint64_t nbatch;
 
 	start = (unsigned long)data;
-	npages =  (count + PAGE_SIZE - 1) / PAGE_SIZE;
-	offset = start-(start&PAGE_MASK);
-	if(offset > 0 && ((start+count)&PAGE_MASK) !=  (start&PAGE_MASK)){
-		npages++;	//one extra if not aligned
+	while(count > 0){	
+		nbatch = count;
+		npages =  (count + PAGE_SIZE - 1) / PAGE_SIZE;
+
+		if(npages > MAX_PAGES){
+			npages = MAX_PAGES;
+			nbatch = MAX_PAGES*PAGE_SIZE;
+		}
+
+		offset = start-(start&PAGE_MASK);
+		if(offset > 0 && ((start+nbatch)&PAGE_MASK) !=  (start&PAGE_MASK)){
+			npages++;	//one extra if not aligned
+		}
+		res = get_user_pages(PAGE_MASK&start,
+					npages, /* Only want one page */
+					0, /* Do not want to write into it */
+					pages,
+					NULL);
+		if(res != npages){
+			/* could recover, but something is probably up */
+			npages = res;
+			for(np=0; np < npages; np++){
+				put_user_page(pages[np]);
+			}
+			return -1;
+		}
+		buf=kmap(pages[0]);
+		for(np=1; np < npages; np++){
+			kmap(pages[np]);
+		}
+		err = crypto_shash_update(hmacstate->hash_desc, buf+offset, nbatch);
+		for(np=0; np < npages; np++){
+			kunmap(pages[np]);
+			put_user_page(pages[np]);
+		}
+		if(err){
+			return -1;
+		}
+		count -= nbatch;
+		start += nbatch;
 	}
-	if(npages > MAX_PAGES){
-		/* limitation, each write < 100*PAGE_SIZE */
-		printk(KERN_ERR "sealfs: too many pages to hash\n");
-		return 1;
-	}
-	res = get_user_pages(PAGE_MASK&(unsigned long) data,
-				npages, /* Only want one page */
-				0, /* Do not want to write into it */
-				pages,
-				NULL);
-	if(res != npages){
-		npages = res;
-		res = -1;
-		goto Err;
-	}
-	buf=kmap(pages[0]);
-	for(np=1; np < npages; np++){
-		kmap(pages[np]);
-	}
-	err = crypto_shash_update(hmacstate->hash_desc, buf+offset, count);
-	if(err){
-		res = -1;
-		goto Err;
-	}
-	res = 0;
-Err:
-	for(np=0; np < npages; np++){
-		kunmap(pages[np]);
-		put_user_page(pages[np]);
-	}
-	return res;
+	return 0;
 }
 
 static int do_hmac(const char __user *data, char *key,
