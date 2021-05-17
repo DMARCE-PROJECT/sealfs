@@ -1,5 +1,7 @@
 #!/bin/sh
 
+HOME=/home/paurea
+
 ksize=$((1024 * 1024 * 1024))
 nossd=/var/tmp
 ssd=/var/tmp/ssd	#not really
