@@ -195,6 +195,8 @@ test7(){
 	checktest TEST7
 }
 
+
+
 #the fist one does not reset
 mandatorytest1
 test2
