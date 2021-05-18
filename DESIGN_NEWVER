@@ -151,7 +151,3 @@ Optimizations:
 	- Flip pages and hash directly from user memory instead of
 		copy_from_user. One alloc of a page less. No copying.
 		May kmap more adresses into kernel space (TLB misses?).
-
-BUG:
-	- There is an open bug in the first write randomly. For now, touch START when the problem appears before running tests.
-	TODO: fix this. (is it the benign race condition? the detection of the NRATCHET?)
