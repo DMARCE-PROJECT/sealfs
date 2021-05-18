@@ -59,6 +59,10 @@ dumplog(struct sealfs_logfile_entry *e, int fd, int typelog, int isok)
 	FILE *s;
 	char line[Bufsz];
 	int fdx;
+
+	if(typelog==LOGNONE){
+		return 0;
+	}
 	fdx = dup(fd);
 	if(fd < 0)
 		return -1;
