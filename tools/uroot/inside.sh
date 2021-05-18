@@ -195,9 +195,22 @@ test7(){
 	checktest TEST7
 }
 
+test8(){	
+	echo TEST 8 '----------------'
+	############################# 8 TEST
+	resettest
+	
+	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	/var/tmp/test -s 1 20000 1 /tmp/y
+	umount /tmp/y
+	
+	checktest TEST8
+}
 
 
-#the fist one does not reset
+
+
+#the first one does not reset
 mandatorytest1
 test2
 test3
@@ -205,6 +218,7 @@ test4
 test5
 test6
 test7
+test8
 
 
 echo ENDTEST

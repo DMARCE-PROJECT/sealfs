@@ -124,7 +124,7 @@ static inline int ratchet_key(char *key, loff_t ratchet_offset, int nratchet, st
 }
 
 enum {
-	MAX_PAGES=100
+	MAX_PAGES=40
 };
 static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user *data, uint64_t count)
 {
@@ -135,23 +135,24 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 	int res;
 	unsigned long start;
 	unsigned long offset;
-	uint64_t nbatch;
+	uint64_t nbatch, nhash, nb;
 
 	start = (unsigned long)data;
-	while(count > 0){	
+	offset = start-(start&PAGE_MASK);
+	while(count > 0){
 		nbatch = count;
 		npages =  (count + PAGE_SIZE - 1) / PAGE_SIZE;
 
-		if(npages > MAX_PAGES){
-			npages = MAX_PAGES;
-			nbatch = MAX_PAGES*PAGE_SIZE;
+		if(offset > 0 && count > PAGE_SIZE){
+			npages++;	/* unaligned because of offset */
 		}
 
-		offset = start-(start&PAGE_MASK);
-		if(offset > 0 && ((start+nbatch)&PAGE_MASK) !=  (start&PAGE_MASK)){
-			npages++;	//one extra if not aligned
+		if(npages > MAX_PAGES){
+			npages = MAX_PAGES;
+			nbatch = MAX_PAGES*PAGE_SIZE-offset;
 		}
-		res = get_user_pages(PAGE_MASK&start,
+
+		res = get_user_pages(start&PAGE_MASK,
 					npages,
 					0, /* Do not want to write into it */
 					pages,
@@ -164,14 +165,21 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 			}
 			return -1;
 		}
-		buf=kmap(pages[0]);
-		for(np=1; np < npages; np++){
-			kmap(pages[np]);
-		}
-		err = crypto_shash_update(hmacstate->hash_desc, buf+offset, nbatch);
+		nb = nbatch;
 		for(np=0; np < npages; np++){
+			buf = kmap(pages[np]);
+			if((((unsigned long)buf+nb)&PAGE_MASK) != (unsigned long)buf){
+				nhash = PAGE_SIZE-offset;
+			}else{
+				nhash = nb;
+			}
+			err = crypto_shash_update(hmacstate->hash_desc, buf+offset, nhash);
 			kunmap(pages[np]);
 			put_user_page(pages[np]);
+			offset = 0;	/* only for first page	*/
+			nb -= nhash;
+			if(nb <= 0)
+				break;
 		}
 		if(err){
 			return -1;
