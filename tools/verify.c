@@ -372,7 +372,7 @@ done:
 		 * it may still be correct (see checkjqueue), but warn the user
 		 */
 		if(inode == 0 && e.koffset != szhdr + (c/nratchet)*FPR_SIZE){
-			fprintf(stderr, "warning: koffset not correct: %ld "
+			fprintf(stderr, "warning: koffset not correct (not a problem): %ld "
 					"should be %ld for entry: ",
 					 e.koffset,
 					sizeof(struct sealfs_keyfile_header)
