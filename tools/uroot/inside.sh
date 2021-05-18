@@ -6,6 +6,7 @@ mount /dev/sda /mount/hd
 #This check functions can have -v added at the end to know more
 
 checktest() {
+	sync; sync
 	if test "$3" = "-v"; then
 		if /var/tmp/verify /tmp/x /mount/hd/k1 /mount/hd/k2 $2; then
 			echo $1 OK
@@ -14,6 +15,7 @@ checktest() {
 		fi
 		return
 	fi
+	sync; sync
 	if /var/tmp/verify /tmp/x /mount/hd/k1 /mount/hd/k2 $2 > /dev/null 2>&1; then
 		echo $1 OK
 	else
@@ -22,6 +24,7 @@ checktest() {
 }
 checkfailtest() {	
 	if test "$3" = "-v"; then
+		sync; sync
 		if ! /var/tmp/verify /tmp/x /mount/hd/k1 /mount/hd/k2 $2; then
 			echo $1 OK
 		else
@@ -29,6 +32,7 @@ checkfailtest() {
 		fi
 		return
 	fi
+	sync; sync
 	if ! /var/tmp/verify /tmp/x /mount/hd/k1 /mount/hd/k2 $2 > /dev/null 2>&1; then
 		echo $1 OK
 	else
