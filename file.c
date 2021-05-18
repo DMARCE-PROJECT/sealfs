@@ -152,7 +152,7 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 			npages++;	//one extra if not aligned
 		}
 		res = get_user_pages(PAGE_MASK&start,
-					npages, /* Only want one page */
+					npages,
 					0, /* Do not want to write into it */
 					pages,
 					NULL);
