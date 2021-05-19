@@ -178,6 +178,7 @@ test6(){
 	echo -n 01234567 >> /tmp/y/zzz
 	umount /tmp/y
 	checktest TEST6
+	sync; sync
 	#remount
 	mount -o nratchet=17,kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
 	echo -n 0DD4567 >> /tmp/y/zzz
