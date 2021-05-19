@@ -151,3 +151,8 @@ Optimizations:
 	- Flip pages and hash directly from user memory instead of
 		copy_from_user. One alloc of a page less. No copying.
 		May kmap more adresses into kernel space (TLB misses?).
+BUGS:
+	failing test 6 in uroot (remount), after serveral changes. Verify? file.c for pages?
+		Read copy_from_user to test if the failure is there and add sanity
+	fails sometimes in checking first entry (verification.sh)
+	

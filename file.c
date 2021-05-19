@@ -237,7 +237,7 @@ static int do_hmac(const char __user *data, char *key,
 		return -1;
 	}
 
-	if(hash_userbuf(hmacstate, data, lentry->count) < 0){
+	if(lentry->count > 0 && hash_userbuf(hmacstate, data, lentry->count) < 0){
 		printk(KERN_ERR "sealfs: can't hash user buf\n");
 		return -1;
 	}
