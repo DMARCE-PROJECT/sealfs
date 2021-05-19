@@ -168,7 +168,7 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 		nb = nbatch;
 		for(np=0; np < npages; np++){
 			buf = kmap(pages[np]);
-			if((((unsigned long)buf+nb)&PAGE_MASK) != (unsigned long)buf){
+			if((((unsigned long)buf+nb+offset)&PAGE_MASK) != (unsigned long)buf){
 				nhash = PAGE_SIZE-offset;
 			}else{
 				nhash = nb;
