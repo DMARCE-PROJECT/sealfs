@@ -318,6 +318,12 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		fd = -1;
 		if(e.inode != FAKEINODE)
 			fd = o->fd;
+		if(nratchet == 0){
+			nratchet = NRATCHET;
+			gotnratchet=0;
+		}else{
+			gotnratchet++;
+		}
 			
 		if(!gotnratchet && e.ratchetoffset >= 1){
 			gotnratchet = nratchet_detect(&e, fd, kf, &nratchet);
@@ -325,7 +331,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		if(e.inode == FAKEINODE){
 			iseok = isentryok(&e, fd, kf, &kc, nratchet);
 			if(!iseok && DUMPLOG == LOGNONE){
-				fprintf(stderr, "can't verify entry: ");
+				fprintf(stderr, "can't verify entry with  nratchet %d: ", nratchet);
 				fprintentry(stderr, &e);
 				exit(1);
 			}
@@ -355,7 +361,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		}
 		iseok = isentryok(&e, fd, kf, &kc, nratchet);
 		if(!iseok && DUMPLOG == LOGNONE){
-			fprintf(stderr, "can't verify entry: ");
+			fprintf(stderr, "can't verify entry with nratchet %d: ", nratchet);
 			fprintentry(stderr, &e);
 			exit(1);
 		}
@@ -452,7 +458,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "USAGE: verify dir kalpha kbeta"
-			" [-Dh] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n");
+			" [-Dh] [-n lfilename] [-i inode begin end] [-N nratchet] [-nfs0 nlog0 -nfs1 nlog1...] \n");
 	exit(1);
 }
 
@@ -488,7 +494,7 @@ main(int argc, char *argv[])
 	FILE *betaf;
 	FILE *alphaf;
 
-	int nratchet;
+	int nratchet = 0;
 	int64_t inode = 0;
 	int64_t begin = 0;
 	int64_t end = 0;
@@ -504,7 +510,6 @@ main(int argc, char *argv[])
 	Rename *renames;
 	Rename *r;
 	renames = NULL;
-	nratchet = NRATCHET;
 	if(argc < 3)
 		usage();
 
@@ -532,6 +537,9 @@ main(int argc, char *argv[])
 				if(isatty(1)) {
 					DUMPLOG = LOGTEXT;
 				}
+			} else if(argv[i][1] == 'N' && argc > i+1){
+				nratchet = atoi(argv[i+1]);
+				i++;		
 			} else
 				usage();
 		}else
