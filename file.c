@@ -161,7 +161,7 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 			/* could recover, but something is probably up */
 			npages = res;
 			for(np=0; np < npages; np++){
-				put_user_page(pages[np]);
+				put_page(pages[np]);
 			}
 			return -1;
 		}
@@ -175,7 +175,7 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 			}
 			err = crypto_shash_update(hmacstate->hash_desc, buf+offset, nhash);
 			kunmap(pages[np]);
-			put_user_page(pages[np]);
+			put_page(pages[np]);
 			offset = 0;	/* only for first page	*/
 			nb -= nhash;
 			if(nb <= 0)
