@@ -188,9 +188,11 @@ static const char *sealfs_get_link(struct dentry *dentry, struct inode *inode,
 //        old_fs = get_fs();
 //       set_fs(KERNEL_DS);
 
+	old_fs = force_uaccess_begin();
 
 	err = sealfs_readlink(dentry, buf, len);
 //     set_fs(old_fs);
+	force_uaccess_end(old_fs);
 	if (err < 0) {
 		kfree(buf);
 		buf = ERR_PTR(err);
