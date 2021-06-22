@@ -49,6 +49,8 @@ struct Rename {
 };
 typedef struct Rename Rename;
 
+static int exitstatus;
+
 Rename *
 newrename(uint64_t inode, uint64_t newinode)
 {
@@ -324,10 +326,13 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		}
 		if(e.inode == FAKEINODE){
 			iseok = isentryok(&e, fd, kf, &kc, nratchet);
-			if(!iseok && DUMPLOG == LOGNONE){
+			if(!iseok){
 				fprintf(stderr, "can't verify entry with  nratchet %d: ", nratchet);
 				fprintentry(stderr, &e);
-				exit(1);
+				if(DUMPLOG == LOGNONE)
+					exit(1);
+				else
+					exitstatus = EXIT_FAILURE;
 			}
 			if(!iseok)
 				nbad++;
@@ -354,15 +359,18 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			exit(1);
 		}
 		iseok = isentryok(&e, fd, kf, &kc, nratchet);
-		if(!iseok && DUMPLOG == LOGNONE){
+		if(!iseok){
 			fprintf(stderr, "can't verify entry with nratchet %d: ", nratchet);
 			fprintentry(stderr, &e);
-			exit(1);
+			if(DUMPLOG == LOGNONE)
+				exit(1);
+			else
+				exitstatus = EXIT_FAILURE;
 		}
 		if(!iseok)
 			nbad ++;
 		if(dumplog(&e, fd, DUMPLOG, iseok) < 0){
-			fprintf(stderr, "can't dup log entry");
+			fprintf(stderr, "can't dump log entry");
 			fprintentry(stderr, &e);
 			exit(1);
 		}
@@ -380,6 +388,8 @@ done:
 			fprintentry(stderr, &e);
 			if(DUMPLOG == LOGNONE)
 				exit(1);
+			else
+				exitstatus = EXIT_FAILURE;
 		}
 		c++;
 	}
@@ -566,5 +576,5 @@ main(int argc, char *argv[])
 	fclose(alphaf);
 	fclose(betaf);
 	fclose(lf);
-	exit(EXIT_SUCCESS);
+	exit(exitstatus);
 }
