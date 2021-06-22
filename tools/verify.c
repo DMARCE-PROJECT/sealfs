@@ -372,13 +372,14 @@ done:
 		 * it may still be correct (see checkjqueue), but warn the user
 		 */
 		if(inode == 0 && e.koffset != szhdr + (c/nratchet)*FPR_SIZE){
-			fprintf(stderr, "warning: koffset not correct (not a problem): %ld "
+			fprintf(stderr, "koffset not correct: %ld "
 					"should be %ld for entry: ",
 					 e.koffset,
 					sizeof(struct sealfs_keyfile_header)
 						+  (c*nratchet + e.ratchetoffset)*FPR_SIZE);
 			fprintentry(stderr, &e);
-			//exit(1);
+			if(DUMPLOG == LOGNONE)
+				exit(1);
 		}
 		c++;
 	}
