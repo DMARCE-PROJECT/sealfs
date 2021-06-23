@@ -377,7 +377,9 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 done:
 		/*
 		 * check continuity if we are checking the whole log
-		 * 
+		 * BUG? check why this does not break TEST3
+		 * This check should be disabled with DEBUGJQUEUE
+		 *	*AFTER* the reason is found
 		 */
 		if(inode == 0 && e.koffset != szhdr + (c/nratchet)*FPR_SIZE){
 			fprintf(stderr, "koffset not correct: %ld "
