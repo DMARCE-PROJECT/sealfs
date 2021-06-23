@@ -130,6 +130,26 @@ unifyoff(uint64_t offset, uint64_t ratchetoffset, uint64_t nratchet)
 	return (offset<<logint2(nratchet))+ratchetoffset;
 }
 
+static void
+dumpheap(Heap *heap, int nratchet)
+{
+	uint64_t min;
+	struct sealfs_logfile_entry *e;
+	fprintf(stderr, "entries pending, [\n");
+	for(;;){
+		e = (struct sealfs_logfile_entry*)popminheap(heap, &min);
+		if(e == NULL)
+			break;
+		fprintf(stderr, "\t");
+		fprintf(stderr, "min: %ld %ld  offset: %ld->",
+			min, unifyoff(e->offset, e->ratchetoffset, nratchet), e->offset);
+		fprintentry(stderr, e);
+		free(e);
+	}
+	fprintf(stderr, "]\n");
+	
+}
+
 //	Ensure that the file doesn't have holes and it starts at offset 0.
 //		file's records must be *almost* ordered in the log
 //		coverage must be total.
@@ -144,6 +164,8 @@ checkjqueues(struct sealfs_logfile_entry *e, Ofile *o, int nratchet)
 	struct sealfs_logfile_entry *ec;
 
 	dhfprintf(stderr, "CHECKJQUEUE: %p\n", e);
+	if(DEBUGJQUEUE && e != NULL)
+		fprintentry(stderr, e);
 	heap = o->heap;
 
 	if(e != NULL) {
@@ -177,30 +199,13 @@ checkjqueues(struct sealfs_logfile_entry *e, Ofile *o, int nratchet)
 		}else{
 			dhfprintf(stderr, "JQUEUE no advance o:%lu, e:%lu\n",
 					o->offset,ec->offset);
+			if(DEBUGJQUEUE > 1)
+				printheap(o->heap);
 			insertheap(heap, min, ec);	//put it back, just took it, so there is place
 			break;
 		}
 	}
 	return 0;
-}
-
-static void
-dumpheap(Heap *heap, int nratchet)
-{
-	uint64_t min;
-	struct sealfs_logfile_entry *e;
-	fprintf(stderr, "entries pending, [\n");
-	for(;;){
-		e = (struct sealfs_logfile_entry*)popminheap(heap, &min);
-		if(e == NULL)
-			break;
-		fprintf(stderr, "\t");
-		fprintf(stderr, "min: %ld %ld  ->",
-			min, unifyoff(e->offset, e->ratchetoffset, nratchet));
-		fprintentry(stderr, e);
-	}
-	fprintf(stderr, "]\n");
-	
 }
 
 static void
@@ -320,7 +325,8 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		fd = -1;
 		if(e.inode != FAKEINODE)
 			fd = o->fd;
-			
+		
+		//cannot detect ratchet unless it has advanced
 		if(!gotnratchet && e.ratchetoffset >= 1){
 			gotnratchet = nratchet_detect(&e, fd, kf, &nratchet);
 		}
@@ -368,7 +374,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 				exitstatus = EXIT_FAILURE;
 		}
 		if(!iseok)
-			nbad ++;
+			nbad++;
 		if(dumplog(&e, fd, DUMPLOG, iseok) < 0){
 			fprintf(stderr, "can't dump log entry");
 			fprintentry(stderr, &e);
