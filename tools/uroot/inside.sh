@@ -96,7 +96,7 @@ test3(){
 	
 	resettest
 	
-	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	mount -o nratchet=2,kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
 	/var/tmp/test -s 2 17 2 /tmp/y
 	
 	umount /tmp/y
@@ -125,9 +125,9 @@ test3(){
 	cat /tmp/hdr /tmp/medium /tmp/end /tmp/start  > /tmp/x/.SEALFS.LOG
 	checktest TEST3hmes -Dh
 
-	echo hdr end start medium 
-	cat /tmp/hdr  /tmp/end /tmp/start /tmp/medium > /tmp/x/.SEALFS.LOG
-	checktest TEST3hesm -Dh
+#	echo hdr end start medium 
+#	cat /tmp/hdr  /tmp/end /tmp/start /tmp/medium > /tmp/x/.SEALFS.LOG
+#	checktest TEST3hesm -Dh
 	
 	#SHOULD FAIL
 	echo hdr medium end
