@@ -87,7 +87,7 @@ Concurrency:
 		Second try (implemented now): This version has an atomic_t integer (burnt) to communicate
 			client processes and burn threads. We want
 			to use burnt to communicate (with atomic
-			operations). This integet needs to be advanced
+			operations). This integer needs to be advanced
 			uniformly without leaving holes (if we could we
 			would have jiggle space to release locks). This
 			approach means that a lock is taken, key is
@@ -152,6 +152,7 @@ Optimizations:
 		copy_from_user. One alloc of a page less. No copying.
 		May kmap more adresses into kernel space (TLB misses?).
 BUGS:
-	fails sometimes in checking first entry (verification.sh)
-		Read copy_from_user to test if the failure is there and add sanity
-	
+	Not any known at the moment
+Future work:
+	Try to detect nratchet once when an entry fails, when can grow nratchet and degrade gracefully
+		(maybe).
