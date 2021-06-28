@@ -112,22 +112,15 @@ scandirfiles(char *path, Ofile **ofiles, Rename *renames)
 	closedir(d);
 }
 
-static inline int logint2(uint64_t i)
-{
-	int n;
-	n = 0;
-	while(i > 0){
-		n++;
-		i >>= 1;
-	}
-	return n;
-}
+enum {
+	NBitsRatchet = 21,
+};
 
 static uint64_t
 unifyoff(uint64_t offset, uint64_t ratchetoffset, uint64_t nratchet)
 {
 	//they should not overlap
-	return (offset<<logint2(nratchet))+ratchetoffset;
+	return (offset<<NBitsRatchet)+ratchetoffset;
 }
 
 static void

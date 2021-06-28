@@ -125,13 +125,9 @@ test3(){
 	cat /tmp/hdr /tmp/medium /tmp/end /tmp/start  > /tmp/x/.SEALFS.LOG
 	checktest TEST3hmes -Dh
 
-	#this one fails because the nratchet cannot be detected
-	#the first one has offset != 0 but ratchetoffset=0 so the heap breaks
-	#because the nratchet is not detected and things are wrong in the heap
-	#this cannot happen in reality
-	#echo hdr end start medium 
-	#cat /tmp/hdr  /tmp/end /tmp/start /tmp/medium > /tmp/x/.SEALFS.LOG
-	#checkfailtest TEST3hesm -Dh
+	echo hdr end start medium 
+	cat /tmp/hdr  /tmp/end /tmp/start /tmp/medium > /tmp/x/.SEALFS.LOG
+	checktest TEST3hesm -Dh
 	
 	#SHOULD FAIL
 	echo hdr medium end
