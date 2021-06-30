@@ -449,6 +449,8 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ra
   		t += nr;
 	}
 	atomic_long_set(&sb->burnt, oldoff+FPR_SIZE);
+	if(sb->nratchet != 1)
+		ratchet_key(key, 0, sb->nratchet, hmacstate);
 	memmove(sb->key, key, FPR_SIZE);
 	ret = oldoff;
 end:

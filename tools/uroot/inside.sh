@@ -201,11 +201,11 @@ test7(){
 
 	resettest
 	
-	#mount -o nratchet=1,kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-	#/var/tmp/test -s 32 1 1 /tmp/y
-	#umount /tmp/y
+	mount -o nratchet=1,kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	/var/tmp/test -s 32 1 1 /tmp/y
+	umount /tmp/y
 	
-	#checktest TEST7B -v
+	checktest TEST7B
 }
 
 test8(){	

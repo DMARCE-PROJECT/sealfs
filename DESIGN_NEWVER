@@ -151,7 +151,7 @@ Optimizations:
 	- Flip pages and hash directly from user memory instead of
 		copy_from_user. One alloc of a page less. No copying.
 		May kmap more adresses into kernel space (TLB misses?).
-BUGS:
+Mitigation
 	Attack?: deleting all nratchet != entries. This makes holes in files
 	unless there are no entries for the holes outside. We need to
 	hash nratchet in nroff=0 entries somehow (at some cost it is

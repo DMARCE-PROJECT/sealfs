@@ -320,7 +320,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			fd = o->fd;
 		
 		//cannot detect ratchet unless it has advanced
-		if(!gotnratchet && e.ratchetoffset >= 1){
+		if(!gotnratchet){
 			gotnratchet = nratchet_detect(&e, fd, kf, &nratchet);
 		}
 		if(e.inode == FAKEINODE){

@@ -283,6 +283,8 @@ isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf,
 	// TO HELP DEBUG ISREKEY isrekey = 1;
 	if(e->ratchetoffset == 0 || isrekey(kc, e)) {
 		loadkey(kc, e, kf);
+		if(nratchet != 1)
+			ratchet_key(kc->key, 0, nratchet);
 	}
 	ratchet(kc, kf, e, nratchet);
 	if(DEBUGENTRY){
