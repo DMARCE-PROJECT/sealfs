@@ -152,7 +152,11 @@ Optimizations:
 		copy_from_user. One alloc of a page less. No copying.
 		May kmap more adresses into kernel space (TLB misses?).
 BUGS:
-	Not any known at the moment
+	Attack?: deleting all nratchet != entries. This makes holes in files
+	unless there are no entries for the holes outside. We need to
+	hash nratchet in nroff=0 entries somehow (at some cost it is
+	just ratchet_key once with offset 0, do the same when rekeying
+	in verify and nratchet_detect when offset is 0 also).
 Future work:
 	Try to detect nratchet once when an entry fails, when can grow nratchet and degrade gracefully
 		This is only two small changes: 1) detect nratchet on fail. 2) Make the kernel switch
