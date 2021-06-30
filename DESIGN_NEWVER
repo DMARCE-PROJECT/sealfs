@@ -160,10 +160,12 @@ BUGS:
 
 	One way, ratchet the key once with roff = 0:
 	/home/paurea/gits/sealfs/file.c:452,454
-	ratchet_key(sb->key, roff, sb->nratchet, hmacstate);
+	if(nratchet != 1)
+		ratchet_key(sb->key, 0, sb->nratchet, hmacstate);
 	memmove(key, sb->key, FPR_SIZE);
 	/home/paurea/gits/sealfs/tools/entries.c:285
-	ratchet_key(kc->key, 0, nratchet);
+	if(nratchet != 1)
+		ratchet_key(kc->key, 0, nratchet);
 	/home/paurea/gits/sealfs/tools/verify.c:323
 	take out the condition e.ratchetoffset >= 1
 		remeasure everything :-)
