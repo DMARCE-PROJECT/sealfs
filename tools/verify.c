@@ -490,6 +490,7 @@ setinode_begend(char *argv[], int64_t *inode, int64_t *begin, int64_t *end)
 		*inode, *begin, *end);
 }
 
+
 int
 main(int argc, char *argv[])
 {
@@ -497,7 +498,7 @@ main(int argc, char *argv[])
 	FILE *betaf;
 	FILE *alphaf;
 
-	int nratchet = NRATCHET;
+	int nratchet = NRATCHETDEFAULT;
 	int64_t inode = 0;
 	int64_t begin = 0;
 	int64_t end = 0;

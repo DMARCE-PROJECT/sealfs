@@ -143,7 +143,7 @@ test4(){
 	############################# 4 TEST (new key so it does not fail)
 	resettest
 	
-	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	mount -o nratchet=32,kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
 	/var/tmp/test -p 4 17 1000 /tmp/y
 	# CPUID is invalid opcode
 	umount /tmp/y
@@ -197,7 +197,15 @@ test7(){
 	/var/tmp/test -s 32 1 1 /tmp/y
 	umount /tmp/y
 	
-	checktest TEST7
+	checktest TEST7A
+
+	resettest
+	
+	#mount -o nratchet=1,kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	#/var/tmp/test -s 32 1 1 /tmp/y
+	#umount /tmp/y
+	
+	#checktest TEST7B -v
 }
 
 test8(){	

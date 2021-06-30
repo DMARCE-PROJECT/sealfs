@@ -3,6 +3,7 @@ extern int freadentry(FILE *f, struct sealfs_logfile_entry *e);
 extern int dumplog(struct sealfs_logfile_entry *e, int fd, int typelog, int isok);
 enum{
 	Bufsz = 8 * 1024,
+	NRATCHETDEFAULT=1,
 };
 
 struct KeyCache{

@@ -319,7 +319,7 @@ nratchet_detect(struct sealfs_logfile_entry *e, int logfd, FILE *kf, int *nratch
 			nr++;
 			if(nr > MAXNRATCHET){
 				fprintf(stderr, "can't find an nratchet that works\n");
-				nr = NRATCHET;	//continue as before
+				nr = NRATCHETDEFAULT;	//continue as before
 				nratchet_detected = 0;
 				break;
 			}
