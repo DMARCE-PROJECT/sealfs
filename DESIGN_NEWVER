@@ -155,4 +155,10 @@ BUGS:
 	Not any known at the moment
 Future work:
 	Try to detect nratchet once when an entry fails, when can grow nratchet and degrade gracefully
-		(maybe).
+		This is only two small changes: 1) detect nratchet on fail. 2) Make the kernel switch
+		nratchet with some policy (double nratchet when key gets smaller, for example).
+		3) Be careful not to surpass NBitsRatchet (in verify.c) for the ratchet size. This can
+		be changed to be made "very big" by changing the heap implementation.
+		(using 128 bits type size or comparing carefully two 64 bits integers).
+		Another way would be by making the heap call a pointer to a function to compare a type
+		but it is probably too much.
