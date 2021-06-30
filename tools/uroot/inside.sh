@@ -140,14 +140,14 @@ test3(){
 }
 
 test4(){
-	echo TEST 4 '----------------' DISABLED, CPUID not present in qemu
 	############################# 4 TEST (new key so it does not fail)
-	##resettest
+	resettest
 	
-	##mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-	##/var/tmp/test -p 4 17 1000 /tmp/y
+	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	/var/tmp/test -p 4 17 1000 /tmp/y
 	# CPUID is invalid opcode
-	##umount /tmp/y
+	umount /tmp/y
+	checktest TEST4
 }
 
 test5() {	
