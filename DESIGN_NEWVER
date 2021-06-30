@@ -157,6 +157,17 @@ BUGS:
 	hash nratchet in nroff=0 entries somehow (at some cost it is
 	just ratchet_key once with offset 0, do the same when rekeying
 	in verify and nratchet_detect when offset is 0 also).
+
+	One way, ratchet the key once with roff = 0:
+	/home/paurea/gits/sealfs/file.c:452,454
+	ratchet_key(sb->key, roff, sb->nratchet, hmacstate);
+	memmove(key, sb->key, FPR_SIZE);
+	/home/paurea/gits/sealfs/tools/entries.c:285
+	ratchet_key(kc->key, 0, nratchet);
+	/home/paurea/gits/sealfs/tools/verify.c:323
+	take out the condition e.ratchetoffset >= 1
+		remeasure everything :-)
+
 Future work:
 	Try to detect nratchet once when an entry fails, when can grow nratchet and degrade gracefully
 		This is only two small changes: 1) detect nratchet on fail. 2) Make the kernel switch
