@@ -117,14 +117,14 @@ enum {
 };
 
 static uint64_t
-unifyoff(uint64_t offset, uint64_t ratchetoffset, uint64_t nratchet)
+unifyoff(uint64_t offset, uint64_t ratchetoffset)
 {
 	//they should not overlap
 	return (offset<<NBitsRatchet)+ratchetoffset;
 }
 
 static void
-dumpheap(Heap *heap, int nratchet)
+dumpheap(Heap *heap)
 {
 	uint64_t min;
 	struct sealfs_logfile_entry *e;
@@ -135,7 +135,7 @@ dumpheap(Heap *heap, int nratchet)
 			break;
 		fprintf(stderr, "\t");
 		fprintf(stderr, "min: %ld %ld  offset: %ld->",
-			min, unifyoff(e->offset, e->ratchetoffset, nratchet), e->offset);
+			min, unifyoff(e->offset, e->ratchetoffset), e->offset);
 		fprintentry(stderr, e);
 		free(e);
 	}
@@ -149,72 +149,72 @@ dumpheap(Heap *heap, int nratchet)
 //	There may be some disorder (MaxHeapSz entries), we call this region a jqueue
 //		jump-queue.
 // 	Keep a minheap of offset and advance it when it is contiguous.
+
 static int
-checkjqueues(struct sealfs_logfile_entry *e, Ofile *o, int nratchet)
+popcontiguous(uint64_t *offset, Heap *heap)
 {
 	uint64_t min;
-	Heap *heap;
-	struct sealfs_logfile_entry *ec;
-
-	dhfprintf(stderr, "CHECKJQUEUE: %p\n", e);
-	if(DEBUGJQUEUE && e != NULL)
-		fprintentry(stderr, e);
-	heap = o->heap;
-
-	if(e != NULL) {
-		if(o->offset == e->offset){
-			o->offset += e->count;
-			return 0;
-		}
-		ec = (struct sealfs_logfile_entry*)malloc(sizeof(*ec));
-		if(!ec)
-			err(1, "cannot allocate entry");
-		memmove(ec, e, sizeof(struct sealfs_logfile_entry));
-		if(insertheap(heap, unifyoff(ec->offset, ec->ratchetoffset, nratchet), ec) < 0){
-			free(ec);
-			ec = NULL;
-			fprintf(stderr, "read %d entries without fixing a jqueue\n", MaxHeapSz);
-			return -1;
-		}
-	}else if(heap == NULL)
-		return 0;
-
+	
+	struct sealfs_logfile_entry *e;
 	for(;;){	
-		ec = (struct sealfs_logfile_entry*)popminheap(heap, &min);
-		if(ec == NULL){
-			dhfprintf(stderr, "JQUEUE NULL o:%lu\n", o->offset);
+		e = (struct sealfs_logfile_entry*)popminheap(heap, &min);
+		if(e == NULL){
+			dhfprintf(stderr, "JQUEUE NULL o:%lu\n", *offset);
 			break;
 		}
-		if(ec != NULL && o->offset == ec->offset){
-			dhfprintf(stderr, "JQUEUE advance o:%lu\n", o->offset);
-			o->offset += ec->count;
-			free(ec);
+		if(e != NULL && *offset == e->offset){
+			dhfprintf(stderr, "JQUEUE advance o:%lu\n", *offset);
+			*offset += e->count;
+			free(e);
 		}else{
 			dhfprintf(stderr, "JQUEUE no advance o:%lu, e:%lu\n",
-					o->offset,ec->offset);
+					*offset, e->offset);
 			if(DEBUGJQUEUE > 1)
-				printheap(o->heap);
-			insertheap(heap, min, ec);	//put it back, just took it, so there is place
+				printheap(heap);
+			insertheap(heap, min, e);	//put it back, just took it, so there is place
 			break;
 		}
 	}
 	return 0;
 }
 
+static int
+advanceentry(struct sealfs_logfile_entry *e, Ofile *o)
+{
+	struct sealfs_logfile_entry *ec;
+
+	if(o->offset == e->offset){
+		o->offset += e->count;
+		return 0;
+	}
+	ec = (struct sealfs_logfile_entry*)malloc(sizeof(*ec));
+	if(!ec)
+		err(1, "cannot allocate entry");
+	memmove(ec, e, sizeof(struct sealfs_logfile_entry));
+	if(insertheap(o->heap, unifyoff(ec->offset, ec->ratchetoffset), ec) < 0){
+		free(ec);
+		ec = NULL;
+		fprintf(stderr, "read %d entries without fixing a jqueue\n", MaxHeapSz);
+		return -1;
+	}
+	return 0;
+}
+
+
 static void
-checktailofiles(Ofile *ofiles, int nratchet)
+checktailofiles(Ofile *ofiles)
 {
 	Ofile *o;
 	int err = 0;
     	for(o = ofiles; o != NULL;) {
-		if(o->heap != NULL && checkjqueues(NULL, o, nratchet) < 0){
+		if(o->heap != NULL && popcontiguous(&o->offset, o->heap) < 0){
 			err = 1;
 		}
 		if(o->heap->count != 0){
 			fprintf(stderr, 
 				"disordered offsets pend for ofile inode: %ld fd: %d\n\t",
 	 			o->inode, o->fd);
-			dumpheap(o->heap, nratchet);
+			dumpheap(o->heap);
 			err=1;
 		}
 		free(o->heap);
@@ -352,10 +352,17 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			//printf("checking entry: ");
 			//fprintentry(stdout, &e);
 		}
-		if(checkjqueues(&e, o, nratchet) < 0 && DUMPLOG == LOGNONE){
-			fprintf(stderr, "can't order entries for entry");
-			fprintentry(stderr, &e);
-			exit(1);
+		if(DUMPLOG == LOGNONE){	
+			if(advanceentry(&e, o) < 0){
+				fprintf(stderr, "can't order entries for entry");
+				fprintentry(stderr, &e);
+				exit(1);
+			}
+			if(popcontiguous(&o->offset, o->heap) < 0){
+				fprintf(stderr, "can't order entries for entry");
+				fprintentry(stderr, &e);
+				exit(1);
+			}
 		}
 		iseok = isentryok(&e, fd, kf, &kc, nratchet);
 		if(!iseok){
@@ -391,7 +398,7 @@ done:
 		}
 		c++;
 	}
-	checktailofiles(ofiles, nratchet);
+	checktailofiles(ofiles);
 	freeofiles(ofiles);
 	freerenames(renames);
 	if(c == 0)
