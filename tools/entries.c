@@ -229,14 +229,14 @@ drop(KeyCache *kc)
 	memset(kc->key, 0, FPR_SIZE);
 }
 
-int
+static int
 isrekey(KeyCache *kc, struct sealfs_logfile_entry *e)
 {
 	return kc->lastkeyoff != e->koffset || kc->lastroff > e->ratchetoffset;
 }
 
 
-int
+static int
 loadkey(KeyCache *kc, struct sealfs_logfile_entry *e, FILE *kf)
 {
 	if(fseek(kf, (long) e->koffset, SEEK_SET) < 0){
@@ -256,23 +256,8 @@ loadkey(KeyCache *kc, struct sealfs_logfile_entry *e, FILE *kf)
 	return 0;
 }
 
-int
-updatecache(KeyCache *kc, FILE *kf, struct sealfs_logfile_entry *e, int nratchet)
-{
-	// TO HELP DEBUG ISREKEY isrekey = 1;
-	if(isrekey(kc, e)) {
-		if(loadkey(kc, e, kf) < 0)
-			return -1;
-		if(nratchet != 1)
-			ratchet_key(kc->key, 0, nratchet);
-	}
-	ratchet(kc, kf, e, nratchet);
-	return 0;
-}
-
-
 void
-ratchet(KeyCache *kc, FILE *kf, struct sealfs_logfile_entry *e, int nratchet)
+ratchet(KeyCache *kc, struct sealfs_logfile_entry *e, int nratchet)
 {
 	int i;
 	for(i = kc->lastroff; i < e->ratchetoffset; i++){
@@ -283,6 +268,21 @@ ratchet(KeyCache *kc, FILE *kf, struct sealfs_logfile_entry *e, int nratchet)
 	}
 	kc->lastroff = e->ratchetoffset;
 }
+
+int
+updatecache(KeyCache *kc, FILE *kf, struct sealfs_logfile_entry *e, int nratchet)
+{
+	// TO HELP DEBUG ISREKEY isrekey = 1;
+	if(isrekey(kc, e)) {
+		if(loadkey(kc, e, kf) < 0)
+			return -1;
+		if(nratchet != 1)
+			ratchet_key(kc->key, 0, nratchet);
+	}
+	ratchet(kc, e, nratchet);
+	return 0;
+}
+
 
 
 int
