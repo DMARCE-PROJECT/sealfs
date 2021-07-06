@@ -53,7 +53,7 @@ mkdir /tmp/y
 cp /mount/hd/.SEALFS.LOG /tmp/x
 
 mandatorytest1(){	
-	echo TEST 1 '----------------'
+	echo TEST 1 '-------basic test---------'
 	############################# 1 TEST
 	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
 	echo -n 01234567 >> /tmp/y/zzz
@@ -72,7 +72,7 @@ mandatorytest1(){
 }
 
 test2(){	
-	echo TEST 2 '----------------'
+	echo TEST 2 '-----basic test-----------'
 	############################# 2 TEST
 	resettest
 	
@@ -91,7 +91,7 @@ test2(){
 }
 
 test3(){		
-	echo TEST 3 '----------------'
+	echo TEST 3 '------check heap, verify in different orders----------'
 	############################# 3 TEST simulate race condition
 	
 	resettest
@@ -140,6 +140,7 @@ test3(){
 }
 
 test4(){
+	echo TEST 5 '-------nratchet 32, -p ---------'
 	############################# 4 TEST (new key so it does not fail)
 	resettest
 	
@@ -151,7 +152,7 @@ test4(){
 }
 
 test5() {	
-	echo TEST 5 '----------------'
+	echo TEST 5 '-------break key, OK means failed verification---------'
 	############################# 5 TEST, should fail (new key so it does not fail because of that)
 	resettest
 	
@@ -168,7 +169,7 @@ test5() {
 test6(){	
 	#####umount test
 	############################# 6 TEST
-	echo TEST 6 '----------------'
+	echo TEST 6 '------remount----------'
 	resettest
 	mount -o nratchet=17,kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
 	echo -n 01234567 >> /tmp/y/zzz
@@ -189,7 +190,7 @@ test6(){
 	checktest TEST6
 }
 test7(){	
-	echo TEST 7 '----------------'
+	echo TEST 7 '------default nratchet and 1 nratchet----------'
 	############################# 7 TEST
 	resettest
 	
@@ -220,6 +221,35 @@ test8(){
 	checktest TEST8
 }
 
+checktestOffset() {
+	sync; sync
+	if test "$3" = "-v"; then
+		if /var/tmp/verify /tmp/x /mount/hd/k1 /mount/hd/k2 -i 6 220000 2240000 $2; then
+			echo $1 OK
+		else
+			echo $1 FAIL
+		fi
+		return
+	fi
+	sync; sync
+	if /var/tmp/verify /tmp/x /mount/hd/k1 /mount/hd/k2  -i 6 220000 2240000 $2 > /dev/null 2>&1; then
+		echo $1 OK
+	else
+		echo $1 FAIL
+	fi
+}
+
+test9(){	
+	echo TEST 9 '-------verification with offset ---------'
+	############################# 8 TEST
+	resettest
+	
+	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	/var/tmp/test -s 1 20000 1 /tmp/y
+	umount /tmp/y
+	checktestOffset TEST8
+}
+
 
 
 
@@ -232,6 +262,7 @@ test5
 test6
 test7
 test8
+test9
 
 
 echo ENDTEST
