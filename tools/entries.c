@@ -228,17 +228,14 @@ drop(KeyCache *kc)
 	kc->lastroff = -1;
 	memset(kc->key, 0, FPR_SIZE);
 }
+
+
 int
 isrekey(KeyCache *kc, struct sealfs_logfile_entry *e)
 {
-	return kc->lastkeyoff != e->koffset;
+	return kc->lastkeyoff != e->koffset || kc->lastroff > e->ratchetoffset;
 }
 
-int
-ismiss(KeyCache *kc, struct sealfs_logfile_entry *e)
-{
-	return isrekey(kc, e) || kc->lastroff != e->ratchetoffset;
-}
 
 int
 loadkey(KeyCache *kc, struct sealfs_logfile_entry *e, FILE *kf)
@@ -281,7 +278,7 @@ isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf,
 	unsigned char h[FPR_SIZE];
 
 	// TO HELP DEBUG ISREKEY isrekey = 1;
-	if(e->ratchetoffset == 0 || isrekey(kc, e)) {
+	if(isrekey(kc, e)) {
 		loadkey(kc, e, kf);
 		if(nratchet != 1)
 			ratchet_key(kc->key, 0, nratchet);
