@@ -229,7 +229,6 @@ drop(KeyCache *kc)
 	memset(kc->key, 0, FPR_SIZE);
 }
 
-
 int
 isrekey(KeyCache *kc, struct sealfs_logfile_entry *e)
 {
@@ -257,6 +256,21 @@ loadkey(KeyCache *kc, struct sealfs_logfile_entry *e, FILE *kf)
 	return 0;
 }
 
+int
+updatecache(KeyCache *kc, FILE *kf, struct sealfs_logfile_entry *e, int nratchet)
+{
+	// TO HELP DEBUG ISREKEY isrekey = 1;
+	if(isrekey(kc, e)) {
+		if(loadkey(kc, e, kf) < 0)
+			return -1;
+		if(nratchet != 1)
+			ratchet_key(kc->key, 0, nratchet);
+	}
+	ratchet(kc, kf, e, nratchet);
+	return 0;
+}
+
+
 void
 ratchet(KeyCache *kc, FILE *kf, struct sealfs_logfile_entry *e, int nratchet)
 {
@@ -278,12 +292,9 @@ isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf,
 	unsigned char h[FPR_SIZE];
 
 	// TO HELP DEBUG ISREKEY isrekey = 1;
-	if(isrekey(kc, e)) {
-		loadkey(kc, e, kf);
-		if(nratchet != 1)
-			ratchet_key(kc->key, 0, nratchet);
+	if(updatecache(kc, kf, e, nratchet) < 0){
+		return 0;
 	}
-	ratchet(kc, kf, e, nratchet);
 	if(DEBUGENTRY){
 		fprintf(stderr, "verifying key: ");
 		dumpkey(kc->key);

@@ -1,6 +1,6 @@
 
 enum {
-	MaxHeapSz = 1000,
+	MaxHeapSz = 2000,
 };
 
 
