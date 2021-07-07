@@ -250,6 +250,20 @@ static int do_hmac(const char __user *data, char *key,
 	return 0;
 }
 
+/*
+	http://open-std.org/JTC1/SC22/WG21/docs/papers/2016/p0124r1.html
+	Documentation/atomic_t.txt
+		" - RMW operations that have a return value are fully ordered;"
+		"Fully ordered primitives are ordered against everything prior and everything
+			subsequent. Therefore a fully ordered primitive is like having an smp_mb()
+			before and an smp_mb() after the primitive."
+
+	The problem which may appear is that we read the atomic and because of
+	the relaxed memory semantics of C11 the buffer for the filesystem is not
+	yet read and it mixes. This cannot happen in the linux kernel because atomics
+	which return a value (per the standard above) run a full memory barrier.
+	We hope (cross our fingers) this continues to be true.
+*/
 static int has_advanced_burnt(struct sealfs_sb_info *sb, loff_t oldburnt)
 {
 	loff_t newburnt;
@@ -448,7 +462,8 @@ static loff_t read_key(struct sealfs_sb_info *sb, unsigned char *key, loff_t *ra
 		}
   		t += nr;
 	}
-	atomic_long_set(&sb->burnt, oldoff+FPR_SIZE);
+	/* see comment in has_advanced_burnt */
+	atomic_long_add(FPR_SIZE, &sb->burnt);
 	if(sb->nratchet != 1)
 		ratchet_key(key, 0, sb->nratchet, hmacstate);
 	memmove(sb->key, key, FPR_SIZE);
