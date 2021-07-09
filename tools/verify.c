@@ -294,12 +294,14 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 	int fd;
 	int iseok;
 	int nbad;
+	int roff;
 
 	nbad = 0;
 	c = 0;
 	szhdr = sizeof(struct sealfs_keyfile_header);
 	drop(&kc);
 	gotnratchet = 0;
+	roff = 0;
 
 	scandirfiles(path, &ofiles, renames);
 	if(inode == 0)
@@ -384,7 +386,7 @@ done:
 		/*
 		 * check continuity if we are checking the whole log
 		 */
-		if(inode == 0 && e.koffset != szhdr + (c/nratchet)*FPR_SIZE && !DEBUGJQUEUE){
+		if(inode == 0 && e.koffset != szhdr + (c/nratchet)*FPR_SIZE && e.ratchetoffset != roff && !DEBUGJQUEUE){
 			fprintf(stderr, "koffset not correct: %ld "
 					"should be %ld for entry: ",
 					 e.koffset,
@@ -397,6 +399,7 @@ done:
 				exitstatus = EXIT_FAILURE;
 		}
 		c++;
+		roff = (roff + 1)%nratchet;
 	}
 	checktailofiles(ofiles);
 	freeofiles(ofiles);
