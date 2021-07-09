@@ -399,7 +399,12 @@ done:
 				exitstatus = EXIT_FAILURE;
 		}
 		c++;
-		roff = (roff + 1)%nratchet;
+		roff = (roff + 1) % nratchet;
+	}
+	/* if we are checking the whole log, it has to be sealed */	
+	if (inode == 0 && c % nratchet != 0 && !DEBUGJQUEUE) {
+		fprintf(stderr, "number of entries is not a multiple of nratchet: %ld %d\n", c, nratchet);
+		exit(1);
 	}
 	checktailofiles(ofiles);
 	freeofiles(ofiles);
