@@ -347,24 +347,19 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			 * init o->offset
 			 * o->offset must be the e.offset of the first,
 			 * record to check, not start!
-			 * paurea: I don't understand this, is it a BUG?
 			 */
 			if(o->offset == 0)
-				o->offset = e.offset;
+				o->offset = begin;
 			//printf("checking entry: ");
 			//fprintentry(stdout, &e);
 		}
-		if(DUMPLOG == LOGNONE){	
-			if(advanceentry(&e, o) < 0){
+		if(advanceentry(&e, o) < 0 || popcontiguous(&o->offset, o->heap) < 0){
+			if(DUMPLOG == LOGNONE){
 				fprintf(stderr, "can't order entries for entry");
 				fprintentry(stderr, &e);
 				exit(1);
-			}
-			if(popcontiguous(&o->offset, o->heap) < 0){
-				fprintf(stderr, "can't order entries for entry");
-				fprintentry(stderr, &e);
-				exit(1);
-			}
+			}else
+				exitstatus = EXIT_FAILURE;
 		}
 		iseok = isentryok(&e, fd, kf, &kc, nratchet);
 		if(!iseok){
@@ -382,6 +377,12 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			fprintentry(stderr, &e);
 			exit(1);
 		}
+		/*
+			optimization, end early, note I only looked the ones in range and
+			found them contiguous
+		 */
+		if(inode != 0 && o->offset >= end)	
+				break;
 done:
 		/*
 		 * check continuity if we are checking the whole log
