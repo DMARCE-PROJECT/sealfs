@@ -378,8 +378,12 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 			exit(1);
 		}
 		/*
-			optimization, end early, note I only looked the ones in range and
-			found them contiguous
+			Optimization, end early, note I only looked the ones in range and
+				found them contiguous.
+			Should partial verification look at the rest of the log
+				and give an error if anything is in range?
+			I think this is ok, but we have to be upfront with the guarantees
+				(if you want to be thorough, do a complete verification).
 		 */
 		if(inode != 0 && o->offset >= end)	
 				break;
