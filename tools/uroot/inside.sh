@@ -247,7 +247,7 @@ test9(){
 	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
 	/var/tmp/test -s 1 20000 1 /tmp/y
 	umount /tmp/y
-	checktestOffset TEST8
+	checktestOffset TEST9
 }
 
 
