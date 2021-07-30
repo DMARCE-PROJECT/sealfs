@@ -12,10 +12,11 @@ all the files under the mount point. It only allows append-only write
 operations and authenticates the data written to the underlying files
 (served by other file system).
 
-If you are interested in the version 1 (SealFSv1) 
-described by the paper 
-"SealFS: Storage-based tamper-evident logging" 
-(https://doi.org/10.1016/j.cose.2021.102325),
+If you are interested in the version 1 (SealFSv1) described by the paper 
+
+	"SealFS: Storage-based tamper-evident logging" 
+	(https://doi.org/10.1016/j.cose.2021.102325)
+
 go to the tag "submitted".
 
 
