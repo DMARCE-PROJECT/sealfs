@@ -1,4 +1,3 @@
-
 This is the first SealFS prototype, based on wrapfs. The module has
 been ported to 5.4.0-65 (the first version was for 4.8.17, then 4.15.0, 
 see the tags, though some important BUGS have been removed since then).
@@ -13,6 +12,11 @@ all the files under the mount point. It only allows append-only write
 operations and authenticates the data written to the underlying files
 (served by other file system).
 
-If you are interested in the version described by the paper, go to
-the tag "submitted".
+If you are interested in the version 1 (SealFSv1) described by the paper 
+
+	"SealFS: Storage-based tamper-evident logging" 
+	(https://doi.org/10.1016/j.cose.2021.102325)
+
+go to the tag "submitted".
+
 
