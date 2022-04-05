@@ -55,7 +55,9 @@ Tooling:
 		apt install qemu-system qemu-system-x86
 		apt install qemu-kvm libvirt-clients libvirt-daemon-system bridge-utils virt-manager
 		go get github.com/u-root/u-root
+			#for now GO111MODULE=off go get github.com/u-root/u-root
 		- cd tools/uroot; ./runtest.sh
+			#export GO111MODULE=off; cd tools/uroot; ./runtest.sh
 		Runs all tests implemented inside a qemu. Should say OK.
 
 	Verify remap of inodes. Important to copy between filesystems the files -32 43 remaps

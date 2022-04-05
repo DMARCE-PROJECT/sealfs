@@ -82,7 +82,7 @@ else
 	PIDQEMU=$!
 	
 	echo waiting for qemu to finish
-	while ! egrep '\#' $OUTPUT|egrep '~/'; do
+	while ! egrep '/.......#' $OUTPUT; do
 		sleep 1
 		echo -n .
 	done
