@@ -31,13 +31,23 @@ export KERNEL=/tmp/vmlinuz-$(uname -r)
 sudo chown $USER $KERNEL
 chmod 777 $KERNEL
 
+export SEALCMDS="prep dump verify test /usr/bin/sh"
+export EXTRACMDS="/usr/bin/sed /usr/bin/awk /usr/bin/xxd $SEALCMDS"
 #make all sealfs
 cd $GITSEAL
 make all || exit 1
 cp sealfs.ko /var/tmp
 cd tools
 make all || exit 1
-cp prep dump verify test /var/tmp
+#add xxd for debugging
+cp $EXTRACMDS /var/tmp
+
+
+CMDSINSIDE=""
+for i in $EXTRACMDS; do
+	CMDNAME=`basename $i`
+	CMDSINSIDE="$CMDSINSIDE -files /var/tmp/$CMDNAME"
+done
 
 echo building uroot
 export SEALHD=/var/tmp/sealhd
@@ -56,7 +66,7 @@ sudo umount $SEALHD
 
 cp $GITSEAL/tools/uroot/inside.sh /var/tmp/
 chmod +x /var/tmp/inside.sh
-if ! u-root -uinitcmd=/var/tmp/inside.sh -files "/var/tmp/test" -files "/usr/bin/sh" -files "/var/tmp/sealfs.ko" -files /var/tmp/verify -files /var/tmp/prep -files /var/tmp/dump  -files /var/tmp/inside.sh> /tmp/$$_uroot 2>&1; then
+if ! u-root -uinitcmd=/var/tmp/inside.sh $CMDSINSIDE -files "/var/tmp/sealfs.ko" -files /var/tmp/inside.sh> /tmp/$$_uroot 2>&1; then
 	cat /tmp/$$_uroot 1>&2
 	echo u-root error  1>&2
 	exit 1

@@ -1,4 +1,4 @@
-#!/usr/bin/sh
+#!/var/tmp/sh
 
 mkdir -p /mount/hd
 mount /dev/sda /mount/hd
@@ -101,10 +101,11 @@ test3(){
 	
 	umount /tmp/y
 	
+	#sizeof(sealfs_logfile_header)
 	HDRSZ=8
 	ENTRYSZ=72
 	dd if=/tmp/x/.SEALFS.LOG bs=$HDRSZ count=1 of=/tmp/hdr >/dev/null 2>&1
-	
+
 	#with if=file, dd has a bug with skip ??
 	dd bs=$HDRSZ skip=1 of=/tmp/body < /tmp/x/.SEALFS.LOG >/dev/null 2>&1
 	dd bs=$ENTRYSZ count=3 of=/tmp/start < /tmp/body >/dev/null 2>&1
@@ -112,6 +113,22 @@ test3(){
 	#without count this last one has trailing zeros WTF dd?
 	dd bs=$ENTRYSZ count=6 skip=6 of=/tmp/end < /tmp/body >/dev/null 2>&1
 	
+	DUMPLOGS=no
+	if test "$DUMPLOGS" = yes; then
+		echo LOG "==="
+		/var/tmp/xxd /tmp/x/.SEALFS.LOG | /var/tmp/sed 12q
+		echo HDR "==="
+		/var/tmp/xxd /tmp/hdr | /var/tmp/sed 1q
+		echo BODY "==="
+		/var/tmp/xxd /tmp/body | /var/tmp/sed 12q
+		echo START "==="
+		/var/tmp/xxd /tmp/start | /var/tmp/sed 4q
+		echo MEDIUM "==="
+		/var/tmp/xxd /tmp/medium | /var/tmp/sed 4q
+		echo END "==="
+		/var/tmp/xxd /tmp/end | /var/tmp/sed 4q
+	fi
+
 	echo hdr start medium end
 	cat /tmp/hdr /tmp/start /tmp/medium /tmp/end > /tmp/x/.SEALFS.LOG
 	checktest TEST3hsme -Dh
