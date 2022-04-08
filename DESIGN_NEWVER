@@ -1,0 +1,52 @@
+latest version of SEALFS, under development
+Tested for linux kernel 5.4.0-107-generic #121-Ubuntu
+
+Under development:
+
+Add configurability:
+
+Switch from burn to save under configuration
+	Burn gains a new meaning and is configurable
+	Burning a key requires an old key in order to decouple it how do
+		1) not run thrads slow (sealfs_slow_thread)
+		2) change the sealfs_thread to sealfs_burn_thread
+			create a sealf_encburn_thread
+				&sb->burnt	now just to know if it needs to run
+			burnsyncmutex -> not needed, local to burn threads, ignore
+
+		we communicate with it, synchronize? circular buffer? [1]
+		once encrypted it does not matter how long we keep it.
+		who encrypts it? who writes it? when?
+			[key values circular buffer, copy in out?]
+		Two threads -> encrypter (keeps 2, encrypts alternately)
+				to a page, when full passes to writer
+			[pages circular buffer]
+			writer: writes them to disk, by page
+
+Read keys from file
+	Decouple reading keys from burning keys
+		(in keys file vs out keys file)
+	get_random_bytes (bad at boot?) https://lkml.iu.edu/hypermail/linux/kernel/0408.0/0606.html
+		o get_random_bytes_arch (hw byte generation)
+		or a file so it is switchable a device or potentially /dev/random.
+		The problem with a file may be slow... (read asynch in a circular buffer?) [1]
+
+https://www.kernel.org/doc/html/latest/core-api/circular-buffers.html
+
+
+
+Future work in this version:
+	Read an initial extra key (can be null, and then there is no initial key)
+		If present, switch burn to save and (the -> means encrypt)
+		kx -> k1 -> k2 -> k3
+		kx is forgotten after reading k1 and encrypting it.
+			(initialization of any flip/flop structure)
+		For each current key, the normal and encrypted version is kept.
+	Verification in this case... (needs extra parameters and or a different
+		key cache with the whole preffix). As it should be less than
+		1Gb (much less, but this is is at most) because of ratcheting,
+		we can keep it in special memory protected from swapping, zeroed after
+		etc etc. Verification in this case needs to be extra careful with keys
+		as it may be done in the same machine
+	XXX how do we provide Kx to verifier?
+		and sanitizing of keys in general
