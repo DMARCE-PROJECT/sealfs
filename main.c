@@ -39,7 +39,7 @@ static int is_task_using(struct task_struct *task, struct path *path)
 		fdt = files_fdtable(files);
 		if(fdt){
 			for (i=0; i < fdt->max_fds; i++) {
-		        	file = fcheck_files(files, i);
+		        	file = files_lookup_fd_locked(files, i);
 				if(file){
 					// should be the same pointer, the
 					// dentry is cached... right?
@@ -101,7 +101,8 @@ static loff_t get_keysz(struct sealfs_sb_info *info)
 {
 	struct kstat kst;
 	int err;
-	err = file_inode(info->kfile)->i_op->getattr(&info->kfile->f_path, &kst,
+	struct user_namespace *user_ns = current_user_ns();
+	err = file_inode(info->kfile)->i_op->getattr(user_ns, &info->kfile->f_path, &kst,
 		STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT);
 	if(err){
 		printk(KERN_ERR "sealfs: can't get attr from key file\n");
@@ -114,7 +115,8 @@ static loff_t get_nentries(struct file *lfile)
 {
 	struct kstat kst;
 	int err;
-	err = file_inode(lfile)->i_op->getattr(&lfile->f_path, &kst,
+	struct user_namespace *user_ns = current_user_ns();
+	err = file_inode(lfile)->i_op->getattr(user_ns, &lfile->f_path, &kst,
 		STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT);
 	if(err){
 		printk(KERN_ERR "sealfs: can't get attr from key file\n");
@@ -178,9 +180,14 @@ static int sealfs_read_super(struct super_block *sb,
 	struct path lower_path;
  	struct inode *inode;
 	struct sealfs_sb_info *info;
+	struct user_namespace *user_ns = current_user_ns();
 
 	sb->s_fs_info =  raw_data;
 	info = (struct sealfs_sb_info*) raw_data;
+
+	/* to mount must be userns admin */
+	if (!ns_capable(user_ns, CAP_SYS_ADMIN))
+		return -EPERM;
 
 	/* parse lower path */
 	err = kern_path(info->dev_name, LOOKUP_FOLLOW | LOOKUP_DIRECTORY,

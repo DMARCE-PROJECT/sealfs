@@ -228,7 +228,6 @@ static struct dentry *__sealfs_lookup(struct dentry *dentry,
 	struct dentry *ret_dentry = NULL;
 	struct path lower_path;
 
-
 	/* must initialize dentry operations */
 	d_set_d_op(dentry, &sealfs_dops);
 

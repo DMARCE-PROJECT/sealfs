@@ -15,7 +15,7 @@
 
 #include "sealfs.h"
 
-static int sealfs_create(struct inode *dir, struct dentry *dentry,
+static int sealfs_create(struct user_namespace *ns, struct inode *dir, struct dentry *dentry,
 			 umode_t mode, bool want_excl)
 {
         int err;
@@ -27,7 +27,7 @@ static int sealfs_create(struct inode *dir, struct dentry *dentry,
         lower_dentry = lower_path.dentry;
         lower_parent_dentry = lock_parent(lower_dentry);
 
-        err = vfs_create(d_inode(lower_parent_dentry), lower_dentry, mode,
+        err = vfs_create(ns, d_inode(lower_parent_dentry), lower_dentry, mode,
                          want_excl);
         if (err)
                 goto out;
@@ -57,14 +57,14 @@ static int sealfs_unlink(struct inode *dir, struct dentry *dentry)
 }
 
 /* disabled */
-static int sealfs_symlink(struct inode *dir, struct dentry *dentry,
+static int sealfs_symlink(struct user_namespace *ns, struct inode *dir, struct dentry *dentry,
 			  const char *symname)
 {
 	return -EPERM;
 }
 
 /* disabled */
-static int sealfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
+static int sealfs_mkdir(struct user_namespace *ns, struct inode *dir, struct dentry *dentry, umode_t mode)
 {
 	return -EPERM;
 }
@@ -76,7 +76,7 @@ static int sealfs_rmdir(struct inode *dir, struct dentry *dentry)
 }
 
 /* disabled */
-static int sealfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode,
+static int sealfs_mknod(struct user_namespace *ns, struct inode *dir, struct dentry *dentry, umode_t mode,
 			dev_t dev)
 {
 	return -EPERM;
@@ -87,10 +87,11 @@ static int sealfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode,
  * unmodified wrapfs version
  * ported, now it needs a new parameter: flags
  */
-static int sealfs_rename (struct inode *old_dir, struct dentry *old_dentry,
+static int sealfs_rename (struct user_namespace *ns, struct inode *old_dir, struct dentry *old_dentry,
                         struct inode *new_dir, struct dentry *new_dentry,
                         unsigned int flags)
 {
+	struct renamedata rd;
 	int err = 0;
         struct dentry *lower_old_dentry = NULL;
         struct dentry *lower_new_dentry = NULL;
@@ -117,10 +118,15 @@ static int sealfs_rename (struct inode *old_dir, struct dentry *old_dentry,
                 err = -ENOTEMPTY;
                 goto out;
         }
+	rd.old_mnt_userns	= ns;
+	rd.old_dir	= d_inode(lower_old_dir_dentry);
+	rd.old_dentry	= lower_old_dentry;
+	rd.new_mnt_userns	= ns;
+	rd.new_dir	= d_inode(lower_new_dir_dentry);
+	rd.new_dentry	= lower_new_dentry;
+	rd.flags = flags;
 
-        err = vfs_rename(d_inode(lower_old_dir_dentry), lower_old_dentry,
-                         d_inode(lower_new_dir_dentry), lower_new_dentry,
-                         NULL, flags);
+        err = vfs_rename(&rd);
         if (err)
                 goto out;
 
@@ -185,13 +191,12 @@ static const char *sealfs_get_link(struct dentry *dentry, struct inode *inode,
 	}
 
 	/* read the symlink, and then we will follow it */
-//        old_fs = get_fs();
-//       set_fs(KERNEL_DS);
-
+//	old_fs = get_fs();
+//	set_fs(KERNEL_DS);
 	old_fs = force_uaccess_begin();
 
 	err = sealfs_readlink(dentry, buf, len);
-//     set_fs(old_fs);
+//	set_fs(old_fs);
 	force_uaccess_end(old_fs);
 	if (err < 0) {
 		kfree(buf);
@@ -203,17 +208,17 @@ static const char *sealfs_get_link(struct dentry *dentry, struct inode *inode,
 	return buf;
 }
 
-static int sealfs_permission(struct inode *inode, int mask)
+static int sealfs_permission(struct user_namespace *ns, struct inode *inode, int mask)
 {
 	struct inode *lower_inode;
 	int err;
 
 	lower_inode = sealfs_lower_inode(inode);
-	err = inode_permission(lower_inode, mask);
+	err = inode_permission(ns, lower_inode, mask);
 	return err;
 }
 
-static int sealfs_setattr(struct dentry *dentry, struct iattr *ia)
+static int sealfs_setattr(struct user_namespace *ns, struct dentry *dentry, struct iattr *ia)
 {
 	int err;
 	struct dentry *lower_dentry;
@@ -231,7 +236,7 @@ static int sealfs_setattr(struct dentry *dentry, struct iattr *ia)
 	 * Ported: inode_change_ok was removed, now it's setattr_prepare()
 	 * and the first parameter is a dentry* (it was an inode*)
 	 */
-	err = setattr_prepare(dentry, ia);
+	err = setattr_prepare(ns, dentry, ia);
 	if (err)
 		goto out_err;
 
@@ -273,7 +278,7 @@ static int sealfs_setattr(struct dentry *dentry, struct iattr *ia)
 	 * tries to open(), unlink(), then ftruncate() a file.
 	 */
 	inode_lock(d_inode(lower_dentry));
-	err = notify_change(lower_dentry, &lower_ia, /* note: lower_ia */
+	err = notify_change(ns, lower_dentry, &lower_ia, /* note: lower_ia */
 			    NULL);
 	inode_unlock(d_inode(lower_dentry));
 	if (err)
@@ -296,7 +301,7 @@ out_err:
 /*
  * Ported for the new statx() syscall
  */
-static int sealfs_getattr(const struct path *path, struct kstat *stat,
+static int sealfs_getattr(struct user_namespace *ns, const struct path *path, struct kstat *stat,
                  u32 request_mask, unsigned int query_flags)
 {
 	int err;
@@ -311,7 +316,7 @@ static int sealfs_getattr(const struct path *path, struct kstat *stat,
 		goto out;
 	fsstack_copy_attr_all(d_inode(path->dentry),
 			      d_inode(lower_path.dentry));
-	generic_fillattr(d_inode(path->dentry), stat);
+	generic_fillattr(ns, d_inode(path->dentry), stat);
 	stat->blocks = lower_stat.blocks;
 out:
 	sealfs_put_lower_path(path->dentry, &lower_path);
