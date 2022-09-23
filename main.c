@@ -97,12 +97,11 @@ static struct file * _openfile(char *s, char sync) {
 	return f;
 }
 
-static loff_t get_keysz(struct sealfs_sb_info *info)
+static loff_t get_keysz(struct user_namespace *ns, struct sealfs_sb_info *info)
 {
 	struct kstat kst;
 	int err;
-	struct user_namespace *user_ns = current_user_ns();
-	err = file_inode(info->kfile)->i_op->getattr(user_ns, &info->kfile->f_path, &kst,
+	err = file_inode(info->kfile)->i_op->getattr(ns, &info->kfile->f_path, &kst,
 		STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT);
 	if(err){
 		printk(KERN_ERR "sealfs: can't get attr from key file\n");
@@ -111,12 +110,11 @@ static loff_t get_keysz(struct sealfs_sb_info *info)
 	return kst.size;
 }
 
-static loff_t get_nentries(struct file *lfile)
+static loff_t get_nentries(struct user_namespace *ns, struct file *lfile)
 {
 	struct kstat kst;
 	int err;
-	struct user_namespace *user_ns = current_user_ns();
-	err = file_inode(lfile)->i_op->getattr(user_ns, &lfile->f_path, &kst,
+	err = file_inode(lfile)->i_op->getattr(ns, &lfile->f_path, &kst,
 		STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT);
 	if(err){
 		printk(KERN_ERR "sealfs: can't get attr from key file\n");
@@ -124,7 +122,7 @@ static loff_t get_nentries(struct file *lfile)
 	}
 	return (kst.size-sizeof(struct sealfs_logfile_header))/sizeof(struct sealfs_logfile_entry);
 }
-static int read_headers(struct sealfs_sb_info *info)
+static int read_headers(struct user_namespace *ns, struct sealfs_sb_info *info)
 {
 	loff_t nr;
 	size_t lsz = sizeof(struct sealfs_logfile_header);
@@ -139,7 +137,7 @@ static int read_headers(struct sealfs_sb_info *info)
 		" kheader: %lld bytes\n", nr);
 		return -1;
 	}
-	nentries = get_nentries(info->lfile);
+	nentries = get_nentries(ns, info->lfile);
 	if(nentries%info->nratchet != 0){
 		printk(KERN_ERR	"sealfs: error nratchet is wrong or bad unmount"
 		" nentries: %lld nentries%%nratchet: %lld nratchet: %d\n",
@@ -154,7 +152,7 @@ static int read_headers(struct sealfs_sb_info *info)
 		"lheader: %lld\n", nr);
 		return -1;
 	}
-	info->maxkfilesz = get_keysz(info);
+	info->maxkfilesz = get_keysz(ns, info);
 	if (info->maxkfilesz <= 0){
 		printk(KERN_ERR "sealfs: bad key file size\n");
 		return -1;
@@ -180,14 +178,10 @@ static int sealfs_read_super(struct super_block *sb,
 	struct path lower_path;
  	struct inode *inode;
 	struct sealfs_sb_info *info;
-	struct user_namespace *user_ns = current_user_ns();
+	struct user_namespace *user_ns;
 
 	sb->s_fs_info =  raw_data;
 	info = (struct sealfs_sb_info*) raw_data;
-
-	/* to mount must be userns admin */
-	if (!ns_capable(user_ns, CAP_SYS_ADMIN))
-		return -EPERM;
 
 	/* parse lower path */
 	err = kern_path(info->dev_name, LOOKUP_FOLLOW | LOOKUP_DIRECTORY,
@@ -227,7 +221,8 @@ static int sealfs_read_super(struct super_block *sb,
 		err = -EBUSY;
 		goto out_free;
 	}
-	if(read_headers(info) < 0){
+	user_ns = current_user_ns();
+	if(read_headers(user_ns, info) < 0){
 		printk(KERN_ERR
 			"sealfs: can't read headers\n");
 		err = -EBUSY;
@@ -344,12 +339,18 @@ struct dentry *sealfs_mount(struct file_system_type *fs_type, int flags,
 	int ret = 0;
 	int sz;
 	int intarg;
+	struct user_namespace *user_ns;
 
 	if (!dev_name) {
 		printk(KERN_ERR
 		       "sealfs: read_super: missing dev_name argument\n");
 		return ERR_PTR(-EINVAL);
 	}
+	user_ns = current_user_ns();
+	/* to mount must be userns admin */
+	if (!ns_capable(user_ns, CAP_SYS_ADMIN))
+		return ERR_PTR(-EPERM);
+
  	info = (struct sealfs_sb_info *)
 		kzalloc(sizeof(struct sealfs_sb_info), GFP_KERNEL);
 	if (!info) {
