@@ -101,41 +101,47 @@ makehmac(int fd, unsigned char *key,
 	struct sealfs_logfile_entry *e , unsigned char *h)
 {
 	unsigned char buf[Bufsz];
-	HMAC_CTX *c;
+	EVP_MD_CTX *c = NULL;
+	EVP_PKEY *pkey = NULL;
  	int t = 0;
         int l;
-	unsigned int sz;
+	long unsigned int sz;
 	int ret = -1;
 
-
-	c = HMAC_CTX_new();
+	c = EVP_MD_CTX_create();
 	if(c == NULL){
-	        fprintf(stderr, "HMAC_init: error\n");
+	        fprintf(stderr, "EVP_MD_CTX_create: error\n");
 		return -1;
 	}
- 	if(HMAC_Init_ex(c, key, FPR_SIZE, EVP_sha256(), NULL) == 0){
-                fprintf(stderr, "HMAC_init: error\n");
-		goto fail;
-  	}
-        if(HMAC_Update(c, (unsigned char*) &e->ratchetoffset, sizeof(uint64_t)) == 0){
-		fprintf(stderr, "HMAC_Update error: inode\n");
+	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, FPR_SIZE);
+	if(pkey == NULL){
+	        fprintf(stderr, "EVP_PKEY_new_mac_key: error\n");
 		goto fail;
 	}
 
-        if(HMAC_Update(c, (unsigned char*) &e->inode, sizeof(uint64_t)) == 0){
-		fprintf(stderr, "HMAC_Update error: inode\n");
+ 	if(!EVP_DigestSignInit(c, NULL, EVP_sha256(), NULL, pkey)){
+                fprintf(stderr, "EVP_DigestSignInit: error\n");
+		goto fail;
+  	}
+        if(!EVP_DigestSignUpdate(c, (unsigned char*) &e->ratchetoffset, sizeof(uint64_t))){
+		fprintf(stderr, "EVP_DigestSignUpdate error: inode\n");
 		goto fail;
 	}
-	if(HMAC_Update(c, (unsigned char*) &e->offset, sizeof(uint64_t)) == 0){
-		fprintf(stderr, "HMAC_Update error: offset\n");
+
+        if(!EVP_DigestSignUpdate(c, (unsigned char*) &e->inode, sizeof(uint64_t))){
+		fprintf(stderr, "EVP_DigestSignUpdate error: inode\n");
 		goto fail;
 	}
-	if(HMAC_Update(c, (unsigned char*) &e->count, sizeof(uint64_t)) == 0){
-		fprintf(stderr, "HMAC_Update error: count\n");
+	if(!EVP_DigestSignUpdate(c, (unsigned char*) &e->offset, sizeof(uint64_t))){
+		fprintf(stderr, "EVP_DigestSignUpdate error: offset\n");
 		goto fail;
 	}
-	if(HMAC_Update(c, (unsigned char*) &e->koffset, sizeof(uint64_t)) == 0){
-		fprintf(stderr, "HMAC_Update error: koffset\n");
+	if(!EVP_DigestSignUpdate(c, (unsigned char*) &e->count, sizeof(uint64_t))){
+		fprintf(stderr, "EVP_DigestSignUpdate error: count\n");
+		goto fail;
+	}
+	if(!EVP_DigestSignUpdate(c, (unsigned char*) &e->koffset, sizeof(uint64_t))){
+		fprintf(stderr, "EVP_DigestSignUpdate error: koffset\n");
 		goto fail;
 	}
 
@@ -152,63 +158,63 @@ makehmac(int fd, unsigned char *key,
 		 		       e->offset+t, l);
 		 	       goto fail;
 			}
-	                if(HMAC_Update(c, buf, l) == 0){
-		                fprintf(stderr, "HMAC_Update: error\n");
+	                if(!EVP_DigestSignUpdate(c, buf, l)){
+		                fprintf(stderr, "EVP_DigestSignUpdate: error\n");
 				goto fail;
 		 	}
 			t += l;
 	        }
 	}
- 	if(HMAC_Final(c, h, &sz) == 0){
-		fprintf(stderr, "HMAC_Final: error");
-		goto fail;
-	}
-        if(sz != SHA256_DIGEST_SIZE){
-                fprintf(stderr, "unexpected hmac size %d != %d", sz, SHA256_DIGEST_SIZE);
+	sz = SHA256_DIGEST_SIZE;
+        if(!EVP_DigestSignFinal(c, h, &sz)|| sz != SHA256_DIGEST_SIZE){
+                fprintf(stderr, "unexpected hmac size %ld != %d", sz, SHA256_DIGEST_SIZE);
 		goto fail;
 	}
 	ret = 0;
 fail:
-	HMAC_CTX_free(c);
+	EVP_PKEY_free(pkey);
+	EVP_MD_CTX_destroy(c);
 	return ret;
 }
 
 static int
 ratchet_key(unsigned char *key, uint64_t roff, uint64_t nratchet)
 {
-	HMAC_CTX *c;
-	unsigned int sz;
+	EVP_MD_CTX *c = NULL;
+	EVP_PKEY *pkey = NULL;
+	long unsigned int sz;
 	int ret = -1;
-
 
 	if(DEBUGENTRY){
 		fprintf(stderr, "RATCHET: old, roff %lu ", roff);
 		dumpkey(key);
 	}
-	c = HMAC_CTX_new();
+	c = EVP_MD_CTX_create();
 	if(c == NULL){
 	        fprintf(stderr, "HMAC_init: error\n");
 		return -1;
 	}
- 	if(HMAC_Init_ex(c, key, FPR_SIZE, EVP_sha256(), NULL) == 0){
-                fprintf(stderr, "HMAC_init: error\n");
-		goto fail;
-  	}
-        if(HMAC_Update(c, (unsigned char*) &roff, sizeof(roff)) == 0){
-		fprintf(stderr, "HMAC_Update error: roffset\n");
+	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, FPR_SIZE);
+	if(pkey == NULL){
+	        fprintf(stderr, "EVP_PKEY_new_mac_key: error\n");
 		goto fail;
 	}
-        if(HMAC_Update(c, (unsigned char*) &nratchet, sizeof(nratchet)) == 0){
-		fprintf(stderr, "HMAC_Update error: nratchet\n");
+ 	if(!EVP_DigestSignInit(c, NULL, EVP_sha256(), NULL, pkey)){
+                fprintf(stderr, "EVP_DigestSignInit: error\n");
+		goto fail;
+  	}
+        if(!EVP_DigestSignUpdate(c, (unsigned char*) &roff, sizeof(roff))){
+		fprintf(stderr, "EVP_DigestSignUpdate error: roffset\n");
+		goto fail;
+	}
+        if(!EVP_DigestSignUpdate(c, (unsigned char*) &nratchet, sizeof(nratchet))){
+		fprintf(stderr, "EVP_DigestSignUpdate error: nratchet\n");
 		goto fail;
 	}
 
- 	if(HMAC_Final(c, key, &sz) == 0){
-		fprintf(stderr, "HMAC_Final: error");
-		goto fail;
-	}
-        if(sz != SHA256_DIGEST_SIZE){
-                fprintf(stderr, "unexpected hmac size %d != %d", sz, SHA256_DIGEST_SIZE);
+	sz = SHA256_DIGEST_SIZE;
+        if(!EVP_DigestSignFinal(c, key, &sz) || sz != SHA256_DIGEST_SIZE){
+                fprintf(stderr, "unexpected hmac size %ld != %d", sz, SHA256_DIGEST_SIZE);
 		goto fail;
 	}
 	ret = 0;
@@ -217,7 +223,8 @@ ratchet_key(unsigned char *key, uint64_t roff, uint64_t nratchet)
 		dumpkey(key);
 	}
 fail:
-	HMAC_CTX_free(c);
+	EVP_PKEY_free(pkey);
+	EVP_MD_CTX_destroy(c);
 	return ret;
 }
 
