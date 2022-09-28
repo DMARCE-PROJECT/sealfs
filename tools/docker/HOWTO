@@ -1,0 +1,64 @@
+#shell step by step creation of docker with sealfs volume
+
+###first install docker... 
+apt install docker.io
+
+adduser $USER docker
+docker version #should show client and server
+
+docker image pull ubuntu:latest
+docker image ls	#should see ubuntu image
+
+#####configuration
+
+#setup sealfs in kernel
+export SEALGIT=/home/paurea/gits/sealfs
+(cd $SEALGIT; make; sudo insmod sealfs.ko)
+
+
+export DOCKERCTX=$PWD
+
+mkdir bin
+mkdir sealfs
+
+(cd $SEALGIT/tools; cp prep dump verify $DOCKERCTX/bin)
+
+KEYS=/tmp/sealfsfiles
+mkdir $KEYS
+#create keys, k1 and k2 have to be the same and random and big enough
+#in my machine I have some precreated in /var/tmp
+sudo cp /var/tmp/k1 /var/tmp/k2 $KEYS
+
+#I create and image in case I need prep dump or verify inside the container
+
+echo 'FROM ubuntu:latest
+LABEL mantainer="paurea@gmail.com"
+COPY /bin/prep /bin/dump /bin/verify /bin/
+ENTRYPOINT sh
+' > Dockerfile
+
+docker image build -t sealfs:latest .
+
+SEALDIR=/tmp/x
+mkdir $SEALDIR
+sudo ./bin/prep $SEALDIR/.SEALFS.LOG $KEYS/k1 $KEYS/k2 134217728
+
+#create a volume with the sealfs filesystem (default ratchet)
+docker volume create sealfsVolume
+sudo mount -o kpath=$KEYS/k1 -t sealfs $SEALDIR /var/lib/docker/volumes/sealfsVolume/_data
+
+docker container run --name sealcont --mount source=sealvol,target=/sealfs -it sealfs:latest /bin/bash
+
+#make some files in /sealvol/zzz
+echo -n 01234567 >> /sealvol/zzz
+
+
+sudo umount /var/lib/docker/volumes/sealfsVolume/_data
+
+sudo ./bin/verify $SEALDIR $KEYS/k1 $KEYS/k2
+
+docker stop sealcont
+docker container ls -a
+NAME=`docker container ls -a|grep sealcont|awk '{print $1}'`
+docker container rm $NAME
+docker volume rm sealfsVolume
