@@ -1,11 +1,13 @@
-latest version of SEALFS, under development
-Tested for linux kernel 5.4.0-107-generic #121-Ubuntu
+Latest version of SEALFS, under development
+Tested for linux kernel 5.15.0-48-generic #121-Ubuntu
+Support for namespaces.
+Tested (not too much, but seems to work) with docker.
 
-Under development:
+Under development (not started):
 
 Add configurability:
 
-Switch from burn to save under configuration
+Switch from burn to save and encrypt under configuration
 	Burn gains a new meaning and is configurable
 	Burning a key requires an old key in order to decouple it how do
 		1) not run thrads slow (sealfs_slow_thread)
