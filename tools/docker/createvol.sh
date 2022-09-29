@@ -33,6 +33,11 @@ nodir() {
 	exit 1
 }
 
+nodir() {
+	echo "could not mount $SEALDIR" 1>&2;
+	exit 1
+}
+
 nosealfs() {
 	echo "no sealfs support in kernel" 1>&2;
 	echo "run as root:" 1>&2;
@@ -81,6 +86,6 @@ cat $KFILE > $KFILE2
 $SEALGIT/tools/prep $SEALDIR/.SEALFS.LOG $KFILE $KFILE2  $KSIZE
 
 docker volume create sealfsVolume
-sudo mount -o kpath=$KFILE -t sealfs $SEALDIR /var/lib/docker/volumes/sealfsVolume/_data && nomount
+sudo mount -o kpath=$KFILE -t sealfs $SEALDIR /var/lib/docker/volumes/sealfsVolume/_data || nomount
 
 echo "created volume $VOLNAME, save key file $KFILE2" 1>&2
