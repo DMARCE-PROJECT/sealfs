@@ -47,15 +47,33 @@ sudo ./bin/prep $SEALDIR/.SEALFS.LOG $KEYS/k1 $KEYS/k2 134217728
 docker volume create sealfsVolume
 sudo mount -o kpath=$KEYS/k1 -t sealfs $SEALDIR /var/lib/docker/volumes/sealfsVolume/_data
 
-docker container run --name sealcont --mount source=sealvol,target=/sealfs -it sealfs:latest /bin/bash
+docker container run --name sealcont --mount source=sealfsVolume,target=/sealfs -it sealfs:latest /bin/bash
 
-#make some files in /sealvol/zzz
-echo -n 01234567 >> /sealvol/zzz
+#make some files in /sealfs/zzz
+echo -n 01234567 >> /sealfs/zzz
 
 
 sudo umount /var/lib/docker/volumes/sealfsVolume/_data
 
 sudo ./bin/verify $SEALDIR $KEYS/k1 $KEYS/k2
+
+docker stop sealcont
+docker container ls -a
+NAME=`docker container ls -a|grep sealcont|awk '{print $1}'`
+docker container rm $NAME
+docker volume rm sealfsVolume
+
+
+#########
+# with script (much simpler)
+
+mkdir /tmp/o
+./createvol.sh /tmp/o
+#write down files for K1 and K2
+docker container run --name sealcont --mount source=sealfsVolume,target=/sealfs -it sealfs:latest /bin/bash
+echo -n 01234567 >> /sealfs/zzz
+sudo umount /var/lib/docker/volumes/sealfsVolume/_data
+../verify /tmp/o /tmp/KFILEiXkn /tmp/KFILE2OkP4
 
 docker stop sealcont
 docker container ls -a
