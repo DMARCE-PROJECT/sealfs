@@ -24,6 +24,7 @@ VOLNAME=sealfsVolume
 already() {
 	echo "volume $VOLNAME already exists" 1>&2;
 	echo "make sure it is not in use and run:" 1>&2;
+	echo "	sudo umount /var/lib/docker/volumes/sealfsVolume/_data" 1>&2;
 	echo "	docker volume rm sealfsVolume" 1>&2;
 	exit 1
 }
@@ -67,19 +68,15 @@ if [ "$NAME" ]; then
 	already
 fi
 
-#takes two minutes for 16M on my machine to create with the algorithm below
-KSIZE=$((16 * 1024 * 1024))
+KSIZE=$((128 * 1024 * 1024))
 echo "KSIZE: $KSIZE" 1>&2
 
 echo "creating key" 1>&2
 
 KFILE=`mktemp /tmp/KFILEXXXX`
-for i in `seq 1 64`; do
-	for j in `seq 1 8`; do
-		head -c $(($KSIZE/ (8*64) )) /dev/zero | openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -salt -pass pass:"$(head -c 20 /dev/urandom | base64)" >> $KFILE &
-	done
-	wait
-done
+echo > $KFILE
+dd if=/dev/random of=$KFILE bs=$(($KSIZE/ 1024)) count=1024
+
 echo $KFILE
 KFILE2=`mktemp /tmp/KFILE2XXXX`
 cat $KFILE > $KFILE2
