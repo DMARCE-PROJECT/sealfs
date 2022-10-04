@@ -1,18 +1,4 @@
-Latest version of SEALFS, under development
 Tested for linux kernel 5.15.0-48-generic #121-Ubuntu
-Already has support for namespaces.
-	Files for key and log are open and the file is kept around (and the namespace is not traversed after mount)
-		in other words, in the current namespace, the files .SEALFS.LOG  and key (lfile and kfile)
-			are found when mounting and the references kept from wherever they were.
-	Mount is only possible if you have CAP_SYS_ADMIN
-	Files created inside sealfs respect the namespace (as they should). If someone binds something inside,
-		some entries will not be there in the file and the verification will fail (a form of attack), but the write
-		itself will not fail and the filesystem will behave otherwise as expected. If the same files are bound
-		to the right places, the verification will pass (so containers can be composed).
-
-Tested (not too much, but seems to work) with docker. Not everything described above is exercised as
-	our use case is quite simple (a volume with sealfs inside docker).
-		See tools/docker for more details
 
 
 ########################################################
