@@ -36,8 +36,8 @@ export KERNEL=/tmp/vmlinuz-$(uname -r)
 sudo chown $USER $KERNEL
 chmod 777 $KERNEL
 
-export SEALCMDS="prep dump verify test /usr/bin/sh"
-export EXTRACMDS="/usr/bin/sed /usr/bin/awk /usr/bin/xxd $SEALCMDS"
+export SEALCMDS="prep dump verify test"
+export EXTRACMDS=" /usr/bin/sh /usr/bin/sed /usr/bin/awk /usr/bin/xxd $SEALCMDS"
 #make all sealfs
 cd $GITSEAL
 make all || exit 1
