@@ -123,7 +123,7 @@ Concurrency:
 		down_write(&ino->i_rwsem); inode of the upper file to
 		arbitrer this. Should we use the lower_file inode to
 		make hard links work? Does it matter (are there any
-		other problems for hard locks?).
+		other problems for hard links?).
 		New version:
 			We open the log files without append. We deal
 		with the offset, down_write(&ino->i_rwsem);
@@ -152,6 +152,9 @@ Optimizations:
 		copy_from_user. One alloc of a page less. No copying.
 		May kmap more adresses into kernel space (TLB misses?).
 Mitigation
+	When rekeying we used not to ratchet the key with previous
+		state (only take it from the key file). This is dangerous (and fast :-)).
+		We cannot do this because:
 	Attack?: deleting all nratchet != entries. This makes holes in files
 	unless there are no entries for the holes outside. We need to
 	hash nratchet in nroff=0 entries somehow (at some cost it is
@@ -159,7 +162,7 @@ Mitigation
 	in verify and nratchet_detect when offset is 0 also).
 
 	One way, ratchet the key once with roff = 0:
-	/home/paurea/gits/sealfs/file.c:452,454
+	/home/paurea/gits/sealfs/file.c:467
 	if(nratchet != 1)
 		ratchet_key(sb->key, 0, sb->nratchet, hmacstate);
 	memmove(key, sb->key, FPR_SIZE);
@@ -173,7 +176,7 @@ Mitigation
 Future work:
 	Try to detect nratchet once when an entry fails, when can grow nratchet and degrade gracefully
 		This is only two small changes: 1) detect nratchet on fail. 2) Make the kernel switch
-		nratchet with some policy (double nratchet when key gets smaller, for example).
+		nratchet with some policy (double nratchet when keystream file gets small enough, for example).
 		3) Be careful not to surpass NBitsRatchet (in verify.c) for the ratchet size. This can
 		be changed to be made "very big" by changing the heap implementation.
 		(using 128 bits type size or comparing carefully two 64 bits integers).

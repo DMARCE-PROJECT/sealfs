@@ -1,6 +1,6 @@
 Latest version of SEALFS, under development
 Tested for linux kernel 5.15.0-48-generic #121-Ubuntu
-Support for namespaces.
+Already has support for namespaces.
 	Files for key and log are open and the file is kept around (and the namespace is not traversed after mount)
 		in other words, in the current namespace, the files .SEALFS.LOG  and key (lfile and kfile)
 			are found when mounting and the references kept from wherever they were.
@@ -20,10 +20,12 @@ Under development (not started):
 
 Add configurability:
 
-Switch from burn to save and encrypt under configuration
+Switch from burn to save and encrypt under configuration (so start with a secret
+and use it to encrypt a new secret obtained from the hardware, then "forget"
+the unencrypted key after using it)
 	Burn gains a new meaning and is configurable
-	Burning a key requires an old key in order to decouple it how do
-		1) not run thrads slow (sealfs_slow_thread)
+	Burning a key requires an old key in order to decouple it the code needs to change:
+		1) not run threads slow (sealfs_slow_thread)
 		2) change the sealfs_thread to sealfs_burn_thread
 			create a sealf_encburn_thread
 				&sb->burnt	now just to know if it needs to run
@@ -54,9 +56,9 @@ Future work in this version:
 	Read an initial extra key (can be null, and then there is no initial key)
 		If present, switch burn to save and (the -> means encrypt)
 		kx -> k1 -> k2 -> k3
-		kx is forgotten after reading k1 and encrypting it.
+		kx is forgotten after reading k1 and encrypting kx with k1
 			(initialization of any flip/flop structure)
-		For each current key, the normal and encrypted version is kept.
+		For each current key, the plaintext and encrypted version is kept.
 	Verification in this case... (needs extra parameters and or a different
 		key cache with the whole preffix). As it should be less than
 		1Gb (much less, but this is is at most) because of ratcheting,
