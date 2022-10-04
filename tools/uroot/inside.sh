@@ -104,14 +104,12 @@ test3(){
 	#sizeof(sealfs_logfile_header)
 	HDRSZ=8
 	ENTRYSZ=72
-	dd if=/tmp/x/.SEALFS.LOG bs=$HDRSZ count=1 of=/tmp/hdr >/dev/null 2>&1
+	dd -if /tmp/x/.SEALFS.LOG -bs $HDRSZ -count 1 -of /tmp/hdr >/dev/null 2>&1
 
-	#with if=file, dd has a bug with skip ??
-	dd bs=$HDRSZ skip=1 of=/tmp/body < /tmp/x/.SEALFS.LOG >/dev/null 2>&1
-	dd bs=$ENTRYSZ count=3 of=/tmp/start < /tmp/body >/dev/null 2>&1
-	dd bs=$ENTRYSZ count=3 skip=3 of=/tmp/medium < /tmp/body >/dev/null 2>&1
-	#without count this last one has trailing zeros WTF dd?
-	dd bs=$ENTRYSZ count=6 skip=6 of=/tmp/end < /tmp/body >/dev/null 2>&1
+	dd -bs $HDRSZ -skip 1 -of /tmp/body < /tmp/x/.SEALFS.LOG >/dev/null 2>&1
+	dd -bs $ENTRYSZ -count 3 -of /tmp/start < /tmp/body >/dev/null 2>&1
+	dd -bs $ENTRYSZ -count 3 -skip 3 -of /tmp/medium < /tmp/body >/dev/null 2>&1
+	dd -bs $ENTRYSZ -count 6 -skip 6 -of /tmp/end < /tmp/body >/dev/null 2>&1
 	
 	DUMPLOGS=no
 	if test "$DUMPLOGS" = yes; then
