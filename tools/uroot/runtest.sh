@@ -1,14 +1,7 @@
 #!/bin/sh
 
-echo "
-################################
-################################
-################################
-export GO111MODULE=off; #until u-root caches up, run this before
-#################################
-################################
-################################
-" 1>&2;
+#configure this
+UROOT_PATH=$HOME/src/go/src/github.com/u-root/u-root
 
 usage(){
         echo "usage: runtest [-i]" 1>&2;
@@ -26,10 +19,12 @@ fi
 
 PATHuroot=$(which u-root)
 PATHqemu=$(which qemu-system-x86_64)
-if ! [ -x $PATHuroot ] || ! [ -x $PATHqemu ]; then
+if ! [ -d $UROOT_PATH ] || ! [ -x $PATHuroot ] || ! [ -x $PATHqemu ]; then
 	echo '#' make sure you run: 1>&2
-	echo '	'sudo apt install qemu-system qemu-system-x86 1>&2
-	echo '	'go get github.com/u-root/u-root 1>&2
+	echo '	sudo apt install qemu-system qemu-system-x86' 1>&2
+	echo '	sudo apt install qemu-kvm libvirt-clients libvirt-daemon-system bridge-utils virt-manager' 1>&2
+	echo '	cd $UROOT_PATH; git clone https://github.com/u-root/u-root'1>&2
+	echo '		cd u-root; go mod vendor; go install'1>&2
 	exit 1
 fi
 
@@ -76,7 +71,7 @@ sudo umount $SEALHD
 
 cp $GITSEAL/tools/uroot/inside.sh /var/tmp/
 chmod +x /var/tmp/inside.sh
-if ! u-root -uinitcmd=/var/tmp/inside.sh $CMDSINSIDE -files "/var/tmp/sealfs.ko" -files /var/tmp/inside.sh> /tmp/$$_uroot 2>&1; then
+if ! u-root -uroot-source $UROOT_PATH -uinitcmd=/var/tmp/inside.sh $CMDSINSIDE -files "/var/tmp/sealfs.ko" -files /var/tmp/inside.sh> /tmp/$$_uroot 2>&1; then
 	cat /tmp/$$_uroot 1>&2
 	echo u-root error  1>&2
 	exit 1

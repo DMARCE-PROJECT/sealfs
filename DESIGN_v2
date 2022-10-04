@@ -54,10 +54,8 @@ Tooling:
 		- In Ubuntu (already have thing to compile a kernel and golang installed)
 		apt install qemu-system qemu-system-x86
 		apt install qemu-kvm libvirt-clients libvirt-daemon-system bridge-utils virt-manager
-		go get github.com/u-root/u-root
-			#for now GO111MODULE=off go get github.com/u-root/u-root
+		(cd $UROOT_PATH; git clone https://github.com/u-root/u-root;cd u-root; go mod vendor; go install)
 		- cd tools/uroot; ./runtest.sh
-			#export GO111MODULE=off; cd tools/uroot; ./runtest.sh
 		Runs all tests implemented inside a qemu. Should say OK.
 
 	Verify remap of inodes. Important to copy between filesystems the files -32 43 remaps
