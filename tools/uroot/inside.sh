@@ -47,7 +47,8 @@ resettest() {
 }
 
 echo STARTTEST
-insmod /var/tmp/sealfs.ko
+insmod /mount/hd/sealfs.ko
+rm /mount/hd/sealfs.ko	##once passed we don't want it to interfere with the test
 mkdir /tmp/x
 mkdir /tmp/y
 cp /mount/hd/.SEALFS.LOG /tmp/x

@@ -37,7 +37,7 @@ sudo chown $USER $KERNEL
 chmod 777 $KERNEL
 
 export SEALCMDS="prep dump verify test"
-export EXTRACMDS=" /usr/bin/sh /usr/bin/sed /usr/bin/awk /usr/bin/xxd $SEALCMDS"
+export EXTRACMDS=" /usr/bin/sh /usr/bin/sed /usr/bin/awk $SEALCMDS"	#/usr/bin/xxd 
 #make all sealfs
 cd $GITSEAL
 make all || exit 1
@@ -54,8 +54,10 @@ for i in $EXTRACMDS; do
 	CMDSINSIDE="$CMDSINSIDE -files /var/tmp/$CMDNAME"
 done
 
+
 echo building uroot
 export SEALHD=/var/tmp/sealhd
+
 mount|grep $SEALHD && sudo umount $SEALHD
 touch $SEALHD
 rm "$SEALHD"
@@ -65,13 +67,14 @@ mkdir -p /tmp/hd
 sudo mount -o loop,user $SEALHD /tmp/hd || exit 1
 #used to be 1G.
 ksize=$((128 * 1024 * 1024))
+sudo cp /var/tmp/sealfs.ko /tmp/hd
 sudo /var/tmp/prep /tmp/hd/.SEALFS.LOG /tmp/hd/k1 /tmp/hd/k2 $ksize
 sudo umount $SEALHD
 
 
 cp $GITSEAL/tools/uroot/inside.sh /var/tmp/
 chmod +x /var/tmp/inside.sh
-if ! u-root -uroot-source $UROOT_PATH -uinitcmd=/var/tmp/inside.sh $CMDSINSIDE -files "/var/tmp/sealfs.ko" -files /var/tmp/inside.sh> /tmp/$$_uroot 2>&1; then
+if ! u-root -uroot-source $UROOT_PATH -uinitcmd=/var/tmp/inside.sh $CMDSINSIDE -files /var/tmp/inside.sh > /tmp/$$_uroot 2>&1; then
 	cat /tmp/$$_uroot 1>&2
 	echo u-root error  1>&2
 	exit 1
