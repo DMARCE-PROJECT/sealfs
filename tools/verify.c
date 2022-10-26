@@ -150,6 +150,7 @@ dumpheap(Heap *heap)
 //		jump-queue.
 // 	Keep a minheap of offset and advance it when it is contiguous.
 
+// WARN, it never fails (even though it returns an integer). Is there a mistake?
 static int
 popcontiguous(uint64_t *offset, Heap *heap)
 {
