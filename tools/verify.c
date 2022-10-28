@@ -370,9 +370,8 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 				exit(1);
 			else
 				exitstatus = EXIT_FAILURE;
-		}
-		if(!iseok)
 			nbad++;
+		}
 		if(dumplog(&e, fd, DUMPLOG, iseok) < 0){
 			fprintf(stderr, "can't dump log entry");
 			fprintentry(stderr, &e);
@@ -397,7 +396,7 @@ done:
 					"should be %ld for entry: ",
 					 e.koffset,
 					sizeof(struct sealfs_keyfile_header)
-						+  (c*nratchet + e.ratchetoffset)*FPR_SIZE);
+						+  (c/nratchet + e.ratchetoffset)*FPR_SIZE);
 			fprintentry(stderr, &e);
 			if(DUMPLOG == LOGNONE)
 				exit(1);
