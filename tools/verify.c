@@ -481,7 +481,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "USAGE: verify dir kalpha kbeta"
-			" [-Dh] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n");
+			" [-Dh] [-t] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n");
 	exit(1);
 }
 
@@ -546,7 +546,7 @@ main(int argc, char *argv[])
 		if(strnlen(argv[i], 2) >= 2 && argv[i][0] == '-' ) {
 			if(argv[i][1] == 'D'){
 				setdebugs(argv[i]+2); 
-			} else if((atoi(argv[i]+1) != 0 || (argv[i][1] == '0' && strnlen(argv[i]+1, 2) == 2)) && argc > i+1) {	
+			} else if((atoi(argv[i]+1) != 0 || (argv[i][1] == '0' && strnlen(argv[i], 2) == 2)) && argc > i+1) {	
 				r = newrename(atoi(argv[i]+1), atoi(argv[i+1]));
 				HASH_ADD(hh, renames, inode, sizeof(uint64_t), r);
 				i++;
