@@ -391,12 +391,12 @@ done:
 		/*
 		 * check continuity if we are checking the whole log
 		 */
-		if(inode == 0 && e.koffset != szhdr + (c/nratchet)*FPR_SIZE && e.ratchetoffset != roff && !DEBUGJQUEUE){
-			fprintf(stderr, "koffset not correct: %ld "
-					"should be %ld for entry: ",
-					 e.koffset,
+		if(inode == 0 && (e.koffset != szhdr + (c/nratchet)*FPR_SIZE || e.ratchetoffset != roff) && !DEBUGJQUEUE){
+			fprintf(stderr, "koffset  %ld or roff %ld not correct:"
+					"should be %ld %d for entry: ",
+					 e.koffset, e.ratchetoffset,
 					sizeof(struct sealfs_keyfile_header)
-						+  (c/nratchet + e.ratchetoffset)*FPR_SIZE);
+						+  (c/nratchet + e.ratchetoffset)*FPR_SIZE, roff);
 			fprintentry(stderr, &e);
 			if(DUMPLOG == LOGNONE)
 				exit(1);
