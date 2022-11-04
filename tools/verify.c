@@ -557,9 +557,9 @@ main(int argc, char *argv[])
 				setinode_begend(argv+i+1, &inode, &begin, &end);
 				i+=3;
 			} else if(argv[i][1] == 't' && strnlen(argv[i], 2) == 2){
-				DUMPLOG = LOGCOLOR;
+				DUMPLOG = LOGTEXT;
 				if(isatty(1)) {
-					DUMPLOG = LOGTEXT;
+					DUMPLOG = LOGCOLOR;
 				}
 			} else
 				usage();

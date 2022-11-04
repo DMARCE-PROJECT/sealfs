@@ -77,7 +77,7 @@ dumplog(struct sealfs_logfile_entry *e, int fd, int typelog, int isok)
 		if(strlen(line) >= e->count){
 			line[e->count] = '\0';
 		}
-		if(typelog == LOGCOLOR){
+		if(typelog == LOGTEXT){
 			if(isok)
 				printf("%ld: [OK] %s\n", e->inode, line);
 			else
@@ -186,7 +186,7 @@ ratchet_key(unsigned char *key, uint64_t roff, uint64_t nratchet)
 	int ret = -1;
 
 	if(DEBUGENTRY){
-		fprintf(stderr, "RATCHET: old, roff %lu ", roff);
+		fprintf(stderr, "RATCHET: old, roff %lu nratchet %lu ", roff, nratchet);
 		dumpkey(key);
 	}
 	c = EVP_MD_CTX_create();
