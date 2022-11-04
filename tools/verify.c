@@ -481,7 +481,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "USAGE: verify dir kalpha kbeta"
-			" [-Dh] [-t] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n");
+			" [-Dh] [-t | -T] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n");
 	exit(1);
 }
 
@@ -561,6 +561,8 @@ main(int argc, char *argv[])
 				if(isatty(1)) {
 					DUMPLOG = LOGCOLOR;
 				}
+			} else if(argv[i][1] == 'T' && strnlen(argv[i], 2) == 2){
+				DUMPLOG = LOGTEXT;
 			} else
 				usage();
 		}else
