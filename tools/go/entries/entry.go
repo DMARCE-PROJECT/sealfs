@@ -86,6 +86,7 @@ const (
 	LogNone = iota + 1
 	LogText
 	LogColor
+	LogSilent
 )
 
 const (
@@ -96,7 +97,7 @@ const (
 
 //TODO, color log
 func (entry *LogfileEntry) DumpLog(logR io.ReadSeeker, isOk bool, typeLog int) (err error) {
-	if typeLog == LogNone {
+	if typeLog == LogNone || typeLog == LogSilent {
 		return nil
 	}
 	var currPos int64
@@ -324,6 +325,5 @@ func (entry *LogfileEntry) NRatchetDetect(logR io.ReadSeeker, keyR io.ReadSeeker
 		}
 		keyC.Drop()	//different nRatchet means drop (first ratchet includes nRatchet)
 	}
-	if isOk { fmt.Fprintf(os.Stderr, "NRatchetDetect got nratchet %d\n", nRatchet) }
 	return isOk, nRatchet
 }

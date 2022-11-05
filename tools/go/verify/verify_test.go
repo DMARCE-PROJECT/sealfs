@@ -24,6 +24,8 @@ func inode(fname string) (inode uint64, err error){
 	return stat.Ino, nil
 }
 
+//can probably factor out main an this example
+//lots of repeated code
 func Test_Example(t *testing.T) {
 	var err error
 	nRatchet := NRatchetDefault
@@ -43,8 +45,8 @@ func Test_Example(t *testing.T) {
 		t.Errorf("cannot find inode: %s", err)
 	}
 	renames := Renames{
-		zzz2inode: {zzz2inode, 5243058},
 		zzzinode: {zzzinode, 5243063},
+		zzz2inode: {zzz2inode, 5243058},
 	}
 
 	lpath := fmt.Sprintf("%s/%s", dir, lname)
@@ -62,7 +64,6 @@ func Test_Example(t *testing.T) {
 	if err != nil {
 		t.Errorf("can't open %s", lpath)
 	}
-	fmt.Fprintf(os.Stderr, "lf %s\n", lpath)
 	defer lf.Close()
 
 	kalphaHeader := &KeyFileHeader{}
@@ -83,14 +84,11 @@ func Test_Example(t *testing.T) {
 	if logHeader.magic != kalphaHeader.magic || logHeader.magic != kbetaHeader.magic {
 		t.Error("magic numbers don't match")
 	}
-	fmt.Printf("k1 burnt: %d\n", kalphaHeader.burnt)
 	err = checkKeyStreams(alphaf, betaf, kalphaHeader.burnt)
 	if err != nil {
 		t.Errorf("checkkeystreams: %s", err)
 	}
-	for _, r := range renames {
-		fmt.Fprintf(os.Stderr, "rename inode %s\n", r)
-	}
+	typeLog = entries.LogSilent
 	desc := &SealFsDesc{kf: betaf, lf: lf, dirPath: dir, typeLog: typeLog}
 
 	err = verify(desc, region, renames, nRatchet)

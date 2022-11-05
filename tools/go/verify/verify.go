@@ -223,7 +223,7 @@ func verify(sf *SealFsDesc, region Region, renames Renames, nRatchet uint64) err
 	if err := scanDirFiles(sf.dirPath, ofiles, renames); err != nil {
 		return fmt.Errorf("scanDirFiles %s", err)
 	}
-	if region.inode == 0 {
+	if region.inode == 0 && sf.typeLog != entries.LogSilent {
 		dumpOFiles(ofiles)
 	}
 	entryFile := entries.NewEntryFile(sf.lf)
@@ -249,6 +249,9 @@ func verify(sf *SealFsDesc, region Region, renames Renames, nRatchet uint64) err
 			if !gotNRatchet {
 				return fmt.Errorf("can't find a correct nratchet")
 			}
+			if sf.typeLog != entries.LogSilent {
+				fmt.Fprintf(os.Stderr, "NRatchetDetect got nratchet %d\n", nRatchet)
+			}
 		}
 		if entry.Inode != entries.FakeInode {
 			if region.inode != 0 {
@@ -268,7 +271,7 @@ func verify(sf *SealFsDesc, region Region, renames Renames, nRatchet uint64) err
 		isok := entry.IsOk(file, keyR, &keyC, nRatchet)
 		if !isok {
 			badEntry(entry, nRatchet)
-			if sf.typeLog == entries.LogNone {
+			if sf.typeLog == entries.LogNone || sf.typeLog == entries.LogSilent {
 				return errors.New("bad entry")
 			}
 			nBad++
@@ -302,11 +305,15 @@ func verify(sf *SealFsDesc, region Region, renames Renames, nRatchet uint64) err
 	if c == 0 {
 		return fmt.Errorf("error, no entries in the log\n")
 	}
-	if nBad != 0 {	
-		fmt.Printf("error: %d entries verified, some bad logs: %d correct,  %d incorrect\n", c, c-nBad, nBad)
+	if nBad != 0 {
+		if sf.typeLog != entries.LogSilent {	
+			fmt.Printf("error: %d entries verified, some bad logs: %d correct,  %d incorrect\n", c, c-nBad, nBad)
+		}
 		return errors.New("error: did not verify")
 	}
-	fmt.Printf("%d entries verified, correct logs\n", c)
+	if sf.typeLog != entries.LogSilent {	
+		fmt.Printf("%d entries verified, correct logs\n", c)
+	}
 	return nil
 }
 
