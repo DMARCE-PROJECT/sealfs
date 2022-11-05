@@ -335,9 +335,8 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 					exit(1);
 				else
 					exitstatus = EXIT_FAILURE;
-			}
-			if(!iseok)
 				nbad++;
+			}
 			goto done;
 		}
 
