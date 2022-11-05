@@ -84,9 +84,9 @@ dumplog(struct sealfs_logfile_entry *e, int fd, int typelog, int isok)
 				printf("%ld: [BAD] %s\n", e->inode, line);
 		}else{
 			if(isok)
-				printf("%ld: %s%s%s\n", e->inode, colgreen, line, colend);
+				printf("%s%ld:%s %s\n", colgreen, e->inode, colend, line);
 			else
-				printf("%ld: %s%s%s\n", e->inode, colred, line, colend);
+				printf("%s%ld:%s %s\n", colred, e->inode, colend, line);
 		}
 		
 		if(ftell(s) - e->offset >= e->count)
