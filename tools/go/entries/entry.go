@@ -51,20 +51,20 @@ func (entry *LogfileEntry) String() string {
 }
 
 type EntryReader interface {
-	ReadEntry() (err error, entry *LogfileEntry)
+	ReadEntry(nRatchet uint64) (err error, entry *LogfileEntry)
 }
 
 type EntryFile struct {
-	r io.ReadCloser
+	r io.Reader
 	br *bufio.Reader
 }
 
-func NewEntryFile(r io.ReadCloser) (entry *EntryFile) {
+func NewEntryFile(r io.Reader) (entry *EntryFile) {
 	entry = &EntryFile{r, bufio.NewReader(r)}
 	return entry
 }
 
-func (eFile *EntryFile) ReadEntry() (err error, entry *LogfileEntry) {
+func (eFile *EntryFile) ReadEntry(nRatchet uint64) (err error, entry *LogfileEntry) {
 	var entryBuf[sizeofEntry] uint8
 	n, err := io.ReadFull(eFile.br, entryBuf[:])
 	if err != nil {
@@ -76,6 +76,9 @@ func (eFile *EntryFile) ReadEntry() (err error, entry *LogfileEntry) {
 	entry = &LogfileEntry{}
 	off := 0
 	entry.RatchetOffset = binary.LittleEndian.Uint64(entryBuf[off:8+off])
+	if entry.RatchetOffset > nRatchet {
+		return  fmt.Errorf("bad ratchetoffset %d", entry.RatchetOffset), nil
+	}
 	off += 8
 	entry.Inode = binary.LittleEndian.Uint64(entryBuf[off:8+off])
 	off += 8
@@ -103,8 +106,13 @@ const (
 	ColEnd = "\x1b[0m"
 )
 
+const MaxWriteCount = 10*1024*1024*1024	//10M
+
 //TODO, color log
 func (entry *LogfileEntry) DumpLog(logR io.ReadSeeker, isOk bool, typeLog int) (err error) {
+	if entry.WriteCount > MaxWriteCount {
+		return fmt.Errorf("too big a write for a single entry: %d\n", entry.WriteCount)
+	}
 	if typeLog == LogNone || typeLog == LogSilent {
 		return nil
 	}
@@ -161,6 +169,9 @@ const FakeInode = ^uint64(0)
 
 func (entry *LogfileEntry) MakeHMAC(logR io.ReadSeeker, key []uint8) (err error, h []uint8) {
 	dprintf(DebugKeyCache,"Verifying key[%d] %x\n", entry.KeyFileOffset, key[:])
+	if entry.WriteCount > MaxWriteCount {
+		return fmt.Errorf("too big a write for a single entry: %d\n", entry.WriteCount), nil
+	}
 	b := make([]byte, 8)
 	mac := hmac.New(sha256.New, key)
 	binary.LittleEndian.PutUint64(b, entry.RatchetOffset)

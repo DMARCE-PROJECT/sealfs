@@ -194,7 +194,7 @@ type Renames map[uint64]*Rename
 
 type SealFsDesc struct {
 	kf *os.File
-	lf *os.File
+	lf io.ReadCloser
 	dirPath string
 	typeLog int
 }
@@ -229,7 +229,7 @@ func verify(sf *SealFsDesc, region Region, renames Renames, nRatchet uint64) err
 	entryFile := entries.NewEntryFile(sf.lf)
 	keyR := entries.NewBufReadSeeker(sf.kf)
 	for {
-		err, entry := entryFile.ReadEntry()
+		err, entry := entryFile.ReadEntry(nRatchet)
 		if err == io.EOF {
 			break
 		}
