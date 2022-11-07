@@ -65,13 +65,17 @@ docker volume rm sealfsVolume
 
 
 #########
-# with script (much simpler)
+# with script for volume (much simpler)
+#########
 
 mkdir /tmp/o
 ./createvol.sh /tmp/o
 #write down files for K1 and K2
 docker container run --name sealcont --mount source=sealfsVolume,target=/sealfs -it sealfs:latest /bin/bash
 echo -n 01234567 >> /sealfs/zzz
+mv /sealfs/zzz /sealfs/zzz.1
+echo -n 01234567 >> /sealfs/zzz
+
 sudo umount /var/lib/docker/volumes/sealfsVolume/_data
 ../verify /tmp/o /tmp/KFILEiXkn /tmp/KFILE2OkP4
 
