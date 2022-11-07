@@ -18,6 +18,14 @@ var (
 	DebugEntries = false
 )
 
+func dprintf(isdebug bool, format string, a ...any) (n int, err error) {
+	if !isdebug {
+		return
+	}
+	return fmt.Fprintf(os.Stderr, format, a...)
+}
+
+
 const FprSize = sha256.Size
 
 //see sealfstypes.h must match
@@ -78,7 +86,7 @@ func (eFile *EntryFile) ReadEntry() (err error, entry *LogfileEntry) {
 	entry.KeyFileOffset = binary.LittleEndian.Uint64(entryBuf[off:8+off])
 	off += 8
 	copy(entry.fpr[:], entryBuf[off:off+FprSize])
-	if DebugEntries { fmt.Fprintf(os.Stderr, "ReadEntry: %s\n", entry) }
+	dprintf(DebugEntries, "ReadEntry: %s\n", entry)
 	return nil, entry
 }
 
@@ -152,7 +160,7 @@ func (entry *LogfileEntry) DumpLog(logR io.ReadSeeker, isOk bool, typeLog int) (
 const FakeInode = ^uint64(0)
 
 func (entry *LogfileEntry) MakeHMAC(logR io.ReadSeeker, key []uint8) (err error, h []uint8) {
-	if DebugKeyCache { fmt.Fprintf(os.Stderr, "Verifying key[%d] %x\n", entry.KeyFileOffset, key[:]) }
+	dprintf(DebugKeyCache,"Verifying key[%d] %x\n", entry.KeyFileOffset, key[:])
 	b := make([]byte, 8)
 	mac := hmac.New(sha256.New, key)
 	binary.LittleEndian.PutUint64(b, entry.RatchetOffset)
@@ -190,7 +198,7 @@ func (entry *LogfileEntry) MakeHMAC(logR io.ReadSeeker, key []uint8) (err error,
 			return err, nil
 		}
 	}
-	if DebugKeyCache { fmt.Fprintf(os.Stderr, "LogR currPos %d pos %d\n", currPos, pos)}
+	dprintf(DebugKeyCache, "LogR currPos %d pos %d\n", currPos, pos)
 	
 	br := bufio.NewReader(logR)
 	nw, err := io.CopyN(mac, br, int64(entry.WriteCount))
@@ -208,8 +216,8 @@ func (entry *LogfileEntry) MakeHMAC(logR io.ReadSeeker, key []uint8) (err error,
 }
 
 func ratchetKey(key []uint8, RatchetOffset uint64, nRatchet uint64) {
-	if DebugKeyCache { fmt.Fprintf(os.Stderr, "Ratchetkey {roff: %d, nr:%d}\n", RatchetOffset, nRatchet)}
-	if DebugKeyCache { fmt.Fprintf(os.Stderr, "ratchetKey old key %x\n", key) }
+	dprintf(DebugKeyCache, "Ratchetkey {roff: %d, nr:%d}\n", RatchetOffset, nRatchet)
+	dprintf(DebugKeyCache,"ratchetKey old key %x\n", key)
 	mac := hmac.New(sha256.New, key)
 	b := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b, RatchetOffset)
@@ -219,7 +227,7 @@ func ratchetKey(key []uint8, RatchetOffset uint64, nRatchet uint64) {
 	key = key[:0]
 	mac.Sum(key)
 	key = key[:mac.Size()]
-	if DebugKeyCache { fmt.Fprintf(os.Stderr, "ratchetKey new key %x\n", key) }
+	dprintf(DebugKeyCache, "ratchetKey new key %x\n", key)
 }
 
 type KeyCache struct {
@@ -232,7 +240,7 @@ type KeyCache struct {
 const InvalOff = 0xffffffffffffffff
 
 func (keyC *KeyCache) Drop() {
-	if DebugKeyCache { fmt.Fprintf(os.Stderr, "Drop\n")}
+	dprintf(DebugKeyCache, "Drop\n")
 	*keyC = KeyCache{lastRatchetOffset: InvalOff, lastKeyOffset: InvalOff}
 }
 
@@ -246,7 +254,7 @@ func (keyC *KeyCache) isReKey(entry *LogfileEntry) bool {
 func (keyC *KeyCache) LoadKey(entry *LogfileEntry, keyR io.ReadSeeker) (err error) {
 	var currPos int64
 
-	if DebugKeyCache { fmt.Fprintf(os.Stderr, "Loadkey %d\n", entry.KeyFileOffset) }
+	dprintf(DebugKeyCache, "Loadkey %d\n", entry.KeyFileOffset)
 	currPos, err = keyR.Seek(0, io.SeekCurrent)
 	if err != nil {
 		return err
@@ -268,12 +276,12 @@ func (keyC *KeyCache) LoadKey(entry *LogfileEntry, keyR io.ReadSeeker) (err erro
 	}
 	keyC.lastKeyOffset = entry.KeyFileOffset
 	keyC.lastRatchetOffset = 0
-	if DebugKeyCache { fmt.Fprintf(os.Stderr, "Loadkey key[%d] %x\n", entry.KeyFileOffset, keyC.key[:]) }
+	dprintf(DebugKeyCache, "Loadkey key[%d] %x\n", entry.KeyFileOffset, keyC.key[:])
 	return nil
 }
 
 func (keyC *KeyCache) Ratchet(entry *LogfileEntry, nRatchet uint64) {
-	if DebugKeyCache { fmt.Fprintf(os.Stderr, "Ratchet {nr:%d} %d -> %d\n", nRatchet, keyC.lastRatchetOffset, entry.RatchetOffset)}
+	dprintf(DebugKeyCache, "Ratchet {nr:%d} %d -> %d\n", nRatchet, keyC.lastRatchetOffset, entry.RatchetOffset)
 	for i := keyC.lastRatchetOffset; i < entry.RatchetOffset; i++ {
 		ratchetKey(keyC.key[:], i+1, nRatchet)
 	}
@@ -281,7 +289,7 @@ func (keyC *KeyCache) Ratchet(entry *LogfileEntry, nRatchet uint64) {
 }
 
 func (keyC *KeyCache) Update(entry *LogfileEntry, keyR io.ReadSeeker, nRatchet uint64) (err error) {
-	if DebugKeyCache { fmt.Fprintf(os.Stderr, "Update {nr %d} %s\n", nRatchet, entry)}
+	dprintf(DebugKeyCache, "Update {nr %d} %s\n", nRatchet, entry)
 	if keyC.isReKey(entry) {
 		if err := keyC.LoadKey(entry, keyR); err != nil {
 			return err
