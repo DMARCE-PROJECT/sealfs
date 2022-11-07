@@ -28,7 +28,7 @@ func inode(fname string) (inode uint64, err error){
 
 func example_Desc() (sf *SealFsDesc, err error) {
 	lname := DefaultLogfileName
-	typeLog := entries.LogNone
+	typeLog := entries.LogSilent
 	dir := "../files/example"
 	kalpha := "../files/k1example"
 	kbeta := "../files/k2example"
@@ -69,7 +69,6 @@ func example_Desc() (sf *SealFsDesc, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("checkkeystreams: %s", err)
 	}
-	typeLog = entries.LogSilent
 	desc := &SealFsDesc{kf: betaf, lf: lf, dirPath: dir, typeLog: typeLog}
 	return desc, nil
 }

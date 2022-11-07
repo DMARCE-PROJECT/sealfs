@@ -270,10 +270,10 @@ func verify(sf *SealFsDesc, region Region, renames Renames, nRatchet uint64) err
 		}
 		isok := entry.IsOk(file, keyR, &keyC, nRatchet)
 		if !isok {
-			badEntry(entry, nRatchet)
 			if sf.typeLog == entries.LogNone || sf.typeLog == entries.LogSilent {
 				return errors.New("bad entry")
 			}
+			badEntry(entry, nRatchet)
 			nBad++
 		}
 		if entry.Inode != entries.FakeInode {

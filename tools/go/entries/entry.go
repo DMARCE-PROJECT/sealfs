@@ -76,9 +76,6 @@ func (eFile *EntryFile) ReadEntry(nRatchet uint64) (err error, entry *LogfileEnt
 	entry = &LogfileEntry{}
 	off := 0
 	entry.RatchetOffset = binary.LittleEndian.Uint64(entryBuf[off:8+off])
-	if entry.RatchetOffset > nRatchet {
-		return  fmt.Errorf("bad ratchetoffset %d", entry.RatchetOffset), nil
-	}
 	off += 8
 	entry.Inode = binary.LittleEndian.Uint64(entryBuf[off:8+off])
 	off += 8
@@ -106,7 +103,7 @@ const (
 	ColEnd = "\x1b[0m"
 )
 
-const MaxWriteCount = 10*1024*1024*1024	//10M
+const MaxWriteCount = 10*1024*1024	//10M
 
 //TODO, color log
 func (entry *LogfileEntry) DumpLog(logR io.ReadSeeker, isOk bool, typeLog int) (err error) {
@@ -316,6 +313,9 @@ func (keyC *KeyCache) Update(entry *LogfileEntry, keyR io.ReadSeeker, nRatchet u
 func (entry *LogfileEntry) IsOk(logR io.ReadSeeker, keyR io.ReadSeeker, keyC *KeyCache, nRatchet uint64) bool {
 	var err error
 	var h []uint8
+	if entry.RatchetOffset > nRatchet || entry.WriteCount > MaxWriteCount {
+		return false
+	}
 	if err = keyC.Update(entry, keyR, nRatchet); err != nil {
 		return false
 	}
