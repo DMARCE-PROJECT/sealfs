@@ -11,8 +11,10 @@
 #include "entries.h"
 
 enum {
-	DEBUGENTRY = 0
+	DEBUGENTRY = 0,
+	MaxCount = 100*1024*1024	//100M more than enough
 };
+
 
 static void
 dumpkey(unsigned char *key)
@@ -62,6 +64,9 @@ dumplog(struct sealfs_logfile_entry *e, int fd, int typelog, int isok)
 
 	if(typelog==LOGNONE){
 		return 0;
+	}
+	if(e->count > MaxCount) {
+		return -1;
 	}
 	fdx = dup(fd);
 	if(fd < 0)
@@ -289,10 +294,6 @@ updatecache(KeyCache *kc, FILE *kf, struct sealfs_logfile_entry *e, int nratchet
 	ratchet(kc, e, nratchet);
 	return 0;
 }
-
-enum {
-	MaxCount = 100*1024*1024	//100M more than enough
-};
 
 int
 isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf,
