@@ -290,7 +290,9 @@ updatecache(KeyCache *kc, FILE *kf, struct sealfs_logfile_entry *e, int nratchet
 	return 0;
 }
 
-
+enum {
+	MaxCount = 100*1024*1024	//100M more than enough
+};
 
 int
 isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf,
@@ -298,6 +300,9 @@ isentryok(struct sealfs_logfile_entry *e, int logfd, FILE *kf,
 {
 	unsigned char h[FPR_SIZE];
 
+	if(e->ratchetoffset > nratchet || e->count > MaxCount) {
+		return 0;
+	}
 	// TO HELP DEBUG ISREKEY isrekey = 1;
 	if(updatecache(kc, kf, e, nratchet) < 0){
 		return 0;
