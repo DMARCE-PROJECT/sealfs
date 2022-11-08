@@ -1,13 +1,13 @@
 package entries
 
 import (
-	"crypto/sha256"
-	"fmt"
-	"io"
 	"bufio"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/binary"
 	"errors"
-	"crypto/hmac"
+	"fmt"
+	"io"
 	"os"
 )
 
@@ -15,7 +15,7 @@ import (
 
 var (
 	DebugKeyCache = false
-	DebugEntries = false
+	DebugEntries  = false
 )
 
 func dprintf(isdebug bool, format string, a ...any) (n int, err error) {
@@ -25,19 +25,19 @@ func dprintf(isdebug bool, format string, a ...any) (n int, err error) {
 	return fmt.Fprintf(os.Stderr, format, a...)
 }
 
-
 const FprSize = sha256.Size
 
-//see sealfstypes.h must match
+// see sealfstypes.h must match
 type LogfileEntry struct {
-	RatchetOffset uint64	//ratchet offset n of entries %NRATCHET
-	Inode	uint64
-	FileOffset	uint64
-	WriteCount	uint64
-	KeyFileOffset	uint64
-	fpr [FprSize] uint8
+	RatchetOffset uint64 //ratchet offset n of entries %NRATCHET
+	Inode         uint64
+	FileOffset    uint64
+	WriteCount    uint64
+	KeyFileOffset uint64
+	fpr           [FprSize]uint8
 }
-const sizeofEntry = 5*8+FprSize
+
+const sizeofEntry = 5*8 + FprSize
 
 func (entry *LogfileEntry) String() string {
 	s := fmt.Sprintf("[ratchetoffset: %d ", entry.RatchetOffset)
@@ -55,7 +55,7 @@ type EntryReader interface {
 }
 
 type EntryFile struct {
-	r io.Reader
+	r  io.Reader
 	br *bufio.Reader
 }
 
@@ -65,7 +65,7 @@ func NewEntryFile(r io.Reader) (entry *EntryFile) {
 }
 
 func (eFile *EntryFile) ReadEntry(nRatchet uint64) (err error, entry *LogfileEntry) {
-	var entryBuf[sizeofEntry] uint8
+	var entryBuf [sizeofEntry]uint8
 	n, err := io.ReadFull(eFile.br, entryBuf[:])
 	if err != nil {
 		return err, nil
@@ -75,15 +75,15 @@ func (eFile *EntryFile) ReadEntry(nRatchet uint64) (err error, entry *LogfileEnt
 	}
 	entry = &LogfileEntry{}
 	off := 0
-	entry.RatchetOffset = binary.LittleEndian.Uint64(entryBuf[off:8+off])
+	entry.RatchetOffset = binary.LittleEndian.Uint64(entryBuf[off : 8+off])
 	off += 8
-	entry.Inode = binary.LittleEndian.Uint64(entryBuf[off:8+off])
+	entry.Inode = binary.LittleEndian.Uint64(entryBuf[off : 8+off])
 	off += 8
-	entry.FileOffset = binary.LittleEndian.Uint64(entryBuf[off:8+off])
+	entry.FileOffset = binary.LittleEndian.Uint64(entryBuf[off : 8+off])
 	off += 8
-	entry.WriteCount = binary.LittleEndian.Uint64(entryBuf[off:8+off])
+	entry.WriteCount = binary.LittleEndian.Uint64(entryBuf[off : 8+off])
 	off += 8
-	entry.KeyFileOffset = binary.LittleEndian.Uint64(entryBuf[off:8+off])
+	entry.KeyFileOffset = binary.LittleEndian.Uint64(entryBuf[off : 8+off])
 	off += 8
 	copy(entry.fpr[:], entryBuf[off:off+FprSize])
 	dprintf(DebugEntries, "ReadEntry: %s\n", entry)
@@ -99,13 +99,13 @@ const (
 
 const (
 	ColGreen = "\x1b[32m"
-	ColRed = "\x1b[31m"
-	ColEnd = "\x1b[0m"
+	ColRed   = "\x1b[31m"
+	ColEnd   = "\x1b[0m"
 )
 
-const MaxWriteCount = 10*1024*1024	//10M
+const MaxWriteCount = 10 * 1024 * 1024 //10M
 
-//TODO, color log
+// TODO, color log
 func (entry *LogfileEntry) DumpLog(logR io.ReadSeeker, isOk bool, typeLog int) (err error) {
 	if entry.WriteCount > MaxWriteCount {
 		return fmt.Errorf("too big a write for a single entry: %d\n", entry.WriteCount)
@@ -119,7 +119,7 @@ func (entry *LogfileEntry) DumpLog(logR io.ReadSeeker, isOk bool, typeLog int) (
 		return err
 	}
 	if currPos != int64(entry.FileOffset) {
-		defer func () {
+		defer func() {
 			_, err = logR.Seek(currPos, io.SeekStart)
 		}()
 		_, err = logR.Seek(int64(entry.FileOffset), io.SeekStart)
@@ -129,8 +129,8 @@ func (entry *LogfileEntry) DumpLog(logR io.ReadSeeker, isOk bool, typeLog int) (
 	}
 	br := bufio.NewReader(logR)
 	nRead := uint64(0)
-	for entry.WriteCount - nRead >= 0 {
-		line, err := br.ReadString('\n');
+	for entry.WriteCount-nRead >= 0 {
+		line, err := br.ReadString('\n')
 		if err != nil && err != io.EOF {
 			return err
 		}
@@ -144,10 +144,10 @@ func (entry *LogfileEntry) DumpLog(logR io.ReadSeeker, isOk bool, typeLog int) (
 		ok := "[OK] "
 		bad := "[BAD] "
 		end := ""
-		
+
 		if typeLog == LogColor {
-			ok = ColGreen+ok
-			bad = ColRed+bad
+			ok = ColGreen + ok
+			bad = ColRed + bad
 			end = ColEnd
 		}
 		if isOk {
@@ -165,7 +165,7 @@ func (entry *LogfileEntry) DumpLog(logR io.ReadSeeker, isOk bool, typeLog int) (
 const FakeInode = ^uint64(0)
 
 func (entry *LogfileEntry) makeHMAC(logR io.ReadSeeker, key []uint8) (err error, h []uint8) {
-	dprintf(DebugKeyCache,"Verifying key[%d] %x\n", entry.KeyFileOffset, key[:])
+	dprintf(DebugKeyCache, "Verifying key[%d] %x\n", entry.KeyFileOffset, key[:])
 	if entry.WriteCount > MaxWriteCount {
 		return fmt.Errorf("too big a write for a single entry: %d\n", entry.WriteCount), nil
 	}
@@ -188,14 +188,14 @@ func (entry *LogfileEntry) makeHMAC(logR io.ReadSeeker, key []uint8) (err error,
 	}
 	var (
 		currPos int64
-		pos int64
+		pos     int64
 	)
 	currPos, err = logR.Seek(0, io.SeekCurrent)
 	if err != nil {
 		return err, nil
 	}
 	if currPos != int64(entry.FileOffset) {
-		defer func () {
+		defer func() {
 			_, errx := logR.Seek(currPos, io.SeekStart)
 			if errx != nil {
 				err = errx
@@ -207,7 +207,7 @@ func (entry *LogfileEntry) makeHMAC(logR io.ReadSeeker, key []uint8) (err error,
 		}
 	}
 	dprintf(DebugKeyCache, "LogR currPos %d pos %d\n", currPos, pos)
-	
+
 	br := bufio.NewReader(logR)
 	nw, err := io.CopyN(mac, br, int64(entry.WriteCount))
 	if nw != int64(entry.WriteCount) {
@@ -225,7 +225,7 @@ func (entry *LogfileEntry) makeHMAC(logR io.ReadSeeker, key []uint8) (err error,
 
 func ratchetKey(key []uint8, RatchetOffset uint64, nRatchet uint64) {
 	dprintf(DebugKeyCache, "Ratchetkey {roff: %d, nr:%d}\n", RatchetOffset, nRatchet)
-	dprintf(DebugKeyCache,"ratchetKey old key %x\n", key)
+	dprintf(DebugKeyCache, "ratchetKey old key %x\n", key)
 	mac := hmac.New(sha256.New, key)
 	b := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b, RatchetOffset)
@@ -240,16 +240,16 @@ func ratchetKey(key []uint8, RatchetOffset uint64, nRatchet uint64) {
 
 type KeyCache struct {
 	lastRatchetOffset uint64
-	lastKeyOffset uint64
-	key [FprSize]uint8
+	lastKeyOffset     uint64
+	key               [FprSize]uint8
 }
 
 const InvalOff = 0xffffffffffffffff
 
-func (keyC *KeyCache) String() string{
-	
-	s := fmt.Sprintf("keyc:[lastroff: %d", keyC.lastRatchetOffset);
-	s += fmt.Sprintf(" lastkeyoff: %d, key: %x]", keyC.lastKeyOffset, keyC.key);
+func (keyC *KeyCache) String() string {
+
+	s := fmt.Sprintf("keyc:[lastroff: %d", keyC.lastRatchetOffset)
+	s += fmt.Sprintf(" lastkeyoff: %d, key: %x]", keyC.lastKeyOffset, keyC.key)
 	return s
 }
 
@@ -262,7 +262,7 @@ func (keyC *KeyCache) isReKey(entry *LogfileEntry) bool {
 	if keyC.lastKeyOffset == InvalOff || entry.RatchetOffset == 0 {
 		return true
 	}
-	return  keyC.lastKeyOffset != entry.KeyFileOffset || keyC.lastRatchetOffset > entry.RatchetOffset
+	return keyC.lastKeyOffset != entry.KeyFileOffset || keyC.lastRatchetOffset > entry.RatchetOffset
 }
 
 func (keyC *KeyCache) loadKey(entry *LogfileEntry, keyR io.ReadSeeker) (err error) {
@@ -273,7 +273,7 @@ func (keyC *KeyCache) loadKey(entry *LogfileEntry, keyR io.ReadSeeker) (err erro
 	if err != nil {
 		return err
 	}
-	defer func () {
+	defer func() {
 		_, errx := keyR.Seek(currPos, io.SeekStart)
 		if errx != nil {
 			err = errx
@@ -339,7 +339,7 @@ const MaxNRatchet = 512
 func (entry *LogfileEntry) NRatchetDetect(logR io.ReadSeeker, keyR io.ReadSeeker) (isOk bool, nRatchet uint64) {
 	isOk = true
 
-	var keyC KeyCache;
+	var keyC KeyCache
 	keyC.Drop()
 	if entry.IsOk(logR, keyR, &keyC, nRatchet) {
 		return isOk, nRatchet
@@ -351,7 +351,7 @@ func (entry *LogfileEntry) NRatchetDetect(logR io.ReadSeeker, keyR io.ReadSeeker
 			isOk = false
 			break
 		}
-		keyC.Drop()	//different nRatchet means drop (first ratchet includes nRatchet)
+		keyC.Drop() //different nRatchet means drop (first ratchet includes nRatchet)
 	}
 	return isOk, nRatchet
 }

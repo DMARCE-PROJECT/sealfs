@@ -1,15 +1,15 @@
 package entries
 
-import(
-	"io"
+import (
 	"bufio"
+	"io"
 )
 
 //BufReadSeeker is an io.ReadSeeker with some buffering
 
 type BufReadSeeker struct {
-	r io.ReadSeeker
-	br *bufio.Reader
+	r      io.ReadSeeker
+	br     *bufio.Reader
 	offset int64
 }
 
@@ -33,6 +33,6 @@ func (brs *BufReadSeeker) Seek(offset int64, whence int) (noffset int64, err err
 	return noffset, err
 }
 
-func NewBufReadSeeker(r io.ReadSeeker)  (brs *BufReadSeeker) {
+func NewBufReadSeeker(r io.ReadSeeker) (brs *BufReadSeeker) {
 	return &BufReadSeeker{r: r, br: bufio.NewReader(r)}
 }

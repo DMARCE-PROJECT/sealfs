@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"golang.org/x/sys/unix"
 	"io"
 	"log"
 	"os"
@@ -12,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"golang.org/x/sys/unix"
 )
 
 const (
@@ -164,7 +164,7 @@ func isIncluded(n, a, b uint64) bool {
 	return a <= n && n < b
 }
 
-//TODO: should check inode?
+// TODO: should check inode?
 func isInRange(entry *entries.LogfileEntry, region Region) bool {
 	begin, end := region.begin, region.end
 	inr := isIncluded(begin, entry.FileOffset, entry.FileOffset+entry.WriteCount)
@@ -187,21 +187,21 @@ const (
 type Region struct {
 	inode uint64
 	begin uint64
-	end uint64
+	end   uint64
 }
 
 type Renames map[uint64]*Rename
 
 type SealFsDesc struct {
-	kf *os.File
-	lf io.ReadCloser
+	kf      *os.File
+	lf      io.ReadCloser
 	dirPath string
 	typeLog int
 }
 
 func badOff(entry *entries.LogfileEntry, keyOff uint64, ratchetOffset uint64) {
 	fmt.Fprintf(os.Stderr, "koffset %d or roff %d not correct: ", entry.KeyFileOffset, entry.RatchetOffset)
-	fmt.Fprintf(os.Stderr, "should be %d %d", keyOff,  entry.RatchetOffset)
+	fmt.Fprintf(os.Stderr, "should be %d %d", keyOff, entry.RatchetOffset)
 	fmt.Fprintf(os.Stderr, "%s\n", entry)
 }
 
@@ -255,7 +255,7 @@ func verify(sf *SealFsDesc, region Region, renames Renames, nRatchet uint64) err
 		}
 		if entry.Inode != entries.FakeInode {
 			if region.inode != 0 {
-				if  region.end != 0 && !isInRange(entry, region) {
+				if region.end != 0 && !isInRange(entry, region) {
 					continue
 				}
 				if o.offset == 0 {
@@ -286,9 +286,9 @@ func verify(sf *SealFsDesc, region Region, renames Renames, nRatchet uint64) err
 				break
 			}
 		}
-		keyOff := sizeofKeyfileHeader+(c/nRatchet)*entries.FprSize
+		keyOff := sizeofKeyfileHeader + (c/nRatchet)*entries.FprSize
 		isWrongOff := entry.KeyFileOffset != keyOff || entry.RatchetOffset != ratchetOffset
-		if region.inode == 0 &&  isWrongOff {
+		if region.inode == 0 && isWrongOff {
 			badOff(entry, keyOff, ratchetOffset)
 			return fmt.Errorf("incorrect koffset or roff")
 		}
@@ -306,12 +306,12 @@ func verify(sf *SealFsDesc, region Region, renames Renames, nRatchet uint64) err
 		return fmt.Errorf("error, no entries in the log\n")
 	}
 	if nBad != 0 {
-		if sf.typeLog != entries.LogSilent {	
+		if sf.typeLog != entries.LogSilent {
 			fmt.Printf("error: %d entries verified, some bad logs: %d correct,  %d incorrect\n", c, c-nBad, nBad)
 		}
 		return errors.New("error: did not verify")
 	}
-	if sf.typeLog != entries.LogSilent {	
+	if sf.typeLog != entries.LogSilent {
 		fmt.Printf("%d entries verified, correct logs\n", c)
 	}
 	return nil

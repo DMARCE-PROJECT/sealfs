@@ -1,16 +1,16 @@
 package main
 
 import (
-	"testing"
-	"os"
+	"errors"
 	"fmt"
+	"io"
+	"os"
 	"sealfs/sealfs/entries"
 	"syscall"
-	"io"
-	"errors"
+	"testing"
 )
 
-func inode(fname string) (inode uint64, err error){
+func inode(fname string) (inode uint64, err error) {
 	file, err := os.Open(fname)
 	if err != nil {
 		return 0, fmt.Errorf("can't open %s\n", fname)
@@ -18,7 +18,7 @@ func inode(fname string) (inode uint64, err error){
 	fi, err := file.Stat()
 	if err != nil {
 		return 0, fmt.Errorf("can't stat %s", fname)
-	}	
+	}
 	stat, ok := fi.Sys().(*syscall.Stat_t)
 	if !ok {
 		return 0, fmt.Errorf("Not a syscall.Stat_t zzz")
@@ -73,8 +73,8 @@ func example_Desc() (sf *SealFsDesc, err error) {
 	return desc, nil
 }
 
-//can probably factor out main an this example
-//lots of repeated code
+// can probably factor out main an this example
+// lots of repeated code
 func TestExample(t *testing.T) {
 	var err error
 	nRatchet := NRatchetDefault
@@ -90,7 +90,7 @@ func TestExample(t *testing.T) {
 		t.Errorf("cannot find inode: %s", err)
 	}
 	renames := Renames{
-		zzzinode: {zzzinode, 5243063},
+		zzzinode:  {zzzinode, 5243063},
 		zzz2inode: {zzz2inode, 5243058},
 	}
 
@@ -100,7 +100,6 @@ func TestExample(t *testing.T) {
 	}
 	defer desc.lf.Close()
 	defer desc.kf.Close()
-
 
 	err = verify(desc, region, renames, nRatchet)
 	if err != nil {
@@ -130,7 +129,6 @@ func (fr *FuzzyReader) Close() error {
 	return fr.r.Close()
 }
 
-
 func FuzzExampleLog(f *testing.F) {
 	for _, seed := range []byte{3, 4, 5, 0xff, 0xaa, 0xb, 0x10} {
 		f.Add(seed)
@@ -139,21 +137,21 @@ func FuzzExampleLog(f *testing.F) {
 		var err error
 		nRatchet := NRatchetDefault
 		region := Region{uint64(0), uint64(0), uint64(0)}
-	
+
 		zzzinode, err := inode("../files/example/zzz")
 		if err != nil {
 			t.Errorf("cannot find inode: %s", err)
 		}
-	
+
 		zzz2inode, err := inode("../files/example/zzz.1")
 		if err != nil {
 			t.Errorf("cannot find inode: %s", err)
 		}
 		renames := Renames{
-			zzzinode: {zzzinode, 5243063},
+			zzzinode:  {zzzinode, 5243063},
 			zzz2inode: {zzz2inode, 5243058},
 		}
-	
+
 		desc, err := example_Desc()
 		if err != nil {
 			t.Errorf("cannot make example desc: %s", err)
