@@ -164,7 +164,7 @@ func (entry *LogfileEntry) DumpLog(logR io.ReadSeeker, isOk bool, typeLog int) (
 
 const FakeInode = ^uint64(0)
 
-func (entry *LogfileEntry) MakeHMAC(logR io.ReadSeeker, key []uint8) (err error, h []uint8) {
+func (entry *LogfileEntry) makeHMAC(logR io.ReadSeeker, key []uint8) (err error, h []uint8) {
 	dprintf(DebugKeyCache,"Verifying key[%d] %x\n", entry.KeyFileOffset, key[:])
 	if entry.WriteCount > MaxWriteCount {
 		return fmt.Errorf("too big a write for a single entry: %d\n", entry.WriteCount), nil
@@ -259,7 +259,7 @@ func (keyC *KeyCache) isReKey(entry *LogfileEntry) bool {
 	return  keyC.lastKeyOffset != entry.KeyFileOffset || keyC.lastRatchetOffset > entry.RatchetOffset
 }
 
-func (keyC *KeyCache) LoadKey(entry *LogfileEntry, keyR io.ReadSeeker) (err error) {
+func (keyC *KeyCache) loadKey(entry *LogfileEntry, keyR io.ReadSeeker) (err error) {
 	var currPos int64
 
 	dprintf(DebugKeyCache, "Loadkey %d\n", entry.KeyFileOffset)
@@ -288,7 +288,7 @@ func (keyC *KeyCache) LoadKey(entry *LogfileEntry, keyR io.ReadSeeker) (err erro
 	return nil
 }
 
-func (keyC *KeyCache) Ratchet(entry *LogfileEntry, nRatchet uint64) {
+func (keyC *KeyCache) ratchet(entry *LogfileEntry, nRatchet uint64) {
 	dprintf(DebugKeyCache, "Ratchet {nr:%d} %d -> %d\n", nRatchet, keyC.lastRatchetOffset, entry.RatchetOffset)
 	for i := keyC.lastRatchetOffset; i < entry.RatchetOffset; i++ {
 		ratchetKey(keyC.key[:], i+1, nRatchet)
@@ -299,14 +299,14 @@ func (keyC *KeyCache) Ratchet(entry *LogfileEntry, nRatchet uint64) {
 func (keyC *KeyCache) Update(entry *LogfileEntry, keyR io.ReadSeeker, nRatchet uint64) (err error) {
 	dprintf(DebugKeyCache, "Update {nr %d} %s\n", nRatchet, entry)
 	if keyC.isReKey(entry) {
-		if err := keyC.LoadKey(entry, keyR); err != nil {
+		if err := keyC.loadKey(entry, keyR); err != nil {
 			return err
 		}
 		if nRatchet != 1 {
 			ratchetKey(keyC.key[:], 0, nRatchet)
 		}
 	}
-	keyC.Ratchet(entry, nRatchet)
+	keyC.ratchet(entry, nRatchet)
 	return nil
 }
 
@@ -319,7 +319,7 @@ func (entry *LogfileEntry) IsOk(logR io.ReadSeeker, keyR io.ReadSeeker, keyC *Ke
 	if err = keyC.Update(entry, keyR, nRatchet); err != nil {
 		return false
 	}
-	if err, h = entry.MakeHMAC(logR, keyC.key[:]); err != nil {
+	if err, h = entry.makeHMAC(logR, keyC.key[:]); err != nil {
 		return false
 	}
 	return hmac.Equal(h, entry.fpr[:])
