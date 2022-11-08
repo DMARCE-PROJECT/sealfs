@@ -1,7 +1,7 @@
 package main
 
 import (
-"encoding/binary"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"golang.org/x/sys/unix"
