@@ -239,7 +239,6 @@ func ratchetKey(key []uint8, RatchetOffset uint64, nRatchet uint64) {
 }
 
 type KeyCache struct {
-	nRatchet uint64
 	lastRatchetOffset uint64
 	lastKeyOffset uint64
 	key [FprSize]uint8
@@ -247,13 +246,20 @@ type KeyCache struct {
 
 const InvalOff = 0xffffffffffffffff
 
+func (keyC *KeyCache) String() string{
+	
+	s := fmt.Sprintf("keyc:[lastroff: %d", keyC.lastRatchetOffset);
+	s += fmt.Sprintf(" lastkeyoff: %d, key: %x]", keyC.lastKeyOffset, keyC.key);
+	return s
+}
+
 func (keyC *KeyCache) Drop() {
 	dprintf(DebugKeyCache, "Drop\n")
 	*keyC = KeyCache{lastRatchetOffset: InvalOff, lastKeyOffset: InvalOff}
 }
 
 func (keyC *KeyCache) isReKey(entry *LogfileEntry) bool {
-	if keyC.lastKeyOffset == InvalOff {
+	if keyC.lastKeyOffset == InvalOff || entry.RatchetOffset == 0 {
 		return true
 	}
 	return  keyC.lastKeyOffset != entry.KeyFileOffset || keyC.lastRatchetOffset > entry.RatchetOffset
@@ -297,6 +303,9 @@ func (keyC *KeyCache) ratchet(entry *LogfileEntry, nRatchet uint64) {
 }
 
 func (keyC *KeyCache) Update(entry *LogfileEntry, keyR io.ReadSeeker, nRatchet uint64) (err error) {
+	if nRatchet == 0 {
+		return errors.New("cannot happen")
+	}
 	dprintf(DebugKeyCache, "Update {nr %d} %s\n", nRatchet, entry)
 	if keyC.isReKey(entry) {
 		if err := keyC.loadKey(entry, keyR); err != nil {
