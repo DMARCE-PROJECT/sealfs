@@ -180,7 +180,7 @@ const MaxNRatchet = 512
 //precondition:  begin <= end
 
 const (
-	sizeofLogfileHeader = 8     //bytes
+	sizeofLogfileHeader = 8 //bytes
 )
 
 type Region struct {
@@ -448,6 +448,8 @@ func (lf *LogFileHeader) FillHeader(r io.Reader) (err error) {
 	return nil
 }
 
+//	not portable, but will still work
+//	outside of linux nothing is a TTY for now (no colors)
 func isatty(file *os.File) bool {
 	fd := file.Fd()
 	_, err := unix.IoctlGetTermios(int(fd), unix.TCGETS)
