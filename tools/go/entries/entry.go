@@ -37,7 +37,10 @@ type LogfileEntry struct {
 	fpr           [FprSize]uint8
 }
 
-const sizeofEntry = 5*8 + FprSize
+const (
+	sizeofEntry = 5*8 + FprSize
+	SizeofKeyfileHeader = 8 + 8 //bytes
+)
 
 func (entry *LogfileEntry) String() string {
 	s := fmt.Sprintf("[ratchetoffset: %d ", entry.RatchetOffset)
@@ -333,6 +336,23 @@ func (entry *LogfileEntry) IsOk(logR io.ReadSeeker, keyR io.ReadSeeker, keyC *Ke
 	}
 	return hmac.Equal(h, entry.fpr[:])
 }
+
+func (entry *LogfileEntry) ReMac(logR io.ReadSeeker, keyR io.ReadSeeker, keyC *KeyCache, nRatchet uint64) error {
+	var err error
+	var h []uint8
+	if entry.RatchetOffset > nRatchet || entry.WriteCount > MaxWriteCount {
+		return errors.New("bad entry")
+	}
+	if err = keyC.Update(entry, keyR, nRatchet); err != nil {
+		return fmt.Errorf("cannot obtain queue %s", err)
+	}
+	if err, h = entry.makeHMAC(logR, keyC.key[:]); err != nil {
+		return fmt.Errorf("cannot make hmac %s", err)
+	}
+	copy(entry.fpr[:], h)
+	return nil
+}
+
 
 const MaxNRatchet = 512
 

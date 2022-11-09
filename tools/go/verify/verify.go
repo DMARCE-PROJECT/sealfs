@@ -180,7 +180,6 @@ const MaxNRatchet = 512
 //precondition:  begin <= end
 
 const (
-	sizeofKeyfileHeader = 8 + 8 //bytes
 	sizeofLogfileHeader = 8     //bytes
 )
 
@@ -286,7 +285,7 @@ func verify(sf *SealFsDesc, region Region, renames Renames, nRatchet uint64) err
 				break
 			}
 		}
-		keyOff := sizeofKeyfileHeader + (c/nRatchet)*entries.FprSize
+		keyOff := entries.SizeofKeyfileHeader + (c/nRatchet)*entries.FprSize
 		isWrongOff := entry.KeyFileOffset != keyOff || entry.RatchetOffset != ratchetOffset
 		if region.inode == 0 && isWrongOff {
 			badOff(entry, keyOff, ratchetOffset)
@@ -419,12 +418,12 @@ type KeyFileHeader struct {
 }
 
 func (kh *KeyFileHeader) FillHeader(r io.Reader) (err error) {
-	var khBuf [sizeofKeyfileHeader]uint8
+	var khBuf [entries.SizeofKeyfileHeader]uint8
 	n, err := io.ReadFull(r, khBuf[:])
 	if err != nil {
 		return err
 	}
-	if n != sizeofKeyfileHeader {
+	if n != entries.SizeofKeyfileHeader {
 		return errors.New("bad keyfile header")
 	}
 	kh.magic = binary.LittleEndian.Uint64(khBuf[0:8])
