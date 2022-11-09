@@ -244,7 +244,10 @@ drop(KeyCache *kc)
 static int
 isrekey(KeyCache *kc, struct sealfs_logfile_entry *e)
 {
-	return kc->lastkeyoff != e->koffset || kc->lastroff > e->ratchetoffset;
+	int isrek;
+	isrek = kc->lastkeyoff != e->koffset || kc->lastroff > e->ratchetoffset;
+	isrek = isrek || kc->lastkeyoff == -1 || e->ratchetoffset == 0;
+	return isrek;
 }
 
 
