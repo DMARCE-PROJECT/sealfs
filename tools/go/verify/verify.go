@@ -9,6 +9,7 @@ import (
 	"os"
 	"sealfs/sealfs/binheap"
 	"sealfs/sealfs/entries"
+	"sealfs/sealfs/headers"
 	"strconv"
 	"strings"
 	"syscall"
@@ -21,14 +22,14 @@ const (
 )
 
 type OFile struct {
-	heap   *heap.Heap[entries.LogfileEntry]
+	heap   *heap.Heap[*entries.LogfileEntry]
 	inode  uint64
 	file   *os.File
 	offset uint64
 }
 
 func NewOfile(file *os.File, inode uint64) (o *OFile) {
-	h := heap.NewHeap[entries.LogfileEntry](heap.Min)
+	h := heap.NewHeap[*entries.LogfileEntry](heap.Min)
 	return &OFile{h, inode, file, 0}
 }
 
@@ -103,7 +104,7 @@ func unifyOffset(offset uint64, ratchetOffset uint64) uint64 {
 	return (offset << NBitsRatchet) + ratchetOffset
 }
 
-func dumpHeap(heap *heap.Heap[entries.LogfileEntry]) {
+func dumpHeap(heap *heap.Heap[*entries.LogfileEntry]) {
 	fmt.Fprintf(os.Stderr, "entries pending, [\n")
 	for entry, min, ok := heap.Pop(); ok; entry, min, ok = heap.Pop() {
 		off := unifyOffset(entry.FileOffset, entry.RatchetOffset)
@@ -112,7 +113,7 @@ func dumpHeap(heap *heap.Heap[entries.LogfileEntry]) {
 	fmt.Fprintf(os.Stderr, "]\n")
 }
 
-func popContiguous(fileOffset *uint64, heap *heap.Heap[entries.LogfileEntry]) {
+func popContiguous(fileOffset *uint64, heap *heap.Heap[*entries.LogfileEntry]) {
 	for entry, min, ok := heap.Pop(); ok; entry, min, ok = heap.Pop() {
 		if *fileOffset == entry.FileOffset {
 			*fileOffset += entry.WriteCount
@@ -126,12 +127,13 @@ func popContiguous(fileOffset *uint64, heap *heap.Heap[entries.LogfileEntry]) {
 const MaxHeapSz = 2048
 
 func advanceEntry(entry *entries.LogfileEntry, o *OFile) error {
-	if o.offset == entry.FileOffset {
-		o.offset += entry.WriteCount
+	e := *entry
+	if o.offset == e.FileOffset {
+		o.offset += e.WriteCount
 		return nil
 	}
-	off := unifyOffset(entry.FileOffset, entry.RatchetOffset)
-	o.heap.Insert(int(off), *entry)
+	off := unifyOffset(e.FileOffset, e.RatchetOffset)
+	o.heap.Insert(int(off), &e)
 	if o.heap.Len() > MaxHeapSz {
 		return fmt.Errorf("read %d entries without fixing a jqueue\n", MaxHeapSz)
 	}
@@ -280,7 +282,7 @@ func verify(sf *SealFsDesc, region Region, renames Renames, nRatchet uint64) err
 				break
 			}
 		}
-		keyOff := entries.SizeofKeyfileHeader + (c/nRatchet)*entries.FprSize
+		keyOff := headers.SizeofKeyfileHeader + (c/nRatchet)*entries.FprSize
 		isWrongOff := entry.KeyFileOffset != keyOff || entry.RatchetOffset != ratchetOffset
 		if region.inode == 0 && isWrongOff {
 			badOff(entry, keyOff, ratchetOffset)
@@ -504,17 +506,17 @@ func main() {
 	fmt.Fprintf(os.Stderr, "lf %s\n", lpath)
 	defer lf.Close()
 
-	kalphaHeader := &entries.KeyFileHeader{}
+	kalphaHeader := &headers.KeyFileHeader{}
 	err = kalphaHeader.FillHeader(alphaf)
 	if err != nil {
 		log.Fatal("can't read kalphahdr")
 	}
-	kbetaHeader := &entries.KeyFileHeader{}
+	kbetaHeader := &headers.KeyFileHeader{}
 	err = kbetaHeader.FillHeader(betaf)
 	if err != nil {
 		log.Fatal("can't read kbetahdr")
 	}
-	logHeader := &entries.LogFileHeader{}
+	logHeader := &headers.LogFileHeader{}
 	err = logHeader.FillHeader(lf)
 	if err != nil {
 		log.Fatal("can't read lheader")
