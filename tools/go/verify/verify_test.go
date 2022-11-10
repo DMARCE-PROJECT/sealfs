@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"sealfs/sealfs/entries"
+	"sealfs/sealfs/headers"
 	"syscall"
 	"testing"
 )
@@ -26,12 +27,9 @@ func inode(fname string) (inode uint64, err error) {
 	return stat.Ino, nil
 }
 
-func example_Desc() (sf *SealFsDesc, err error) {
+func example_Desc(dir string, kalpha string, kbeta string) (sf *SealFsDesc, err error) {
 	lname := DefaultLogfileName
 	typeLog := entries.LogSilent
-	dir := "../files/example"
-	kalpha := "../files/k1example"
-	kbeta := "../files/k2example"
 	lpath := fmt.Sprintf("%s/%s", dir, lname)
 	alphaf, err := os.Open(kalpha)
 	if err != nil {
@@ -47,17 +45,17 @@ func example_Desc() (sf *SealFsDesc, err error) {
 		return nil, fmt.Errorf("can't open %s", lpath)
 	}
 
-	kalphaHeader := &entries.KeyFileHeader{}
+	kalphaHeader := &headers.KeyFileHeader{}
 	err = kalphaHeader.FillHeader(alphaf)
 	if err != nil {
 		return nil, fmt.Errorf("can't read kalphahdr")
 	}
-	kbetaHeader := &entries.KeyFileHeader{}
+	kbetaHeader := &headers.KeyFileHeader{}
 	err = kbetaHeader.FillHeader(betaf)
 	if err != nil {
 		return nil, fmt.Errorf("can't read kbetahdr")
 	}
-	logHeader := &entries.LogFileHeader{}
+	logHeader := &headers.LogFileHeader{}
 	err = logHeader.FillHeader(lf)
 	if err != nil {
 		return nil, fmt.Errorf("can't read lheader")
@@ -80,6 +78,8 @@ func TestExample(t *testing.T) {
 	nRatchet := NRatchetDefault
 	region := Region{uint64(0), uint64(0), uint64(0)}
 
+	dir := "../files/example"
+
 	zzzinode, err := inode("../files/example/zzz")
 	if err != nil {
 		t.Errorf("cannot find inode: %s", err)
@@ -94,7 +94,7 @@ func TestExample(t *testing.T) {
 		zzz2inode: {zzz2inode, 5243058},
 	}
 
-	desc, err := example_Desc()
+	desc, err := example_Desc(dir, "../files/k1example", "../files/k2example")
 	if err != nil {
 		t.Errorf("cannot make example desc: %s", err)
 	}
@@ -138,6 +138,7 @@ func FuzzExampleLog(f *testing.F) {
 		nRatchet := NRatchetDefault
 		region := Region{uint64(0), uint64(0), uint64(0)}
 
+		dir := "../files/example"
 		zzzinode, err := inode("../files/example/zzz")
 		if err != nil {
 			t.Errorf("cannot find inode: %s", err)
@@ -152,7 +153,7 @@ func FuzzExampleLog(f *testing.F) {
 			zzz2inode: {zzz2inode, 5243058},
 		}
 
-		desc, err := example_Desc()
+		desc, err := example_Desc(dir, "../files/k1example", "../files/k2example")
 		if err != nil {
 			t.Errorf("cannot make example desc: %s", err)
 		}
