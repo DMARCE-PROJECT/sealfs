@@ -126,6 +126,8 @@ func popContiguous(fileOffset *uint64, heap *heap.Heap[*entries.LogfileEntry]) {
 
 const MaxHeapSz = 2048
 
+// This inserts a copy for safety. It is probably not necesary (it is only used for isok)
+//	but this is safer.
 func advanceEntry(entry *entries.LogfileEntry, o *OFile) error {
 	e := *entry
 	if o.offset == e.FileOffset {
