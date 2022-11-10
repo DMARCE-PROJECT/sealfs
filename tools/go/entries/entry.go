@@ -18,14 +18,17 @@ var (
 	DebugEntries  = false
 )
 
+const (
+	sizeofEntry = 5*8 + FprSize
+	FprSize     = sha256.Size
+)
+
 func dprintf(isdebug bool, format string, a ...any) (n int, err error) {
 	if !isdebug {
 		return
 	}
 	return fmt.Fprintf(os.Stderr, format, a...)
 }
-
-const FprSize = sha256.Size
 
 // see sealfstypes.h must match
 type LogfileEntry struct {
@@ -36,11 +39,6 @@ type LogfileEntry struct {
 	KeyFileOffset uint64
 	fpr           [FprSize]uint8
 }
-
-const (
-	sizeofEntry = 5*8 + FprSize
-	SizeofKeyfileHeader = 8 + 8 //bytes
-)
 
 func (entry *LogfileEntry) String() string {
 	s := fmt.Sprintf("[ratchetoffset: %d ", entry.RatchetOffset)
@@ -247,7 +245,7 @@ type KeyCache struct {
 	key               [FprSize]uint8
 }
 
-const InvalOff = 0xffffffffffffffff
+const InvalOff = ^uint64(0)
 
 func (keyC *KeyCache) String() string {
 
@@ -352,7 +350,6 @@ func (entry *LogfileEntry) ReMac(logR io.ReadSeeker, keyR io.ReadSeeker, keyC *K
 	copy(entry.fpr[:], h)
 	return nil
 }
-
 
 const MaxNRatchet = 512
 

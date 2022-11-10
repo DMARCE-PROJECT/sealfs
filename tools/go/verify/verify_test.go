@@ -47,25 +47,25 @@ func example_Desc() (sf *SealFsDesc, err error) {
 		return nil, fmt.Errorf("can't open %s", lpath)
 	}
 
-	kalphaHeader := &KeyFileHeader{}
+	kalphaHeader := &entries.KeyFileHeader{}
 	err = kalphaHeader.FillHeader(alphaf)
 	if err != nil {
 		return nil, fmt.Errorf("can't read kalphahdr")
 	}
-	kbetaHeader := &KeyFileHeader{}
+	kbetaHeader := &entries.KeyFileHeader{}
 	err = kbetaHeader.FillHeader(betaf)
 	if err != nil {
 		return nil, fmt.Errorf("can't read kbetahdr")
 	}
-	logHeader := &LogFileHeader{}
+	logHeader := &entries.LogFileHeader{}
 	err = logHeader.FillHeader(lf)
 	if err != nil {
 		return nil, fmt.Errorf("can't read lheader")
 	}
-	if logHeader.magic != kalphaHeader.magic || logHeader.magic != kbetaHeader.magic {
+	if logHeader.Magic != kalphaHeader.Magic || logHeader.Magic != kbetaHeader.Magic {
 		return nil, fmt.Errorf("magic numbers don't match")
 	}
-	err = checkKeyStreams(alphaf, betaf, kalphaHeader.burnt)
+	err = checkKeyStreams(alphaf, betaf, kalphaHeader.Burnt)
 	if err != nil {
 		return nil, fmt.Errorf("checkkeystreams: %s", err)
 	}

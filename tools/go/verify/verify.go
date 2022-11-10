@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"golang.org/x/sys/unix"
@@ -178,10 +177,6 @@ const MaxNRatchet = 512
 //inode == 0, check all files, else check only the inode
 //begin == 0 && end == 0, check the whole file
 //precondition:  begin <= end
-
-const (
-	sizeofLogfileHeader = 8 //bytes
-)
 
 type Region struct {
 	inode uint64
@@ -412,44 +407,8 @@ func InodeBegEnd(args []string) (region Region, err error) {
 	return region, err
 }
 
-type KeyFileHeader struct {
-	magic uint64
-	burnt uint64
-}
-
-func (kh *KeyFileHeader) FillHeader(r io.Reader) (err error) {
-	var khBuf [entries.SizeofKeyfileHeader]uint8
-	n, err := io.ReadFull(r, khBuf[:])
-	if err != nil {
-		return err
-	}
-	if n != entries.SizeofKeyfileHeader {
-		return errors.New("bad keyfile header")
-	}
-	kh.magic = binary.LittleEndian.Uint64(khBuf[0:8])
-	kh.burnt = binary.LittleEndian.Uint64(khBuf[8:16])
-	return nil
-}
-
-type LogFileHeader struct {
-	magic uint64
-}
-
-func (lf *LogFileHeader) FillHeader(r io.Reader) (err error) {
-	var lfBuf [sizeofLogfileHeader]uint8
-	n, err := io.ReadFull(r, lfBuf[:])
-	if err != nil {
-		return err
-	}
-	if n != sizeofLogfileHeader {
-		return errors.New("bad logfile header")
-	}
-	lf.magic = binary.LittleEndian.Uint64(lfBuf[0:8])
-	return nil
-}
-
-//	not portable, but will still work
-//	outside of linux nothing is a TTY for now (no colors)
+// not portable, but will still work
+// outside of linux nothing is a TTY for now (no colors)
 func isatty(file *os.File) bool {
 	fd := file.Fd()
 	_, err := unix.IoctlGetTermios(int(fd), unix.TCGETS)
@@ -545,26 +504,26 @@ func main() {
 	fmt.Fprintf(os.Stderr, "lf %s\n", lpath)
 	defer lf.Close()
 
-	kalphaHeader := &KeyFileHeader{}
+	kalphaHeader := &entries.KeyFileHeader{}
 	err = kalphaHeader.FillHeader(alphaf)
 	if err != nil {
 		log.Fatal("can't read kalphahdr")
 	}
-	kbetaHeader := &KeyFileHeader{}
+	kbetaHeader := &entries.KeyFileHeader{}
 	err = kbetaHeader.FillHeader(betaf)
 	if err != nil {
 		log.Fatal("can't read kbetahdr")
 	}
-	logHeader := &LogFileHeader{}
+	logHeader := &entries.LogFileHeader{}
 	err = logHeader.FillHeader(lf)
 	if err != nil {
 		log.Fatal("can't read lheader")
 	}
-	if logHeader.magic != kalphaHeader.magic || logHeader.magic != kbetaHeader.magic {
+	if logHeader.Magic != kalphaHeader.Magic || logHeader.Magic != kbetaHeader.Magic {
 		log.Fatal("magic numbers don't match")
 	}
-	fmt.Printf("k1 burnt: %d\n", kalphaHeader.burnt)
-	err = checkKeyStreams(alphaf, betaf, kalphaHeader.burnt)
+	fmt.Printf("k1 burnt: %d\n", kalphaHeader.Burnt)
+	err = checkKeyStreams(alphaf, betaf, kalphaHeader.Burnt)
 	if err != nil {
 		log.Fatalf("checkkeystreams: %s", err)
 	}
