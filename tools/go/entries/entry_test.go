@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"sealfs/sealfs/entries"
+	"sealfs/sealfs/headers"
 	"testing"
 )
 
@@ -48,7 +49,7 @@ func TestEntry(t *testing.T) {
 	for nRatchet := uint64(1); nRatchet < MaxNRatchetTest; nRatchet++ {
 		keyC.Drop()
 		for roff := uint64(0); roff < NRounds*nRatchet; roff++ {
-			entry.KeyFileOffset = entries.SizeofKeyfileHeader + (roff/nRatchet)*entries.FprSize
+			entry.KeyFileOffset = headers.SizeofKeyfileHeader + (roff/nRatchet)*entries.FprSize
 			entry.RatchetOffset = roff % nRatchet
 			entry.ReMac(logrs, krs, &keyC, nRatchet)
 			if !entry.IsOk(logrs, krs, &keyC, nRatchet) {
