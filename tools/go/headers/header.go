@@ -16,6 +16,10 @@ type LogFileHeader struct {
 	Magic uint64
 }
 
+func (lf *LogFileHeader) String() string {
+	return fmt.Sprintf("logfile[Magic: %x]", lf.Magic)
+}
+
 func (lf *LogFileHeader) MarshalBinary() (data []byte, err error) {
 	var b [SizeofLogfileHeader]byte
 	binary.LittleEndian.PutUint64(b[:], lf.Magic)
@@ -54,6 +58,10 @@ func (lf *LogFileHeader) WriteHeader(w io.Writer) (err error) {
 type KeyFileHeader struct {
 	Magic uint64
 	Burnt uint64
+}
+
+func (kh *KeyFileHeader) String() string {
+	return fmt.Sprintf("keyFileHeader[Magic: %x, Burnt: %d]", kh.Magic, kh.Burnt)
 }
 
 func (kh *KeyFileHeader) MarshalBinary() (data []byte, err error) {
