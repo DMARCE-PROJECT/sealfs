@@ -105,7 +105,7 @@ func unifyOffset(offset uint64, ratchetOffset uint64) uint64 {
 }
 
 func dumpHeap(heap *heap.Heap[*entries.LogfileEntry]) {
-	fmt.Fprintf(os.Stderr, "entries pending, [\n")
+	log.Printf("entries pending, [\n")
 	for entry, min, ok := heap.Pop(); ok; entry, min, ok = heap.Pop() {
 		off := unifyOffset(entry.FileOffset, entry.RatchetOffset)
 		fmt.Fprintf(os.Stderr, "min: %d %d  offset: %d->", min, off, entry.FileOffset)
@@ -157,7 +157,7 @@ func checkTailOFiles(ofiles OFiles) error {
 }
 
 func dumpOFiles(ofiles OFiles) error {
-	fmt.Fprintf(os.Stderr, "Ofiles:\n")
+	log.Printf("Ofiles:\n")
 	for _, o := range ofiles {
 		fmt.Fprintf(os.Stderr, "ofile %s\n", o)
 	}
@@ -199,13 +199,13 @@ type SealFsDesc struct {
 }
 
 func badOff(entry *entries.LogfileEntry, keyOff uint64, ratchetOffset uint64) {
-	fmt.Fprintf(os.Stderr, "koffset %d or roff %d not correct: ", entry.KeyFileOffset, entry.RatchetOffset)
+	log.Printf("koffset %d or roff %d not correct: ", entry.KeyFileOffset, entry.RatchetOffset)
 	fmt.Fprintf(os.Stderr, "should be %d %d", keyOff, entry.RatchetOffset)
 	fmt.Fprintf(os.Stderr, "%s\n", entry)
 }
 
 func badEntry(entry *entries.LogfileEntry, nRatchet uint64) {
-	fmt.Fprintf(os.Stderr, "can't verify entry with nratchet %d: ", nRatchet)
+	log.Printf("can't verify entry with nratchet %d: ", nRatchet)
 	fmt.Fprintf(os.Stderr, "%s\n", entry)
 }
 
@@ -249,7 +249,7 @@ func verify(sf *SealFsDesc, region Region, renames Renames, nRatchet uint64) err
 				return fmt.Errorf("can't find a correct nratchet")
 			}
 			if sf.typeLog != entries.LogSilent {
-				fmt.Fprintf(os.Stderr, "NRatchetDetect got nratchet %d\n", nRatchet)
+				log.Printf("NRatchetDetect got nratchet %d\n", nRatchet)
 			}
 		}
 		if entry.Inode != entries.FakeInode {
@@ -278,7 +278,7 @@ func verify(sf *SealFsDesc, region Region, renames Renames, nRatchet uint64) err
 		if entry.Inode != entries.FakeInode {
 			err = entry.DumpLog(file, isok, sf.typeLog)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "can't dump log entry %s", entry)
+				log.Printf("can't dump log entry %s", entry)
 				return err
 			}
 			if region.inode != 0 && o.offset >= region.end {
@@ -368,7 +368,7 @@ func checkKeyStreams(alphaF *os.File, betaF *os.File, burnt uint64) (err error) 
 		return errors.New("keystreams are not valid: last burnt chunk is equal")
 	}
 	if burnt == uint64(fia.Size()) {
-		fmt.Fprintf(os.Stderr, "alpha keystream is completely burnt\n")
+		log.Printf("alpha keystream is completely burnt\n")
 		return
 	}
 	if err := readChunk(alphaF, postvalpha[:], burnt); err != nil {
@@ -431,6 +431,7 @@ func setDebugs(d rune) {
 
 func main() {
 	var err error
+	log.SetPrefix("SealFs: ")
 	renames := make(Renames)
 	nRatchet := NRatchetDefault
 	region := Region{uint64(0), uint64(0), uint64(0)}
@@ -506,7 +507,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("can't open %s", lpath)
 	}
-	fmt.Fprintf(os.Stderr, "lf %s\n", lpath)
+	log.Printf("lf %s\n", lpath)
 	defer lf.Close()
 
 	kalphaHeader := &headers.KeyFileHeader{}
@@ -541,8 +542,8 @@ func main() {
 		log.Fatal(err)
 	}
 	if region.inode != 0 {
-		fmt.Fprintf(os.Stderr, "WARNING: you SHOULD run a"+
-			" complete verification"+
+		log.Printf("WARNING: you SHOULD run a" +
+			" complete verification" +
 			" to probe that the file has not been truncated\n")
 	}
 	os.Exit(0)
