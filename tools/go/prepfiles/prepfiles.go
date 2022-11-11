@@ -1,12 +1,12 @@
 package prepfiles
 
 import (
-	"io"
 	"crypto/rand"
+	"fmt"
+	"io"
 	"log"
 	"os"
 	"sealfs/sealfs/headers"
-	"fmt"
 )
 
 func CreateLogFile(name string, magic uint64) error {
