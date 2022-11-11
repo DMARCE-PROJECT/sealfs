@@ -1,12 +1,12 @@
 package main
 
 import (
-	"sealfs/sealfs/prepfiles"
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
 	"log"
 	"os"
+	"sealfs/sealfs/prepfiles"
 	"strconv"
 )
 
@@ -16,7 +16,6 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "usage: prep lfile kfile1 kfile2 kfile_size")
 	os.Exit(2)
 }
-
 
 func main() {
 	log.SetPrefix("SealFs: ")
