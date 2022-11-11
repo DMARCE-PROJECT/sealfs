@@ -23,7 +23,7 @@ func createKeyFile(name string, magic uint64) (kf *os.File, err error) {
 	if err != nil {
 		log.Fatalf("cannot create %s: %s\n", name, err)
 	}
-	kh := &headers.LogFileHeader{Magic: magic}
+	kh := &headers.KeyFileHeader{Magic: magic, Burnt: 0}
 	if err = kh.WriteHeader(kf); err != nil {
 		return nil, err
 	}
