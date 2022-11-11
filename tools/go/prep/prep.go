@@ -18,31 +18,46 @@ func usage() {
 	os.Exit(2)
 }
 
-func createKeyFile(name string, size int64, magic uint64) (err error) {
-	kf, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+func createKeyFile(name string, magic uint64) (kf *os.File, err error) {
+	kf, err = os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		log.Fatalf("cannot create %s %s\n", name, err)
+		log.Fatalf("cannot create %s: %s\n", name, err)
 	}
-	defer kf.Close()
 	kh := &headers.LogFileHeader{Magic: magic}
 	if err = kh.WriteHeader(kf); err != nil {
+		return nil, err
+	}
+	return kf, err
+}
+
+func prepKeyFiles(name string, name2 string, size int64, magic uint64) (err error) {
+	var (
+		k1 *os.File
+		k2 *os.File
+	)
+	if k1, err = createKeyFile(name, magic); err != nil {
 		return err
 	}
-	//could be zero in some ratchet scheme
+	defer k1.Close()
+	if k2, err = createKeyFile(name2, magic); err != nil {
+		return err
+	}
+	defer k2.Close()
 	if size == 0 {
 		log.Printf("warning, 0 size keystream %s\n", name)
 	}
 	if size < 0 {
-		log.Fatalf("size too small for keystream %d\n", size)
+		return fmt.Errorf("size too small for keystream %d\n", size)
 	}
-	_, err = io.CopyN(kf, rand.Reader, size)
+	w := io.MultiWriter(k1, k2)
+	_, err = io.CopyN(w, rand.Reader, size)
 	return err
 }
 
 func createLogFile(name string, magic uint64) error {
 	lf, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		log.Fatalf("cannot create %s %s\n", name, err)
+		return fmt.Errorf("cannot create %s: %s\n", name, err)
 	}
 	defer lf.Close()
 	lh := &headers.LogFileHeader{Magic: magic}
@@ -71,14 +86,10 @@ func main() {
 
 	err = createLogFile(args[1], magic)
 	if err != nil {
-		log.Fatalf("cannot create %s %s\n", args[2], err)
+		log.Fatalf("cannot create %s: %s\n", args[2], err)
 	}
-	err = createKeyFile(args[2], int64(keysize), magic)
+	err = prepKeyFiles(args[2], args[3], int64(keysize), magic)
 	if err != nil {
-		log.Fatalf("cannot create %s %s\n", args[2], err)
-	}
-	err = createKeyFile(args[3], int64(keysize), magic)
-	if err != nil {
-		log.Fatalf("cannot create %s %s\n", args[3], err)
+		log.Fatalf("cannot create %s: %s\n", args[2], err)
 	}
 }
