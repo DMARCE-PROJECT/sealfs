@@ -127,6 +127,7 @@ func popContiguous(fileOffset *uint64, heap *heap.Heap[*entries.LogfileEntry]) {
 const MaxHeapSz = 2048
 
 // This inserts a copy for safety. It is probably not necesary (it is only used for isok)
+//
 //	but this is safer.
 func advanceEntry(entry *entries.LogfileEntry, o *OFile) error {
 	e := *entry
@@ -383,7 +384,7 @@ func checkKeyStreams(alphaF *os.File, betaF *os.File, burnt uint64) (err error) 
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "USAGE: verify dir kalpha kbeta [-D[e|k]] [-t | -T] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n")
+	fmt.Fprintf(os.Stderr, "usage: verify dir kalpha kbeta [-D[e|k]] [-t | -T] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n")
 	os.Exit(2)
 }
 
