@@ -1,4 +1,3 @@
-paurea@myo:~/gits/galo/.git/hooks$ cat pre-commit 
 #!/bin/sh
 #
 # A  hook script to verify what is about to be committed.
