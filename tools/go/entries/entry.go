@@ -63,6 +63,41 @@ func NewEntryFile(r io.Reader) (entry *EntryFile) {
 	return entry
 }
 
+func (entry *LogfileEntry) MarshalBinary() (data []byte, err error) {
+	var b [sizeofEntry]byte
+	off := 0
+	binary.LittleEndian.PutUint64(b[off:8+off], entry.RatchetOffset)
+	off += 8
+	binary.LittleEndian.PutUint64(b[off:8+off], entry.Inode)
+	off += 8
+	binary.LittleEndian.PutUint64(b[off:8+off], entry.FileOffset)
+	off += 8
+	binary.LittleEndian.PutUint64(b[off:8+off], entry.WriteCount)
+	off += 8
+	binary.LittleEndian.PutUint64(b[off:8+off], entry.KeyFileOffset)
+	off += 8
+	copy(b[off:off+FprSize], entry.fpr[:])
+	return b[:], nil
+}
+func (entry *LogfileEntry) UnMarshalBinary(data []byte) (err error) {
+	if len(data) < sizeofEntry {
+		return fmt.Errorf("data too small for entry %s\n", err)
+	}
+	off := 0
+	entry.RatchetOffset = binary.LittleEndian.Uint64(data[off : 8+off])
+	off += 8
+	entry.Inode = binary.LittleEndian.Uint64(data[off : 8+off])
+	off += 8
+	entry.FileOffset = binary.LittleEndian.Uint64(data[off : 8+off])
+	off += 8
+	entry.WriteCount = binary.LittleEndian.Uint64(data[off : 8+off])
+	off += 8
+	entry.KeyFileOffset = binary.LittleEndian.Uint64(data[off : 8+off])
+	off += 8
+	copy(entry.fpr[:], data[off:off+FprSize])
+	return nil
+}
+
 func (eFile *EntryFile) ReadEntry(nRatchet uint64) (err error, entry *LogfileEntry) {
 	var entryBuf [sizeofEntry]uint8
 	n, err := io.ReadFull(eFile.br, entryBuf[:])
@@ -73,18 +108,11 @@ func (eFile *EntryFile) ReadEntry(nRatchet uint64) (err error, entry *LogfileEnt
 		return errors.New("bad entry"), nil
 	}
 	entry = &LogfileEntry{}
-	off := 0
-	entry.RatchetOffset = binary.LittleEndian.Uint64(entryBuf[off : 8+off])
-	off += 8
-	entry.Inode = binary.LittleEndian.Uint64(entryBuf[off : 8+off])
-	off += 8
-	entry.FileOffset = binary.LittleEndian.Uint64(entryBuf[off : 8+off])
-	off += 8
-	entry.WriteCount = binary.LittleEndian.Uint64(entryBuf[off : 8+off])
-	off += 8
-	entry.KeyFileOffset = binary.LittleEndian.Uint64(entryBuf[off : 8+off])
-	off += 8
-	copy(entry.fpr[:], entryBuf[off:off+FprSize])
+	err = entry.UnMarshalBinary(entryBuf[:])
+	if err != nil {
+		return err, nil
+	}
+
 	dprintf(DebugEntries, "ReadEntry: %s\n", entry)
 	return nil, entry
 }
