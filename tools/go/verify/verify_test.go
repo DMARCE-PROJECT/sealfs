@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 	"sealfs/sealfs/entries"
-	"sealfs/sealfs/verifdesc"
+	"sealfs/sealfs/sealdesc"
 	"syscall"
 	"testing"
 )
@@ -27,12 +27,12 @@ func inode(fname string) (inode uint64, err error) {
 	return stat.Ino, nil
 }
 
-func example_Desc(dir string, kalpha string, kbeta string) (sf *verifdesc.SealFsDesc, err error) {
-	lname := verifdesc.DefaultLogfileName
+func example_Desc(dir string, kalpha string, kbeta string) (sf *sealdesc.SealFsDesc, err error) {
+	lname := sealdesc.DefaultLogfileName
 	typeLog := entries.LogSilent
 	lpath := fmt.Sprintf("%s/%s", dir, lname)
 
-	desc, err := verifdesc.OpenDesc(kbeta, lpath, dir, typeLog)
+	desc, err := sealdesc.OpenDesc(kbeta, lpath, dir, typeLog)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func example_Desc(dir string, kalpha string, kbeta string) (sf *verifdesc.SealFs
 func TestExample(t *testing.T) {
 	var err error
 	nRatchet := NRatchetDefault
-	region := verifdesc.Region{}
+	region := sealdesc.Region{}
 
 	dir := "../files/example"
 
@@ -61,7 +61,7 @@ func TestExample(t *testing.T) {
 	if err != nil {
 		t.Errorf("cannot find inode: %s", err)
 	}
-	renames := verifdesc.Renames{
+	renames := sealdesc.Renames{
 		zzzinode:  {zzzinode, 5243063},
 		zzz2inode: {zzz2inode, 5243058},
 	}
@@ -107,7 +107,7 @@ func FuzzExampleLog(f *testing.F) {
 	f.Fuzz(func(t *testing.T, in byte) {
 		var err error
 		nRatchet := NRatchetDefault
-		region := verifdesc.Region{}
+		region := sealdesc.Region{}
 
 		dir := "../files/example"
 		zzzinode, err := inode("../files/example/zzz")
@@ -119,7 +119,7 @@ func FuzzExampleLog(f *testing.F) {
 		if err != nil {
 			t.Errorf("cannot find inode: %s", err)
 		}
-		renames := verifdesc.Renames{
+		renames := sealdesc.Renames{
 			zzzinode:  {zzzinode, 5243063},
 			zzz2inode: {zzz2inode, 5243058},
 		}

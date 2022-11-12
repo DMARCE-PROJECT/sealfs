@@ -1,4 +1,4 @@
-package verifdesc
+package sealdesc
 
 import (
 	"errors"

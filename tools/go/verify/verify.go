@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 	"sealfs/sealfs/entries"
-	"sealfs/sealfs/verifdesc"
+	"sealfs/sealfs/sealdesc"
 	"strconv"
 	"strings"
 )
@@ -40,10 +40,10 @@ func usage() {
 func main() {
 	var err error
 	log.SetPrefix("SealFs: ")
-	renames := make(verifdesc.Renames)
+	renames := make(sealdesc.Renames)
 	nRatchet := NRatchetDefault
-	region := verifdesc.Region{}
-	lname := verifdesc.DefaultLogfileName
+	region := sealdesc.Region{}
+	lname := sealdesc.DefaultLogfileName
 	if len(os.Args) < 3 {
 		usage()
 	}
@@ -66,11 +66,11 @@ func main() {
 			}
 			setDebugs(rune(args[i][2]))
 		case 'i':
-			r0 := verifdesc.Region{}
+			r0 := sealdesc.Region{}
 			if len(args[i:]) < 3 || region != r0 {
 				usage()
 			}
-			region, err = verifdesc.InodeBegEnd(args[i+1 : i+4])
+			region, err = sealdesc.InodeBegEnd(args[i+1 : i+4])
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "cannot parse inode number %s", err)
 				usage()
@@ -101,7 +101,7 @@ func main() {
 	}
 	lpath := fmt.Sprintf("%s/%s", dir, lname)
 
-	desc, err := verifdesc.OpenDesc(kbeta, lpath, dir, typeLog)
+	desc, err := sealdesc.OpenDesc(kbeta, lpath, dir, typeLog)
 	if err != nil {
 		log.Fatal(err)
 	}
