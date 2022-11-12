@@ -6,14 +6,13 @@ import (
 	"log"
 	"os"
 	"sealfs/sealfs/entries"
-	"sealfs/sealfs/headers"
 	"sealfs/sealfs/verifdesc"
 	"strconv"
 	"strings"
 )
 
 const (
-	NRatchetDefault    = uint64(1)
+	NRatchetDefault = uint64(1)
 )
 
 func setDebugs(d rune) {
@@ -101,51 +100,18 @@ func main() {
 		}
 	}
 	lpath := fmt.Sprintf("%s/%s", dir, lname)
-	alphaf, err := os.Open(kalpha)
-	if err != nil {
-		log.Fatalf("can't open %s\n", kalpha)
-	}
-	defer alphaf.Close()
-	betaf, err := os.Open(kbeta)
-	if err != nil {
-		log.Fatalf("can't open %s", kbeta)
-	}
-	defer betaf.Close()
-	lf, err := os.Open(lpath)
-	if err != nil {
-		log.Fatalf("can't open %s", lpath)
-	}
-	log.Printf("lf %s\n", lpath)
-	defer lf.Close()
 
-	kalphaHeader := &headers.KeyFileHeader{}
-	err = kalphaHeader.FillHeader(alphaf)
+	desc, err := verifdesc.OpenDesc(kbeta, lpath, dir, typeLog)
 	if err != nil {
-		log.Fatal("can't read kalphahdr")
+		log.Fatal(err)
 	}
-	kbetaHeader := &headers.KeyFileHeader{}
-	err = kbetaHeader.FillHeader(betaf)
-	if err != nil {
-		log.Fatal("can't read kbetahdr")
-	}
-	logHeader := &headers.LogFileHeader{}
-	err = logHeader.FillHeader(lf)
-	if err != nil {
-		log.Fatal("can't read lheader")
-	}
-	if logHeader.Magic != kalphaHeader.Magic || logHeader.Magic != kbetaHeader.Magic {
-		log.Fatal("magic numbers don't match")
-	}
-	fmt.Printf("k1 burnt: %d\n", kalphaHeader.Burnt)
-	err = verifdesc.CheckKeyStreams(alphaf, betaf, kalphaHeader.Burnt)
-	if err != nil {
-		log.Fatalf("checkkeystreams: %s", err)
-	}
-	for _, r := range renames {
-		fmt.Fprintf(os.Stderr, "rename inode %s\n", r)
-	}
-	desc := verifdesc.NewSealFsDesc(betaf, lf, dir, typeLog)
 	defer desc.Close()
+	burnt, err := desc.CheckKeystream(kalpha)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("k1 burnt: %d\n", burnt)
+	fmt.Fprintf(os.Stderr, "%s", renames)
 	err = desc.Verify(region, renames, nRatchet)
 	if err != nil {
 		log.Fatal(err)

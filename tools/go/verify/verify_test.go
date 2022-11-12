@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"sealfs/sealfs/entries"
-	"sealfs/sealfs/headers"
 	"sealfs/sealfs/verifdesc"
 	"syscall"
 	"testing"
@@ -32,43 +31,15 @@ func example_Desc(dir string, kalpha string, kbeta string) (sf *verifdesc.SealFs
 	lname := verifdesc.DefaultLogfileName
 	typeLog := entries.LogSilent
 	lpath := fmt.Sprintf("%s/%s", dir, lname)
-	alphaf, err := os.Open(kalpha)
-	if err != nil {
-		return nil, fmt.Errorf("can't open %s\n", kalpha)
-	}
-	defer alphaf.Close()
-	betaf, err := os.Open(kbeta)
-	if err != nil {
-		return nil, fmt.Errorf("can't open %s", kbeta)
-	}
-	lf, err := os.Open(lpath)
-	if err != nil {
-		return nil, fmt.Errorf("can't open %s", lpath)
-	}
 
-	kalphaHeader := &headers.KeyFileHeader{}
-	err = kalphaHeader.FillHeader(alphaf)
+	desc, err := verifdesc.OpenDesc(kbeta, lpath, dir, typeLog)
 	if err != nil {
-		return nil, fmt.Errorf("can't read kalphahdr")
+		return nil, err
 	}
-	kbetaHeader := &headers.KeyFileHeader{}
-	err = kbetaHeader.FillHeader(betaf)
+	_, err = desc.CheckKeystream(kalpha)
 	if err != nil {
-		return nil, fmt.Errorf("can't read kbetahdr")
+		return nil, err
 	}
-	logHeader := &headers.LogFileHeader{}
-	err = logHeader.FillHeader(lf)
-	if err != nil {
-		return nil, fmt.Errorf("can't read lheader")
-	}
-	if logHeader.Magic != kalphaHeader.Magic || logHeader.Magic != kbetaHeader.Magic {
-		return nil, fmt.Errorf("magic numbers don't match")
-	}
-	err = verifdesc.CheckKeyStreams(alphaf, betaf, kalphaHeader.Burnt)
-	if err != nil {
-		return nil, fmt.Errorf("checkkeystreams: %s", err)
-	}
-	desc := verifdesc.NewSealFsDesc(betaf, lf, dir, typeLog)
 	return desc, nil
 }
 
@@ -157,8 +128,8 @@ func FuzzExampleLog(f *testing.F) {
 		if err != nil {
 			t.Errorf("cannot make example desc: %s", err)
 		}
-		desc.SetLogFile(&FuzzyReader{in, desc.LogFile()})
 		defer desc.Close()
+		desc.SetLogFile(&FuzzyReader{in, desc.LogFile()})
 		err = desc.Verify(region, renames, nRatchet)
 		if err == nil {
 			t.Error(errors.New("verify should fail"))

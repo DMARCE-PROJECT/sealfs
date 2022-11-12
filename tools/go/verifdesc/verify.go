@@ -189,10 +189,19 @@ type Region struct {
 type Renames map[uint64]*Rename
 
 type SealFsDesc struct {
-	kf      *os.File		//This will be buffered and seeked
-	lf      io.ReadCloser	//This is read in order, buffered but not seeked
+	kf      *os.File      //This will be buffered and seeked
+	lf      io.ReadCloser //This is read in order, buffered but not seeked
 	dirPath string
 	typeLog int
+	Magic   uint64
+}
+
+func (rs Renames) String() string {
+	s := ""
+	for _, r := range rs {
+		s += fmt.Sprintf("rename inode %s\n", r)
+	}
+	return s
 }
 
 func (rs Renames) AddRename(inode uint64, newInode uint64) {
@@ -200,8 +209,59 @@ func (rs Renames) AddRename(inode uint64, newInode uint64) {
 	rs[r.Inode] = r
 }
 
+func OpenDesc(betakeyfile string, logfile string, dir string, typeLog int) (desc *SealFsDesc, err error) {
+	kf, err := os.Open(betakeyfile)
+	if err != nil {
+		return nil, fmt.Errorf("can't open beta keyfile %s: %s", betakeyfile, err)
+	}
+	lf, err := os.Open(logfile)
+	if err != nil {
+		kf.Close()
+		return nil, fmt.Errorf("can't open logfile %s: %s", logfile, err)
+	}
+	desc = NewSealFsDesc(kf, lf, dir, typeLog)
+	kh := &headers.KeyFileHeader{}
+	err = kh.FillHeader(kf)
+	if err != nil {
+		desc.Close()
+		return nil, errors.New("can't read beta key header")
+	}
+	desc.Magic = kh.Magic
+	logHeader := &headers.LogFileHeader{}
+	err = logHeader.FillHeader(lf)
+	if err != nil {
+		desc.Close()
+		return nil, errors.New("can't read lheader")
+	}
+	if logHeader.Magic != desc.Magic {
+		return nil, errors.New("desc magic numbers don't match")
+	}
+	return desc, nil
+}
+
 func NewSealFsDesc(kf *os.File, lf io.ReadCloser, dirPath string, typeLog int) *SealFsDesc {
 	return &SealFsDesc{kf: kf, lf: lf, dirPath: dirPath, typeLog: typeLog}
+}
+
+func (desc *SealFsDesc) CheckKeystream(alphakfile string) (burnt uint64, err error) {
+	alphaf, err := os.Open(alphakfile)
+	if err != nil {
+		return 0, fmt.Errorf("can't open %s\n", alphakfile)
+	}
+	defer alphaf.Close()
+	kh := &headers.KeyFileHeader{}
+	err = kh.FillHeader(alphaf)
+	if err != nil {
+		return 0, fmt.Errorf("can't read kalphahdr: %s", err)
+	}
+	if kh.Magic != desc.Magic {
+		return 0, fmt.Errorf("magic numbers don't match desc != kbeta")
+	}
+	err = CheckKeyStreams(alphaf, desc.kf, kh.Burnt)
+	if err != nil {
+		return 0, fmt.Errorf("checkkeystreams: %s", err)
+	}
+	return kh.Burnt, nil
 }
 
 func (desc *SealFsDesc) Close() {
