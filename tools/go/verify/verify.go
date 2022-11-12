@@ -12,6 +12,10 @@ import (
 	"strings"
 )
 
+const (
+	NRatchetDefault    = uint64(1)
+)
+
 func setDebugs(d rune) {
 	switch d {
 	case 'e':
@@ -38,7 +42,7 @@ func main() {
 	var err error
 	log.SetPrefix("SealFs: ")
 	renames := make(verifdesc.Renames)
-	nRatchet := verifdesc.NRatchetDefault
+	nRatchet := NRatchetDefault
 	region := verifdesc.Region{}
 	lname := verifdesc.DefaultLogfileName
 	if len(os.Args) < 3 {
@@ -92,8 +96,7 @@ func main() {
 			if err != nil {
 				usage()
 			}
-			r := verifdesc.NewRename(uint64(oi), uint64(ni))
-			renames[r.Inode] = r
+			renames.AddRename(uint64(oi), uint64(ni))
 			i++
 		}
 	}
@@ -143,7 +146,7 @@ func main() {
 	}
 	desc := verifdesc.NewSealFsDesc(betaf, lf, dir, typeLog)
 	defer desc.Close()
-	err = verifdesc.Verify(desc, region, renames, nRatchet)
+	err = desc.Verify(region, renames, nRatchet)
 	if err != nil {
 		log.Fatal(err)
 	}

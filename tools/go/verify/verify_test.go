@@ -76,7 +76,7 @@ func example_Desc(dir string, kalpha string, kbeta string) (sf *verifdesc.SealFs
 // lots of repeated code
 func TestExample(t *testing.T) {
 	var err error
-	nRatchet := verifdesc.NRatchetDefault
+	nRatchet := NRatchetDefault
 	region := verifdesc.Region{}
 
 	dir := "../files/example"
@@ -101,7 +101,7 @@ func TestExample(t *testing.T) {
 	}
 	defer desc.Close()
 
-	err = verifdesc.Verify(desc, region, renames, nRatchet)
+	err = desc.Verify(region, renames, nRatchet)
 	if err != nil {
 		t.Error(err)
 	}
@@ -135,7 +135,7 @@ func FuzzExampleLog(f *testing.F) {
 	}
 	f.Fuzz(func(t *testing.T, in byte) {
 		var err error
-		nRatchet := verifdesc.NRatchetDefault
+		nRatchet := NRatchetDefault
 		region := verifdesc.Region{}
 
 		dir := "../files/example"
@@ -159,7 +159,7 @@ func FuzzExampleLog(f *testing.F) {
 		}
 		desc.SetLogFile(&FuzzyReader{in, desc.LogFile()})
 		defer desc.Close()
-		err = verifdesc.Verify(desc, region, renames, nRatchet)
+		err = desc.Verify(region, renames, nRatchet)
 		if err == nil {
 			t.Error(errors.New("verify should fail"))
 		}

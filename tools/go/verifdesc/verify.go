@@ -16,7 +16,6 @@ import (
 const (
 	MaxFiles           = 256
 	DefaultLogfileName = ".SEALFS.LOG"
-	NRatchetDefault    = uint64(1)
 )
 
 type OFile struct {
@@ -190,10 +189,15 @@ type Region struct {
 type Renames map[uint64]*Rename
 
 type SealFsDesc struct {
-	kf      *os.File
-	lf      io.ReadCloser
+	kf      *os.File		//This will be buffered and seeked
+	lf      io.ReadCloser	//This is read in order, buffered but not seeked
 	dirPath string
 	typeLog int
+}
+
+func (rs Renames) AddRename(inode uint64, newInode uint64) {
+	r := NewRename(uint64(inode), uint64(newInode))
+	rs[r.Inode] = r
 }
 
 func NewSealFsDesc(kf *os.File, lf io.ReadCloser, dirPath string, typeLog int) *SealFsDesc {
@@ -223,7 +227,7 @@ func badEntry(entry *entries.LogfileEntry, nRatchet uint64) {
 	fmt.Fprintf(os.Stderr, "%s\n", entry)
 }
 
-func Verify(sf *SealFsDesc, region Region, renames Renames, nRatchet uint64) error {
+func (sf *SealFsDesc) Verify(region Region, renames Renames, nRatchet uint64) error {
 	var file *os.File
 	var keyC entries.KeyCache
 	keyC.Drop()
