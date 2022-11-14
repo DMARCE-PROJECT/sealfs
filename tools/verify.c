@@ -464,7 +464,7 @@ checkkeystreams(FILE *alphaf, FILE *betaf, uint64_t burnt)
 
 	readchunk(alphaf, prevalpha, burnt-FPR_SIZE);
 	readchunk(betaf, prevbeta, burnt-FPR_SIZE);
-	if(memcmp(prevalpha, prevbeta, FPR_SIZE) == 0)
+	if(burnt != 0 && memcmp(prevalpha, prevbeta, FPR_SIZE) == 0)
 		errx(1, "keystreams are not valid: last burnt chunk is equal");
 	if(burnt == stata.st_size){
 		fprintf(stderr, "alpha keystream is completely burnt\n");
