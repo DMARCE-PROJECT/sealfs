@@ -1,3 +1,5 @@
+See /home/paurea/gits/sealfs/tools/go/TODO (working on that now)
+
 Important:
 	Write design document to remember everything.
 
@@ -8,6 +10,7 @@ Burners are syncing with fsync is that working?
 Better testing (important).
 		rewrite a paranoid version of checkkeystreams in verify.c (verify -k)
 	Make sure keys are burnt until one offset
+	
 
 
 
@@ -18,7 +21,10 @@ A) Solve being able to copy the files to another FS and verify (maybe continue w
 		//implemented, it is sufficient.
 		rewrite log with different inodes
 				rewritelog  .SEALFS_log .NEWSEALFS_log -2 3 -3 4 -5 650
-		   do an ls -i on origin and destination and map by hand.
+		if one copies the files somewere else and wants to check the log, the
+		inodes numbers are different. If one does ls -i in the origin and gets 2
+		and in the destination file gets 3, verify can get parameters ...
+			verify -2 3 -45 23 (and so on and then the rest of parameters)
 
 		////not implemented
 			or brute force scan looking for start with entries which verify (simple for user, less versatile)
