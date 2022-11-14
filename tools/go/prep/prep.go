@@ -39,10 +39,10 @@ func main() {
 
 	err = prepfiles.CreateLogFile(args[1], magic)
 	if err != nil {
-		log.Fatalf("cannot create %s: %s\n", args[2], err)
+		log.Fatalf("cannot create %s: %s\n", args[1], err)
 	}
 	err = prepfiles.PrepKeyFiles(args[2], args[3], int64(keysize), magic)
 	if err != nil {
-		log.Fatalf("cannot create %s: %s\n", args[2], err)
+		log.Fatalf("cannot create %s or %s: %s\n", args[2], args[3], err)
 	}
 }

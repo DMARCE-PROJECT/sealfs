@@ -7,7 +7,24 @@ import (
 	"log"
 	"os"
 	"sealfs/sealfs/headers"
+	"syscall"
 )
+
+func Inode(fname string) (inode uint64, err error) {
+	file, err := os.Open(fname)
+	if err != nil {
+		return 0, fmt.Errorf("can't open %s\n", fname)
+	}
+	fi, err := file.Stat()
+	if err != nil {
+		return 0, fmt.Errorf("can't stat %s", fname)
+	}
+	stat, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return 0, fmt.Errorf("Not a syscall.Stat_t zzz")
+	}
+	return stat.Ino, nil
+}
 
 func CreateLogFile(name string, magic uint64) error {
 	lf, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)

@@ -442,7 +442,7 @@ func CheckKeyStreams(alphaF *os.File, betaF *os.File, burnt uint64) (err error) 
 	if err := readChunk(betaF, prevbeta[:], burnt-entries.FprSize); err != nil {
 		return err
 	}
-	if prevalpha == prevbeta {
+	if prevalpha == prevbeta && burnt != 0 {
 		return errors.New("keystreams are not valid: last burnt chunk is equal")
 	}
 	if burnt == uint64(fia.Size()) {

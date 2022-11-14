@@ -4,28 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"sealfs/sealfs/entries"
+	"sealfs/sealfs/prepfiles"
 	"sealfs/sealfs/sealdesc"
-	"syscall"
 	"testing"
 )
-
-func inode(fname string) (inode uint64, err error) {
-	file, err := os.Open(fname)
-	if err != nil {
-		return 0, fmt.Errorf("can't open %s\n", fname)
-	}
-	fi, err := file.Stat()
-	if err != nil {
-		return 0, fmt.Errorf("can't stat %s", fname)
-	}
-	stat, ok := fi.Sys().(*syscall.Stat_t)
-	if !ok {
-		return 0, fmt.Errorf("Not a syscall.Stat_t zzz")
-	}
-	return stat.Ino, nil
-}
 
 func example_Desc(dir string, kalpha string, kbeta string) (sf *sealdesc.SealFsDesc, err error) {
 	lname := sealdesc.DefaultLogfileName
@@ -52,12 +35,12 @@ func TestExample(t *testing.T) {
 
 	dir := "../files/example"
 
-	zzzinode, err := inode("../files/example/zzz")
+	zzzinode, err := prepfiles.Inode("../files/example/zzz")
 	if err != nil {
 		t.Errorf("cannot find inode: %s", err)
 	}
 
-	zzz2inode, err := inode("../files/example/zzz.1")
+	zzz2inode, err := prepfiles.Inode("../files/example/zzz.1")
 	if err != nil {
 		t.Errorf("cannot find inode: %s", err)
 	}
@@ -110,12 +93,12 @@ func FuzzExampleLog(f *testing.F) {
 		region := sealdesc.Region{}
 
 		dir := "../files/example"
-		zzzinode, err := inode("../files/example/zzz")
+		zzzinode, err := prepfiles.Inode("../files/example/zzz")
 		if err != nil {
 			t.Errorf("cannot find inode: %s", err)
 		}
 
-		zzz2inode, err := inode("../files/example/zzz.1")
+		zzz2inode, err := prepfiles.Inode("../files/example/zzz.1")
 		if err != nil {
 			t.Errorf("cannot find inode: %s", err)
 		}
