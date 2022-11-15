@@ -2,5 +2,9 @@ This todo is now for both C and go (I am keeping them in synch)
 
 More checks to verification:
 - Warn if burnt in header != number of records in log
+	and compare ncheck. (commit 9bbcb6e compare with
+		59ebe76)
+	--> done for Go, pending for C
+
 - If there is any discrepancy first FprSize difference in keystream, log where it is
 	This is only fakable forward but not backward.
