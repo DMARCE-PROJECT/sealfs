@@ -28,7 +28,7 @@ func UpdateKeyFile(kfname string, magic uint64, burnt uint64) (err error) {
 	if err = kh.WriteHeader(kf); err != nil {
 		return err
 	}
-	_, err = io.CopyN(kf, rand.Reader, int64(burnt))
+	_, err = io.CopyN(kf, rand.Reader, int64(burnt - headers.SizeofKeyfileHeader))
 	return err
 }
 
@@ -68,7 +68,6 @@ func testlog(t *testing.T, filllog func(lfname string, sdir string, k1 string) (
 		}
 	}
 
-	nRatchet := NRatchetTest
 	region := sealdesc.Region{}
 	renames := sealdesc.Renames{}
 	typeLog := entries.LogSilent
@@ -77,7 +76,7 @@ func testlog(t *testing.T, filllog func(lfname string, sdir string, k1 string) (
 		return fmt.Errorf("cannot open example desc: %s", err)
 	}
 	defer desc.Close()
-	_, err = desc.CheckKeystream(k1file)
+	_, nRatchet, err := desc.CheckKeystream(k1file)
 	if err != nil {
 		return fmt.Errorf("cannot check keystream example desc [%d]: %s", burnt, err)
 	}
@@ -167,7 +166,7 @@ func TestSome(t *testing.T) {
 			}
 			roff++
 		}
-		return nil, (NRounds / nRatchet) * entries.FprSize
+		return nil, headers.SizeofKeyfileHeader + NRounds * entries.FprSize
 	}
 	err := testlog(t, filllog)
 	if err != nil {
@@ -238,7 +237,7 @@ func TestInv(t *testing.T) {
 			}
 			roff++
 		}
-		return nil, (NRounds / nRatchet) * entries.FprSize
+		return nil, headers.SizeofKeyfileHeader + NRounds * entries.FprSize
 	}
 	err := testlog(t, filllog)
 	if err != nil {
@@ -308,7 +307,7 @@ func TestNotSealed(t *testing.T) {
 			}
 			roff++
 		}
-		return nil, (NRounds / nRatchet) * entries.FprSize
+		return nil, headers.SizeofKeyfileHeader + NRounds * entries.FprSize
 	}
 	err := testlog(t, filllog)
 	if err == nil {
@@ -380,7 +379,7 @@ func TestModifiedLog(t *testing.T) {
 			}
 			roff++
 		}
-		return nil, (NRounds / nRatchet) * entries.FprSize
+		return nil, headers.SizeofKeyfileHeader + NRounds * entries.FprSize
 	}
 	err := testlog(t, filllog)
 	if err == nil {

@@ -31,7 +31,7 @@ func NewOfile(file *os.File, inode uint64) (o *OFile) {
 }
 
 func (o *OFile) String() string {
-	return fmt.Sprintf("inode: %d fd: %v", o.inode, o.file)
+	return fmt.Sprintf("inode: %d fd: %d", o.inode, o.file.Fd())
 }
 
 type Rename struct {
@@ -194,6 +194,7 @@ type SealFsDesc struct {
 	dirPath string
 	typeLog int
 	Magic   uint64
+	NEntries uint64
 }
 
 func (rs Renames) String() string {
@@ -219,7 +220,12 @@ func OpenDesc(betakeyfile string, logfile string, dir string, typeLog int) (desc
 		kf.Close()
 		return nil, fmt.Errorf("can't open logfile %s: %s", logfile, err)
 	}
-	desc = NewSealFsDesc(kf, lf, dir, typeLog)
+	fil, err := lf.Stat()
+	if err != nil {
+		return nil, errors.New("can't stat log file")
+	}
+	nentries := uint64((fil.Size() - headers.SizeofLogfileHeader)/entries.SizeofEntry)
+	desc = NewSealFsDesc(kf, lf, dir, typeLog, nentries)
 	kh := &headers.KeyFileHeader{}
 	err = kh.FillHeader(kf)
 	if err != nil {
@@ -239,29 +245,40 @@ func OpenDesc(betakeyfile string, logfile string, dir string, typeLog int) (desc
 	return desc, nil
 }
 
-func NewSealFsDesc(kf *os.File, lf io.ReadCloser, dirPath string, typeLog int) *SealFsDesc {
-	return &SealFsDesc{kf: kf, lf: lf, dirPath: dirPath, typeLog: typeLog}
+func NewSealFsDesc(kf *os.File, lf io.ReadCloser, dirPath string, typeLog int, nentries uint64) *SealFsDesc {
+	return &SealFsDesc{kf: kf, lf: lf, dirPath: dirPath, typeLog: typeLog, NEntries: nentries}
 }
 
-func (desc *SealFsDesc) CheckKeystream(alphakfile string) (burnt uint64, err error) {
+func (desc *SealFsDesc) CheckKeystream(alphakfile string) (burnt uint64, nratchet uint64, err error) {
 	alphaf, err := os.Open(alphakfile)
 	if err != nil {
-		return 0, fmt.Errorf("can't open %s\n", alphakfile)
+		return 0, 0, fmt.Errorf("can't open %s\n", alphakfile)
 	}
 	defer alphaf.Close()
 	kh := &headers.KeyFileHeader{}
 	err = kh.FillHeader(alphaf)
 	if err != nil {
-		return 0, fmt.Errorf("can't read kalphahdr: %s", err)
+		return 0, 0, fmt.Errorf("can't read kalphahdr: %s", err)
 	}
 	if kh.Magic != desc.Magic {
-		return 0, fmt.Errorf("magic numbers don't match desc != kbeta")
+		return 0, 0, fmt.Errorf("magic numbers don't match desc != kbeta")
+	}
+	nkeys := uint64(0)
+	if kh.Burnt != 0 {
+		nkeys = kh.Burnt/entries.FprSize
+	}
+	if desc.NEntries < nkeys {
+		return 0, 0, fmt.Errorf("more keys burnt than entries")
 	}
 	err = CheckKeyStreams(alphaf, desc.kf, kh.Burnt)
 	if err != nil {
-		return 0, fmt.Errorf("checkkeystreams: %s", err)
+		return 0, 0, fmt.Errorf("checkkeystreams: %s", err)
 	}
-	return kh.Burnt, nil
+	nratchet = 1
+	if nkeys != 0 {
+		nratchet = desc.NEntries / nkeys
+	}
+	return kh.Burnt, nratchet, nil
 }
 
 func (desc *SealFsDesc) Close() {
@@ -322,9 +339,13 @@ func (sf *SealFsDesc) Verify(region Region, renames Renames, nRatchet uint64) er
 			file = o.file
 		}
 		if !gotNRatchet {
+			keysNRatchet := nRatchet
 			gotNRatchet, nRatchet = entry.NRatchetDetect(file, keyR)
 			if !gotNRatchet {
 				return fmt.Errorf("can't find a correct nratchet")
+			}
+			if keysNRatchet != nRatchet  {
+				return fmt.Errorf("NRatchetDetect got nratchet %d but entries/keys is %d: nentries: %d\n", nRatchet, keysNRatchet, sf.NEntries)
 			}
 			if sf.typeLog != entries.LogSilent {
 				log.Printf("NRatchetDetect got nratchet %d\n", nRatchet)

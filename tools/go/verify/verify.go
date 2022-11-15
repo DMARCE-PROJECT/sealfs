@@ -11,9 +11,6 @@ import (
 	"strings"
 )
 
-const (
-	NRatchetDefault = uint64(1)
-)
 
 func setDebugs(d rune) {
 	switch d {
@@ -41,7 +38,7 @@ func main() {
 	var err error
 	log.SetPrefix("SealFs: ")
 	renames := make(sealdesc.Renames)
-	nRatchet := NRatchetDefault
+
 	region := sealdesc.Region{}
 	lname := sealdesc.DefaultLogfileName
 	if len(os.Args) < 3 {
@@ -106,7 +103,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer desc.Close()
-	burnt, err := desc.CheckKeystream(kalpha)
+	burnt, nRatchet, err := desc.CheckKeystream(kalpha)
 	if err != nil {
 		log.Fatal(err)
 	}

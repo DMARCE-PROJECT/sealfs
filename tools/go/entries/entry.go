@@ -16,7 +16,7 @@ var (
 )
 
 const (
-	sizeofEntry = 5*8 + FprSize
+	SizeofEntry = 5*8 + FprSize
 	FprSize     = sha256.Size
 	InvalOff    = ^uint64(0)
 )
@@ -64,7 +64,7 @@ func NewEntryFile(r io.Reader) (entry *EntryFile) {
 }
 
 func (entry *LogfileEntry) MarshalBinary() (data []byte, err error) {
-	var b [sizeofEntry]byte
+	var b [SizeofEntry]byte
 	off := 0
 	binary.LittleEndian.PutUint64(b[off:8+off], entry.RatchetOffset)
 	off += 8
@@ -80,7 +80,7 @@ func (entry *LogfileEntry) MarshalBinary() (data []byte, err error) {
 	return b[:], nil
 }
 func (entry *LogfileEntry) UnMarshalBinary(data []byte) (err error) {
-	if len(data) < sizeofEntry {
+	if len(data) < SizeofEntry {
 		return fmt.Errorf("data too small for entry %s\n", err)
 	}
 	off := 0
@@ -99,12 +99,12 @@ func (entry *LogfileEntry) UnMarshalBinary(data []byte) (err error) {
 }
 
 func (eFile *EntryFile) ReadEntry(nRatchet uint64) (err error, entry *LogfileEntry) {
-	var entryBuf [sizeofEntry]uint8
+	var entryBuf [SizeofEntry]uint8
 	n, err := io.ReadFull(eFile.br, entryBuf[:])
 	if err != nil {
 		return err, nil
 	}
-	if n != sizeofEntry {
+	if n != SizeofEntry {
 		return errors.New("bad entry"), nil
 	}
 	entry = &LogfileEntry{}

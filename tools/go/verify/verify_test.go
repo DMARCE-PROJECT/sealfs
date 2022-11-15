@@ -10,27 +10,26 @@ import (
 	"testing"
 )
 
-func example_Desc(dir string, kalpha string, kbeta string) (sf *sealdesc.SealFsDesc, err error) {
+func example_Desc(dir string, kalpha string, kbeta string) (sf *sealdesc.SealFsDesc, nRatchet uint64, err error) {
 	lname := sealdesc.DefaultLogfileName
 	typeLog := entries.LogSilent
 	lpath := fmt.Sprintf("%s/%s", dir, lname)
 
 	desc, err := sealdesc.OpenDesc(kbeta, lpath, dir, typeLog)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	_, err = desc.CheckKeystream(kalpha)
+	_, nRatchet, err = desc.CheckKeystream(kalpha)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return desc, nil
+	return desc, nRatchet, nil
 }
 
 // can probably factor out main an this example
 // lots of repeated code
 func TestExample(t *testing.T) {
 	var err error
-	nRatchet := NRatchetDefault
 	region := sealdesc.Region{}
 
 	dir := "../files/example"
@@ -49,7 +48,7 @@ func TestExample(t *testing.T) {
 		zzz2inode: {zzz2inode, 5243058},
 	}
 
-	desc, err := example_Desc(dir, "../files/k1example", "../files/k2example")
+	desc, nRatchet, err := example_Desc(dir, "../files/k1example", "../files/k2example")
 	if err != nil {
 		t.Errorf("cannot make example desc: %s", err)
 	}
@@ -89,7 +88,6 @@ func FuzzExampleLog(f *testing.F) {
 	}
 	f.Fuzz(func(t *testing.T, in byte) {
 		var err error
-		nRatchet := NRatchetDefault
 		region := sealdesc.Region{}
 
 		dir := "../files/example"
@@ -107,7 +105,7 @@ func FuzzExampleLog(f *testing.F) {
 			zzz2inode: {zzz2inode, 5243058},
 		}
 
-		desc, err := example_Desc(dir, "../files/k1example", "../files/k2example")
+		desc, nRatchet, err := example_Desc(dir, "../files/k1example", "../files/k2example")
 		if err != nil {
 			t.Errorf("cannot make example desc: %s", err)
 		}
