@@ -315,7 +315,7 @@ func TestNotSealed(t *testing.T) {
 	}
 }
 
-func TestModifiedLog(t *testing.T) {
+func TestTamperLog(t *testing.T) {
 	filllog := func(lfname string, d string, k1file string) (error, uint64) {
 		userlogfile := fmt.Sprintf("%s/xxx", d)
 		ul, err := os.Create(userlogfile)
@@ -383,6 +383,183 @@ func TestModifiedLog(t *testing.T) {
 	}
 	err := testlog(t, filllog)
 	if err == nil {
-		t.Errorf("should not have verified, manipulated write count")
+		t.Errorf("should not have verified, tampered write count")
 	}
+}
+
+func FuzzTamperEntry(f *testing.F) {
+	for _, seed := range []byte{3, 4, 5, 0xff, 0xaa, 0xb, 0x10} {
+		f.Add(seed)
+	}
+	f.Fuzz(func(t *testing.T, in byte) {
+		istamper := false
+		filllog := func(lfname string, d string, k1file string) (error, uint64) {
+			userlogfile := fmt.Sprintf("%s/xxx", d)
+			ul, err := os.Create(userlogfile)
+			if err != nil {
+				return fmt.Errorf("cannot create %s: %s\n", userlogfile, err), 0
+			}
+			defer ul.Close()
+			inode, err := prepfiles.Inode(userlogfile)
+			if err != nil {
+				return fmt.Errorf("cannot find inode for %s: %s\n", userlogfile, err), 0
+			}
+			lf, err := os.OpenFile(lfname, os.O_WRONLY, 0600)
+			if err != nil {
+				return fmt.Errorf("cannot open %s: %s\n", lfname, err), 0
+			}
+			defer lf.Close()
+			_, err = lf.Seek(headers.SizeofLogfileHeader, io.SeekStart)
+			if err != nil {
+				return fmt.Errorf("cannot seek %s: %s\n", lfname, err), 0
+			}
+			k1f, err := os.Open(k1file)
+			if err != nil {
+				return fmt.Errorf("cannot open %s: %s\n", k1file, err), 0
+			}
+			defer k1f.Close()
+			_, err = k1f.Seek(headers.SizeofKeyfileHeader, io.SeekStart)
+			if err != nil {
+				return fmt.Errorf("cannot seek %s: %s\n", k1file, err), 0
+			}
+			var keyC entries.KeyCache
+			nRatchet := NRatchetTest
+			roff := uint64(0)
+			keyC.Drop()
+			b := []byte{'a', 'b', 'c', 'd', 'e'}
+			for i := uint64(0); i < NRounds*nRatchet; i++ {
+				_, err := ul.Write(b)
+				if err != nil {
+					return fmt.Errorf("writing to user file: %s", err), 0
+				}
+				entry := &entries.LogfileEntry{
+					RatchetOffset: roff % nRatchet,
+					Inode:         inode,
+					FileOffset:    uint64(len(b)) * i,
+					WriteCount:    uint64(len(b)),
+					KeyFileOffset: headers.SizeofKeyfileHeader + (roff/nRatchet)*entries.FprSize,
+				}
+				err = entry.ReMac(ul, k1f, &keyC, nRatchet)
+				if err != nil {
+					return fmt.Errorf("cannot remac entry %s: %s\n", entry, err), 0
+				}
+				be, err := entry.MarshalBinary()
+				if err != nil {
+					return fmt.Errorf("cannot marshal entry %s: %s\n", entry, err), 0
+				}
+				if in&0x80 != 0 {
+					istamper = true
+					be[int(in)%len(be)] = ^be[int(in)%len(be)]
+				}
+				_, err = lf.Write(be)
+				if err != nil {
+					return fmt.Errorf("writing to sealfs log: %s", err), 0
+				}
+				roff++
+			}
+			return nil, headers.SizeofKeyfileHeader + NRounds*entries.FprSize
+		}
+		err := testlog(t, filllog)
+		if err == nil && istamper {
+			t.Errorf("should not have verified, tampered")
+		}
+		if err != nil && !istamper {
+			t.Errorf("should have verified, not tampered")
+		}
+	})
+}
+
+func FuzzTamperLog(f *testing.F) {
+	for _, seed := range []byte{3, 4, 5, 0xff, 0xaa, 0xb, 0x10} {
+		f.Add(seed)
+	}
+	f.Fuzz(func(t *testing.T, in byte) {
+		istamper := false
+		filllog := func(lfname string, d string, k1file string) (error, uint64) {
+			userlogfile := fmt.Sprintf("%s/xxx", d)
+			ul, err := os.Create(userlogfile)
+			if err != nil {
+				return fmt.Errorf("cannot create %s: %s\n", userlogfile, err), 0
+			}
+			defer ul.Close()
+			inode, err := prepfiles.Inode(userlogfile)
+			if err != nil {
+				return fmt.Errorf("cannot find inode for %s: %s\n", userlogfile, err), 0
+			}
+			lf, err := os.OpenFile(lfname, os.O_WRONLY, 0600)
+			if err != nil {
+				return fmt.Errorf("cannot open %s: %s\n", lfname, err), 0
+			}
+			defer lf.Close()
+			_, err = lf.Seek(headers.SizeofLogfileHeader, io.SeekStart)
+			if err != nil {
+				return fmt.Errorf("cannot seek %s: %s\n", lfname, err), 0
+			}
+			k1f, err := os.Open(k1file)
+			if err != nil {
+				return fmt.Errorf("cannot open %s: %s\n", k1file, err), 0
+			}
+			defer k1f.Close()
+			_, err = k1f.Seek(headers.SizeofKeyfileHeader, io.SeekStart)
+			if err != nil {
+				return fmt.Errorf("cannot seek %s: %s\n", k1file, err), 0
+			}
+			var keyC entries.KeyCache
+			nRatchet := NRatchetTest
+			roff := uint64(0)
+			keyC.Drop()
+			b := []byte{'a', 'b', 'c', 'd', 'e'}
+			for i := uint64(0); i < NRounds*nRatchet; i++ {
+				_, err := ul.Write(b)
+				if err != nil {
+					return fmt.Errorf("writing to user file: %s", err), 0
+				}
+				entry := &entries.LogfileEntry{
+					RatchetOffset: roff % nRatchet,
+					Inode:         inode,
+					FileOffset:    uint64(len(b)) * i,
+					WriteCount:    uint64(len(b)),
+					KeyFileOffset: headers.SizeofKeyfileHeader + (roff/nRatchet)*entries.FprSize,
+				}
+				err = entry.ReMac(ul, k1f, &keyC, nRatchet)
+				if err != nil {
+					return fmt.Errorf("cannot remac entry %s: %s\n", entry, err), 0
+				}
+				be, err := entry.MarshalBinary()
+				if err != nil {
+					return fmt.Errorf("cannot marshal entry %s: %s\n", entry, err), 0
+				}
+				if in&0x80 != 0 {
+					istamper = true
+					be[int(in)%len(be)] = ^be[int(in)%len(be)]
+				}
+				_, err = lf.Write(be)
+				if err != nil {
+					return fmt.Errorf("writing to sealfs log: %s", err), 0
+				}
+				roff++
+				if in&0x80 == 0 {
+					continue
+				}
+				istamper = true
+				_, err = ul.Seek(int64(-len(b)), io.SeekCurrent)
+				if err != nil {
+					return fmt.Errorf("seeking user file: %s", err), 0
+				}
+				b[int(in)%len(b)] = ^b[int(in)%len(b)]
+				_, err = ul.Write(b)
+				if err != nil {
+					return fmt.Errorf("writing to user file: %s", err), 0
+				}
+			}
+			return nil, headers.SizeofKeyfileHeader + NRounds*entries.FprSize
+		}
+		err := testlog(t, filllog)
+		if err == nil && istamper {
+			t.Errorf("should not have verified, tampered")
+		}
+		if err != nil && !istamper {
+			t.Errorf("should have verified, not tampered")
+		}
+	})
 }
