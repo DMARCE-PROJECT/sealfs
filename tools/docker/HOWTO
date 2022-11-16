@@ -25,9 +25,6 @@ mkdir sealfs
 
 KEYS=/tmp/sealfsfiles
 mkdir $KEYS
-#create keys, k1 and k2 have to be the same and random and big enough
-#in my machine I have some precreated in /var/tmp
-sudo cp /var/tmp/k1 /var/tmp/k2 $KEYS
 
 #I create and image in case I need prep dump or verify inside the container
 
@@ -41,6 +38,7 @@ docker image build -t sealfs:latest .
 
 SEALDIR=/tmp/x
 mkdir $SEALDIR
+#create random keystreams for a size and a new empty log file
 sudo ./bin/prep $SEALDIR/.SEALFS.LOG $KEYS/k1 $KEYS/k2 134217728
 
 #create a volume with the sealfs filesystem (default ratchet)
