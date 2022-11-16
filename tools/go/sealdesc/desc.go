@@ -265,7 +265,7 @@ func (desc *SealFsDesc) CheckKeystream(alphakfile string) (burnt uint64, nratche
 	}
 	nkeys := uint64(0)
 	if kh.Burnt != 0 {
-		nkeys = (kh.Burnt - headers.SizeofKeyfileHeader)/ entries.FprSize
+		nkeys = (kh.Burnt - headers.SizeofKeyfileHeader) / entries.FprSize
 	}
 	if desc.NEntries < nkeys {
 		return 0, 0, fmt.Errorf("more keys burnt than entries")
