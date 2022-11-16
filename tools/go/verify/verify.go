@@ -11,7 +11,6 @@ import (
 	"strings"
 )
 
-
 func setDebugs(d rune) {
 	switch d {
 	case 'e':

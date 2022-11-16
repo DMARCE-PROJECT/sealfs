@@ -189,11 +189,11 @@ type Region struct {
 type Renames map[uint64]*Rename
 
 type SealFsDesc struct {
-	kf      *os.File      //This will be buffered and seeked
-	lf      io.ReadCloser //This is read in order, buffered but not seeked
-	dirPath string
-	typeLog int
-	Magic   uint64
+	kf       *os.File      //This will be buffered and seeked
+	lf       io.ReadCloser //This is read in order, buffered but not seeked
+	dirPath  string
+	typeLog  int
+	Magic    uint64
 	NEntries uint64
 }
 
@@ -224,7 +224,7 @@ func OpenDesc(betakeyfile string, logfile string, dir string, typeLog int) (desc
 	if err != nil {
 		return nil, errors.New("can't stat log file")
 	}
-	nentries := uint64((fil.Size() - headers.SizeofLogfileHeader)/entries.SizeofEntry)
+	nentries := uint64((fil.Size() - headers.SizeofLogfileHeader) / entries.SizeofEntry)
 	desc = NewSealFsDesc(kf, lf, dir, typeLog, nentries)
 	kh := &headers.KeyFileHeader{}
 	err = kh.FillHeader(kf)
@@ -265,7 +265,7 @@ func (desc *SealFsDesc) CheckKeystream(alphakfile string) (burnt uint64, nratche
 	}
 	nkeys := uint64(0)
 	if kh.Burnt != 0 {
-		nkeys = kh.Burnt/entries.FprSize
+		nkeys = (kh.Burnt - headers.SizeofKeyfileHeader)/ entries.FprSize
 	}
 	if desc.NEntries < nkeys {
 		return 0, 0, fmt.Errorf("more keys burnt than entries")
@@ -344,7 +344,7 @@ func (sf *SealFsDesc) Verify(region Region, renames Renames, nRatchet uint64) er
 			if !gotNRatchet {
 				return fmt.Errorf("can't find a correct nratchet")
 			}
-			if keysNRatchet != nRatchet  {
+			if keysNRatchet != nRatchet {
 				return fmt.Errorf("NRatchetDetect got nratchet %d but entries/keys is %d: nentries: %d\n", nRatchet, keysNRatchet, sf.NEntries)
 			}
 			if sf.typeLog != entries.LogSilent {
