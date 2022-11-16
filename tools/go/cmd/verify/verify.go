@@ -56,6 +56,12 @@ func main() {
 			usage()
 		}
 		switch args[i][1] {
+		case 'n':
+			if len(args[i:]) < 2 {
+				usage()
+			}
+			lname = args[i+1]
+			i += 1
 		case 'D':
 			if len(args[i]) < 3 {
 				usage()
