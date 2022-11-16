@@ -75,11 +75,9 @@ echo "creating key" 1>&2
 
 KFILE=`mktemp /tmp/KFILEXXXX`
 echo > $KFILE
-dd if=/dev/random of=$KFILE bs=$(($KSIZE/ 1024)) count=1024
 
 echo $KFILE
 KFILE2=`mktemp /tmp/KFILE2XXXX`
-cat $KFILE > $KFILE2
 $SEALGIT/tools/prep $SEALDIR/.SEALFS.LOG $KFILE $KFILE2  $KSIZE
 
 docker volume create sealfsVolume
