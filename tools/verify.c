@@ -296,6 +296,7 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 	int iseok;
 	int nbad;
 	int roff;
+	int keysnratchet;
 
 	nbad = 0;
 	c = 0;
@@ -324,7 +325,15 @@ verify(FILE *kf, FILE* lf, char *path, uint64_t inode,
 		
 		//cannot detect ratchet unless it has advanced
 		if(!gotnratchet){
+			keysnratchet = nratchet;
 			gotnratchet = nratchet_detect(&e, fd, kf, &nratchet);
+			if(gotnratchet && keysnratchet != nratchet) {
+				errx(1, "nratchetdetect got %d but entries/keys is %d\n",
+					nratchet, keysnratchet);
+			}
+			if(!gotnratchet) {
+				errx(1, "can't find a correct nratchet");
+			}
 		}
 		if(e.inode == FAKEINODE){
 			iseok = isentryok(&e, fd, kf, &kc, nratchet);
@@ -518,6 +527,8 @@ main(int argc, char *argv[])
 	FILE *alphaf;
 
 	int nratchet = NRATCHETDEFAULT;
+	int nentries;
+	int nkeys = 0;
 	int64_t inode = 0;
 	int64_t begin = 0;
 	int64_t end = 0;
@@ -525,6 +536,7 @@ main(int argc, char *argv[])
 	char *dir;
 	char *kalpha;
 	char *kbeta;
+	struct stat statl;
 	struct sealfs_keyfile_header kalphahdr;
 	struct sealfs_keyfile_header kbetahdr;
 	struct sealfs_logfile_header lheader;
@@ -580,10 +592,21 @@ main(int argc, char *argv[])
 		err(1, "can't open %s", lpath);
 	if(fread(&kalphahdr, sizeof(kalphahdr), 1, alphaf) != 1)
 		err(1, "can't read kalphahdr");
+	
+	if(kalphahdr.burnt != 0) {
+		nkeys = (kalphahdr.burnt -  sizeof(kalphahdr)) /FPR_SIZE;
+	}
 	if(fread(&kbetahdr, sizeof(kbetahdr), 1, betaf) != 1)
 		err(1, "can't read kbetahdr");
 	if(fread(&lheader, sizeof(lheader), 1, lf) != 1)
 		err(1, "can't read lheader");
+	
+	if(fstat(fileno(lf), &statl) < 0)
+		err(1, "can't stat log");
+	nentries = (statl.st_size - sizeof(lheader))/sizeof(struct sealfs_logfile_entry);
+	if(nkeys != 0) {
+		nratchet = nentries/nkeys;
+	}
 	if(lheader.magic != kalphahdr.magic || lheader.magic != kbetahdr.magic)
 		errx(1, "magic numbers don't match");
 	printf("k1 burnt: %ld\n", kalphahdr.burnt);

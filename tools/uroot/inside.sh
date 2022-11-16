@@ -110,7 +110,7 @@ test3(){
 	dd -bs $HDRSZ -skip 1 -of /tmp/body < /tmp/x/.SEALFS.LOG >/dev/null 2>&1
 	dd -bs $ENTRYSZ -count 3 -of /tmp/start < /tmp/body >/dev/null 2>&1
 	dd -bs $ENTRYSZ -count 3 -skip 3 -of /tmp/medium < /tmp/body >/dev/null 2>&1
-	dd -bs $ENTRYSZ -count 6 -skip 6 -of /tmp/end < /tmp/body >/dev/null 2>&1
+	dd -bs $ENTRYSZ -skip 6 -of /tmp/end < /tmp/body >/dev/null 2>&1
 	
 	DUMPLOGS=no
 	if test "$DUMPLOGS" = yes; then
@@ -150,9 +150,10 @@ test3(){
 	cat /tmp/hdr /tmp/medium /tmp/end > /tmp/x/.SEALFS.LOG
 	checkfailtest TEST3hme -Dh
 	
+	#SHOULD FAIL
 	echo hdr medium start
 	cat /tmp/hdr /tmp/medium /tmp/start > /tmp/x/.SEALFS.LOG
-	checktest TEST3hms -Dh
+	checkfailtest TEST3hms -Dh
 }
 
 test4(){
