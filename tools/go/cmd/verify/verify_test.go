@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-const EXDIR="../../files"
+const EXDIR = "../../files"
 
 func example_Desc(dir string, kalpha string, kbeta string) (sf *sealdesc.SealFsDesc, nRatchet uint64, err error) {
 	lname := sealdesc.DefaultLogfileName
@@ -34,14 +34,14 @@ func TestExample(t *testing.T) {
 	var err error
 	region := sealdesc.Region{}
 
-	dir := EXDIR+"/example"
+	dir := EXDIR + "/example"
 
-	zzzinode, err := prepfiles.Inode(EXDIR+"/example/zzz")
+	zzzinode, err := prepfiles.Inode(EXDIR + "/example/zzz")
 	if err != nil {
 		t.Errorf("cannot find inode: %s", err)
 	}
 
-	zzz2inode, err := prepfiles.Inode(EXDIR+"/example/zzz.1")
+	zzz2inode, err := prepfiles.Inode(EXDIR + "/example/zzz.1")
 	if err != nil {
 		t.Errorf("cannot find inode: %s", err)
 	}
@@ -92,13 +92,13 @@ func FuzzExampleLog(f *testing.F) {
 		var err error
 		region := sealdesc.Region{}
 
-		dir := EXDIR+"/example"
-		zzzinode, err := prepfiles.Inode(EXDIR+"/example/zzz")
+		dir := EXDIR + "/example"
+		zzzinode, err := prepfiles.Inode(EXDIR + "/example/zzz")
 		if err != nil {
 			t.Errorf("cannot find inode: %s", err)
 		}
 
-		zzz2inode, err := prepfiles.Inode(EXDIR+"/example/zzz.1")
+		zzz2inode, err := prepfiles.Inode(EXDIR + "/example/zzz.1")
 		if err != nil {
 			t.Errorf("cannot find inode: %s", err)
 		}
