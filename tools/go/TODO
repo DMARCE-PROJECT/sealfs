@@ -4,3 +4,8 @@ More checks to verification:
 
 - If there is any discrepancy first FprSize difference in keystream, log where it is
 	This is only fakable forward but not backward.
+
+Command for statistics:
+
+sizes for writes, etc.
+time until no more key.
