@@ -12,14 +12,14 @@ import (
 
 type Stats struct {
 	NWrites   uint64
+	FakeNWrites uint64
 	AvgCount  float64
 	MaxCount  uint64
-	FakeCount uint64
 }
 
 func (st *Stats) String() string {
-	s := fmt.Sprintf("nw: %d, avgc: %f, ", st.NWrites, st.AvgCount)
-	s += fmt.Sprintf("maxc: %d, fakec: %d", st.MaxCount, st.FakeCount)
+	s := fmt.Sprintf("nw: %d, fakenw: %d, ", st.NWrites, st.FakeNWrites)
+	s += fmt.Sprintf("maxc: %d, avgc: %f", st.MaxCount, st.AvgCount)
 	return s
 }
 
@@ -34,8 +34,7 @@ func stats(ef entries.EntryReader) (st *Stats, err error) {
 			return nil, fmt.Errorf("can't read from lfile: %s\n", err)
 		}
 		if entry.Inode == entries.FakeInode {
-			st.FakeCount++
-			continue
+			st.FakeNWrites++
 		}
 		wc := entry.WriteCount
 		if wc > st.MaxCount {
