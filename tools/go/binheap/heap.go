@@ -79,11 +79,11 @@ func (h *Heap[V]) heapifyBottomTop(index int) {
 	if Debug {
 		fmt.Fprintf(os.Stderr, "HeapifyBottomTop: %v\n", index)
 	}
-	parentIndex := (index - 1) / 2
-	if h.cmp(h.keys[:], index, parentIndex) {
-		h.keys[parentIndex], h.keys[index] = h.keys[index], h.keys[parentIndex]
+	parentindex := (index - 1) / 2
+	if h.cmp(h.keys[:], index, parentindex) {
+		h.keys[parentindex], h.keys[index] = h.keys[index], h.keys[parentindex]
 		//recursive call
-		h.heapifyBottomTop(parentIndex)
+		h.heapifyBottomTop(parentindex)
 	}
 	if Debug {
 		fmt.Fprintf(os.Stderr, "HeapifyBottomTop return: %v\n", index)
@@ -100,36 +100,36 @@ func (h *Heap[V]) hasval(index int) bool {
 	return index < len(h.keys) && index >= 0
 }
 
-func (h *Heap[V]) ismin(index []int, side int, minIndex int) bool {
+func (h *Heap[V]) ismin(index []int, side int, minindex int) bool {
 	keyIndex := index[side]
-	return h.hasval(keyIndex) && h.cmp(h.keys[:], keyIndex, minIndex)
+	return h.hasval(keyIndex) && h.cmp(h.keys[:], keyIndex, minindex)
 }
 
-func (h *Heap[V]) heapifyTopBottom(parentIndex int) {
+func (h *Heap[V]) heapifyTopBottom(parentindex int) {
 	if Debug {
-		fmt.Fprintf(os.Stderr, "HeapifyTopBottom: %v,%v\n", parentIndex, h)
+		fmt.Fprintf(os.Stderr, "HeapifyTopBottom: %v,%v\n", parentindex, h)
 	}
 	keyIndex := [Nelem]int{}
-	min := parentIndex
+	min := parentindex
 
-	keyIndex[Left] = parentIndex*2 + 1
-	keyIndex[Right] = parentIndex*2 + 2
+	keyIndex[Left] = parentindex*2 + 1
+	keyIndex[Right] = parentindex*2 + 2
 	if h.ismin(keyIndex[:], Left, min) {
 		min = keyIndex[Left]
 	}
 	if h.ismin(keyIndex[:], Right, min) {
 		min = keyIndex[Right]
 	}
-	if min == parentIndex {
+	if min == parentindex {
 		if Debug {
-			fmt.Fprintf(os.Stderr, "HeapifyTopBottom return: %v,%v\n", parentIndex, min)
+			fmt.Fprintf(os.Stderr, "HeapifyTopBottom return: %v,%v\n", parentindex, min)
 		}
 		return
 	}
-	h.keys[min], h.keys[parentIndex] = h.keys[parentIndex], h.keys[min]
+	h.keys[min], h.keys[parentindex] = h.keys[parentindex], h.keys[min]
 	h.heapifyTopBottom(min)
 	if Debug {
-		fmt.Fprintf(os.Stderr, "HeapifyTopBottom done: %v,%v\n", parentIndex, h)
+		fmt.Fprintf(os.Stderr, "HeapifyTopBottom done: %v,%v\n", parentindex, h)
 	}
 }
 
