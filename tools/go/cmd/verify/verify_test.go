@@ -14,10 +14,10 @@ const EXDIR = "../../files"
 
 func example_Desc(dir string, kalpha string, kbeta string) (sf *sealdesc.SealFsDesc, nRatchet uint64, err error) {
 	lname := sealdesc.DefaultLogfileName
-	typeLog := entries.LogSilent
+	typelog := entries.LogSilent
 	lpath := fmt.Sprintf("%s/%s", dir, lname)
 
-	desc, err := sealdesc.OpenDesc(kbeta, lpath, dir, typeLog)
+	desc, err := sealdesc.OpenDesc(kbeta, lpath, dir, typelog)
 	if err != nil {
 		return nil, 0, err
 	}

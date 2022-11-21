@@ -98,7 +98,7 @@ func (entry *LogfileEntry) UnMarshalBinary(data []byte) (err error) {
 	return nil
 }
 
-func (eFile *EntryFile) ReadEntry(nRatchet uint64) (err error, entry *LogfileEntry) {
+func (eFile *EntryFile) ReadEntry() (err error, entry *LogfileEntry) {
 	var entryBuf [SizeofEntry]uint8
 	n, err := io.ReadFull(eFile.br, entryBuf[:])
 	if err != nil {
@@ -133,28 +133,28 @@ const (
 const MaxWriteCount = 10 * 1024 * 1024 //10M
 
 // TODO, color log
-func (entry *LogfileEntry) DumpLog(logR io.ReadSeeker, isOk bool, typeLog int) (err error) {
+func (entry *LogfileEntry) DumpLog(logr io.ReadSeeker, isok bool, typelog int) (err error) {
 	if entry.WriteCount > MaxWriteCount {
 		return fmt.Errorf("too big a write for a single entry: %d\n", entry.WriteCount)
 	}
-	if typeLog == LogNone || typeLog == LogSilent {
+	if typelog == LogNone || typelog == LogSilent {
 		return nil
 	}
 	var currPos int64
-	currPos, err = logR.Seek(0, io.SeekCurrent)
+	currPos, err = logr.Seek(0, io.SeekCurrent)
 	if err != nil {
 		return err
 	}
 	if currPos != int64(entry.FileOffset) {
 		defer func() {
-			_, err = logR.Seek(currPos, io.SeekStart)
+			_, err = logr.Seek(currPos, io.SeekStart)
 		}()
-		_, err = logR.Seek(int64(entry.FileOffset), io.SeekStart)
+		_, err = logr.Seek(int64(entry.FileOffset), io.SeekStart)
 		if err != nil {
 			return err
 		}
 	}
-	br := bufio.NewReader(logR)
+	br := bufio.NewReader(logr)
 	nRead := uint64(0)
 	for entry.WriteCount-nRead >= 0 {
 		line, err := br.ReadString('\n')
@@ -172,12 +172,12 @@ func (entry *LogfileEntry) DumpLog(logR io.ReadSeeker, isOk bool, typeLog int) (
 		bad := "[BAD] "
 		end := ""
 
-		if typeLog == LogColor {
+		if typelog == LogColor {
 			ok = ColGreen + ok
 			bad = ColRed + bad
 			end = ColEnd
 		}
-		if isOk {
+		if isok {
 			fmt.Printf("%s%d:%s %s\n", ok, entry.Inode, end, line)
 		} else {
 			fmt.Printf("%s%d:%s %s\n", bad, entry.Inode, end, line)
@@ -191,7 +191,7 @@ func (entry *LogfileEntry) DumpLog(logR io.ReadSeeker, isOk bool, typeLog int) (
 
 const FakeInode = ^uint64(0)
 
-func (entry *LogfileEntry) makeHMAC(logR io.ReadSeeker, key []uint8) (err error, h []uint8) {
+func (entry *LogfileEntry) makeHMAC(logr io.ReadSeeker, key []uint8) (err error, h []uint8) {
 	dprintf(DebugEntries, "Verifying key[%d] %x\n", entry.KeyFileOffset, key[:])
 	if entry.WriteCount > MaxWriteCount {
 		return fmt.Errorf("too big a write for a single entry: %d\n", entry.WriteCount), nil
@@ -217,25 +217,25 @@ func (entry *LogfileEntry) makeHMAC(logR io.ReadSeeker, key []uint8) (err error,
 		currPos int64
 		pos     int64
 	)
-	currPos, err = logR.Seek(0, io.SeekCurrent)
+	currPos, err = logr.Seek(0, io.SeekCurrent)
 	if err != nil {
 		return err, nil
 	}
 	if currPos != int64(entry.FileOffset) {
 		defer func() {
-			_, errx := logR.Seek(currPos, io.SeekStart)
+			_, errx := logr.Seek(currPos, io.SeekStart)
 			if errx != nil {
 				err = errx
 			}
 		}()
-		pos, err = logR.Seek(int64(entry.FileOffset), io.SeekStart)
+		pos, err = logr.Seek(int64(entry.FileOffset), io.SeekStart)
 		if err != nil {
 			return err, nil
 		}
 	}
 	dprintf(DebugEntries, "LogR currPos %d pos %d\n", currPos, pos)
 
-	br := bufio.NewReader(logR)
+	br := bufio.NewReader(logr)
 	nw, err := io.CopyN(mac, br, int64(entry.WriteCount))
 	if nw != int64(entry.WriteCount) {
 		return fmt.Errorf("cannot read from file, %s, offset %d, entry.WriteCount %d\n", err, entry.FileOffset, entry.WriteCount), nil
@@ -250,31 +250,31 @@ func (entry *LogfileEntry) makeHMAC(logR io.ReadSeeker, key []uint8) (err error,
 	return nil, h
 }
 
-func (entry *LogfileEntry) IsOk(logR io.ReadSeeker, keyR io.ReadSeeker, keyC *KeyCache, nRatchet uint64) bool {
+func (entry *LogfileEntry) IsOk(logr io.ReadSeeker, keyr io.ReadSeeker, keyc *KeyCache, nratchet uint64) bool {
 	var err error
 	var h []uint8
-	if entry.RatchetOffset > nRatchet || entry.WriteCount > MaxWriteCount {
+	if entry.RatchetOffset > nratchet || entry.WriteCount > MaxWriteCount {
 		return false
 	}
-	if err = keyC.Update(entry, keyR, nRatchet); err != nil {
+	if err = keyc.Update(entry, keyr, nratchet); err != nil {
 		return false
 	}
-	if err, h = entry.makeHMAC(logR, keyC.key[:]); err != nil {
+	if err, h = entry.makeHMAC(logr, keyc.key[:]); err != nil {
 		return false
 	}
 	return hmac.Equal(h, entry.fpr[:])
 }
 
-func (entry *LogfileEntry) ReMac(logR io.ReadSeeker, keyR io.ReadSeeker, keyC *KeyCache, nRatchet uint64) error {
+func (entry *LogfileEntry) ReMac(logr io.ReadSeeker, keyr io.ReadSeeker, keyc *KeyCache, nratchet uint64) error {
 	var err error
 	var h []uint8
-	if entry.RatchetOffset > nRatchet || entry.WriteCount > MaxWriteCount {
+	if entry.RatchetOffset > nratchet || entry.WriteCount > MaxWriteCount {
 		return errors.New("bad entry")
 	}
-	if err = keyC.Update(entry, keyR, nRatchet); err != nil {
+	if err = keyc.Update(entry, keyr, nratchet); err != nil {
 		return fmt.Errorf("cannot obtain queue %s", err)
 	}
-	if err, h = entry.makeHMAC(logR, keyC.key[:]); err != nil {
+	if err, h = entry.makeHMAC(logr, keyc.key[:]); err != nil {
 		return fmt.Errorf("cannot make hmac %s", err)
 	}
 	copy(entry.fpr[:], h)
@@ -283,22 +283,22 @@ func (entry *LogfileEntry) ReMac(logR io.ReadSeeker, keyR io.ReadSeeker, keyC *K
 
 const MaxNRatchet = 512
 
-func (entry *LogfileEntry) NRatchetDetect(logR io.ReadSeeker, keyR io.ReadSeeker) (isOk bool, nRatchet uint64) {
-	isOk = true
+func (entry *LogfileEntry) NRatchetDetect(logr io.ReadSeeker, keyr io.ReadSeeker) (isok bool, nratchet uint64) {
+	isok = true
 
-	var keyC KeyCache
-	keyC.Drop()
-	if entry.IsOk(logR, keyR, &keyC, nRatchet) {
-		return isOk, nRatchet
+	var keyc KeyCache
+	keyc.Drop()
+	if entry.IsOk(logr, keyr, &keyc, nratchet) {
+		return isok, nratchet
 	}
-	nRatchet = 1
-	keyC.Drop()
-	for !entry.IsOk(logR, keyR, &keyC, nRatchet) {
-		if nRatchet++; nRatchet > MaxNRatchet {
-			isOk = false
+	nratchet = 1
+	keyc.Drop()
+	for !entry.IsOk(logr, keyr, &keyc, nratchet) {
+		if nratchet++; nratchet > MaxNRatchet {
+			isok = false
 			break
 		}
-		keyC.Drop() //different nRatchet means drop (first ratchet includes nRatchet)
+		keyc.Drop() //different nRatchet means drop (first ratchet includes nRatchet)
 	}
-	return isOk, nRatchet
+	return isok, nratchet
 }
