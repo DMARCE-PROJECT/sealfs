@@ -50,7 +50,7 @@ func (entry *LogfileEntry) String() string {
 }
 
 type EntryReader interface {
-	ReadEntry(nRatchet uint64) (err error, entry *LogfileEntry)
+	ReadEntry() (err error, entry *LogfileEntry)
 }
 
 type EntryFile struct {
