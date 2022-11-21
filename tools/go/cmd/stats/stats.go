@@ -49,7 +49,7 @@ func stats(ef entries.EntryReader) (st *Stats, err error) {
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "usage: stats dir|file")
+	fmt.Fprintf(os.Stderr, "usage: stats dir|file\n")
 	os.Exit(2)
 }
 
