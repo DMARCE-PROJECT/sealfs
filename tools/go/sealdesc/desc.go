@@ -39,8 +39,8 @@ type Rename struct {
 	NewInode uint64
 }
 
-func NewRename(inode uint64, newInode uint64) (rename *Rename) {
-	return &Rename{inode, newInode}
+func NewRename(inode uint64, newinode uint64) (rename *Rename) {
+	return &Rename{inode, newinode}
 }
 func (r *Rename) String() (s string) {
 	return fmt.Sprintf("%d -> %d\n", r.Inode, r.NewInode)
@@ -97,8 +97,8 @@ func scanDirFiles(path string, ofiles OFiles, renames Renames) (err error) {
 
 const NBitsRatchet = 21
 
-func unifyOffset(offset uint64, ratchetOffset uint64) uint64 {
-	return (offset << NBitsRatchet) + ratchetOffset
+func unifyOffset(offset uint64, ratchetoffset uint64) uint64 {
+	return (offset << NBitsRatchet) + ratchetoffset
 }
 
 func dumpHeap(heap *heap.Heap[*entries.LogfileEntry]) {
@@ -205,8 +205,8 @@ func (rs Renames) String() string {
 	return s
 }
 
-func (rs Renames) AddRename(inode uint64, newInode uint64) {
-	r := NewRename(uint64(inode), uint64(newInode))
+func (rs Renames) AddRename(inode uint64, newinode uint64) {
+	r := NewRename(uint64(inode), uint64(newinode))
 	rs[r.Inode] = r
 }
 
@@ -293,25 +293,25 @@ func (desc *SealFsDesc) SetLogFile(lf io.ReadCloser) {
 	desc.lf = lf
 }
 
-func badOff(entry *entries.LogfileEntry, keyOff uint64, ratchetOffset uint64) {
+func badOff(entry *entries.LogfileEntry, keyoff uint64, ratchetoffset uint64) {
 	log.Printf("koffset %d or roff %d not correct: ", entry.KeyFileOffset, entry.RatchetOffset)
-	fmt.Fprintf(os.Stderr, "should be %d %d", keyOff, entry.RatchetOffset)
+	fmt.Fprintf(os.Stderr, "should be %d %d", keyoff, ratchetoffset)
 	fmt.Fprintf(os.Stderr, "%s\n", entry)
 }
 
-func badEntry(entry *entries.LogfileEntry, nRatchet uint64) {
-	log.Printf("can't verify entry with nratchet %d: ", nRatchet)
+func badEntry(entry *entries.LogfileEntry, nratchet uint64) {
+	log.Printf("can't verify entry with nratchet %d: ", nratchet)
 	fmt.Fprintf(os.Stderr, "%s\n", entry)
 }
 
-func (sf *SealFsDesc) Verify(region Region, renames Renames, nRatchet uint64) error {
+func (sf *SealFsDesc) Verify(region Region, renames Renames, nratchet uint64) error {
 	var file *os.File
-	var keyC entries.KeyCache
-	keyC.Drop()
-	gotNRatchet := false
-	nBad := uint64(0)
+	var keyc entries.KeyCache
+	keyc.Drop()
+	gotnratchet := false
+	nbad := uint64(0)
 	c := uint64(0)
-	ratchetOffset := uint64(0)
+	ratchetoffset := uint64(0)
 
 	ofiles := make(map[uint64]*OFile)
 	if err := scanDirFiles(sf.dirPath, ofiles, renames); err != nil {
@@ -338,17 +338,17 @@ func (sf *SealFsDesc) Verify(region Region, renames Renames, nRatchet uint64) er
 		if entry.Inode != entries.FakeInode {
 			file = o.file
 		}
-		if !gotNRatchet {
-			keysNRatchet := nRatchet
-			gotNRatchet, nRatchet = entry.NRatchetDetect(file, keyR)
-			if !gotNRatchet {
+		if !gotnratchet {
+			keysNRatchet := nratchet
+			gotnratchet, nratchet = entry.NRatchetDetect(file, keyR)
+			if !gotnratchet {
 				return fmt.Errorf("can't find a correct nratchet")
 			}
-			if keysNRatchet != nRatchet {
-				return fmt.Errorf("NRatchetDetect got nratchet %d but entries/keys is %d: nentries: %d\n", nRatchet, keysNRatchet, sf.NEntries)
+			if keysNRatchet != nratchet {
+				return fmt.Errorf("NRatchetDetect got nratchet %d but entries/keys is %d: nentries: %d\n", nratchet, keysNRatchet, sf.NEntries)
 			}
 			if sf.typeLog != entries.LogSilent {
-				log.Printf("NRatchetDetect got nratchet %d\n", nRatchet)
+				log.Printf("NRatchetDetect got nratchet %d\n", nratchet)
 			}
 		}
 		if entry.Inode != entries.FakeInode {
@@ -366,13 +366,13 @@ func (sf *SealFsDesc) Verify(region Region, renames Renames, nRatchet uint64) er
 			}
 			popContiguous(&o.offset, o.heap)
 		}
-		isok := entry.IsOk(file, keyR, &keyC, nRatchet)
+		isok := entry.IsOk(file, keyR, &keyc, nratchet)
 		if !isok {
 			if sf.typeLog == entries.LogNone || sf.typeLog == entries.LogSilent {
 				return errors.New("bad entry")
 			}
-			badEntry(entry, nRatchet)
-			nBad++
+			badEntry(entry, nratchet)
+			nbad++
 		}
 		if entry.Inode != entries.FakeInode {
 			err = entry.DumpLog(file, isok, sf.typeLog)
@@ -384,17 +384,17 @@ func (sf *SealFsDesc) Verify(region Region, renames Renames, nRatchet uint64) er
 				break
 			}
 		}
-		keyOff := headers.SizeofKeyfileHeader + (c/nRatchet)*entries.FprSize
-		isWrongOff := entry.KeyFileOffset != keyOff || entry.RatchetOffset != ratchetOffset
+		keyOff := headers.SizeofKeyfileHeader + (c/nratchet)*entries.FprSize
+		isWrongOff := entry.KeyFileOffset != keyOff || entry.RatchetOffset != ratchetoffset
 		if region.Inode == 0 && isWrongOff {
-			badOff(entry, keyOff, ratchetOffset)
+			badOff(entry, keyOff, ratchetoffset)
 			return fmt.Errorf("incorrect koffset or roff")
 		}
 		c++
-		ratchetOffset = (ratchetOffset + 1) % nRatchet
+		ratchetoffset = (ratchetoffset + 1) % nratchet
 	}
-	if region.Inode == 0 && c%nRatchet != 0 {
-		return fmt.Errorf("number of entries is not a multiple of nratchet: %d %d\n", c, nRatchet)
+	if region.Inode == 0 && c%nratchet != 0 {
+		return fmt.Errorf("number of entries is not a multiple of nratchet: %d %d\n", c, nratchet)
 	}
 	err := checkTailOFiles(ofiles)
 	if err != nil {
@@ -403,9 +403,9 @@ func (sf *SealFsDesc) Verify(region Region, renames Renames, nRatchet uint64) er
 	if c == 0 {
 		return fmt.Errorf("error, no entries in the log\n")
 	}
-	if nBad != 0 {
+	if nbad != 0 {
 		if sf.typeLog != entries.LogSilent {
-			fmt.Printf("error: %d entries verified, some bad logs: %d correct,  %d incorrect\n", c, c-nBad, nBad)
+			fmt.Printf("error: %d entries verified, some bad logs: %d correct,  %d incorrect\n", c, c-nbad, nbad)
 		}
 		return errors.New("error: did not verify")
 	}
