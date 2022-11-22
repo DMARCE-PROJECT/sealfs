@@ -19,9 +19,6 @@ This new approach is flexible and enables the user to decide between complete
 theoretical security (like in SealFSv1) or partial linear degradation
 (like in a classical ratchet scheme), exchanging storage for computation
 with user defined parameters to balance security and resource usage.
-We also describe an implementation of this scheme. This
-implementation, which showcases our approach, is an optimized
-evolution of the original prototype.
 
 If you are interested in the version 1 (SealFSv1) described by the paper 
 
