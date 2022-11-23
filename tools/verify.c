@@ -570,7 +570,7 @@ main(int argc, char *argv[])
 			} else if(argv[i][1] == 't' && strnlen(argv[i], 2) == 2){
 				DUMPLOG = LOGTEXT;
 				if(isatty(1)) {
-					DUMPLOG = LOGCOLOR;
+					DUMPLOG = LOGCOLTEXT;
 				}
 			} else if(argv[i][1] == 'T' && strnlen(argv[i], 2) == 2){
 				DUMPLOG = LOGTEXT;

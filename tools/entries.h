@@ -20,5 +20,5 @@ extern int nratchet_detect(struct sealfs_logfile_entry *e, int logfd, FILE *kf, 
 enum {
 	LOGNONE = 0,
 	LOGTEXT,
-	LOGCOLOR,
+	LOGCOLTEXT,
 };

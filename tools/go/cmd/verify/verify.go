@@ -81,7 +81,7 @@ func main() {
 		case 't':
 			typeLog = entries.LogText
 			if isatty(os.Stdout) {
-				typeLog = entries.LogColor
+				typeLog = entries.LogColText
 			}
 		case 'T':
 			typeLog = entries.LogText

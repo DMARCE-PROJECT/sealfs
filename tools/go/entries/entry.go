@@ -120,7 +120,7 @@ func (eFile *EntryFile) ReadEntry() (err error, entry *LogfileEntry) {
 const (
 	LogNone = iota + 1
 	LogText
-	LogColor
+	LogColText
 	LogSilent
 )
 
@@ -172,7 +172,7 @@ func (entry *LogfileEntry) DumpLog(logr io.ReadSeeker, isok bool, typelog int) (
 		bad := "[BAD] "
 		end := ""
 
-		if typelog == LogColor {
+		if typelog == LogColText {
 			ok = ColGreen + ok
 			bad = ColRed + bad
 			end = ColEnd

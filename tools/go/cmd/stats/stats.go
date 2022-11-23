@@ -11,10 +11,10 @@ import (
 )
 
 type Stats struct {
-	NWrites   uint64
+	NWrites     uint64
 	FakeNWrites uint64
-	AvgCount  float64
-	MaxCount  uint64
+	AvgCount    float64
+	MaxCount    uint64
 }
 
 func (st *Stats) String() string {
