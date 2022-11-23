@@ -29,7 +29,7 @@ func isatty(file *os.File) bool {
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "usage: verify dir kalpha kbeta [-D[e|k]] [-t | -T] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n")
+	fmt.Fprintf(os.Stderr, "usage: verify dir kalpha kbeta [-D[e|k]] [-t | -T | -b | -B] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n")
 	os.Exit(2)
 }
 
@@ -85,6 +85,13 @@ func main() {
 			}
 		case 'T':
 			typeLog = entries.LogText
+		case 'b':
+			typeLog = entries.LogBin
+			if isatty(os.Stdout) {
+				typeLog = entries.LogColBin
+			}
+		case 'B':
+			typeLog = entries.LogBin
 		default:
 			if len(args[i]) < 2 || len(args[i:]) < 2 {
 				usage()

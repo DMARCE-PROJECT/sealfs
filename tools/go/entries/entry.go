@@ -121,6 +121,8 @@ const (
 	LogNone = iota + 1
 	LogText
 	LogColText
+	LogBin
+	LogColBin
 	LogSilent
 )
 
@@ -131,6 +133,29 @@ const (
 )
 
 const MaxWriteCount = 10 * 1024 * 1024 //10M
+
+func (entry *LogfileEntry) dumpBin(br *bufio.Reader, isok bool, typelog int) (err error) {
+	b := make([]byte, entry.WriteCount)
+	_, err = br.Read(b)
+	if err != nil {
+		return fmt.Errorf("dumpBin: %s", err)
+	}
+	ok := "[OK] "
+	bad := "[BAD] "
+	end := ""
+
+	if typelog == LogColBin {
+		ok = ColGreen + ok
+		bad = ColRed + bad
+		end = ColEnd
+	}
+	if isok {
+		fmt.Printf("%s%d:%s [%d:%d), %d bytes\n", ok, entry.Inode, end, entry.FileOffset, entry.FileOffset+entry.WriteCount, entry.WriteCount)
+	} else {
+		fmt.Printf("%s%d:%s [%d:%d), %d bytes\n", bad, entry.Inode, end, entry.FileOffset, entry.FileOffset+entry.WriteCount, entry.WriteCount)
+	}
+	return nil
+}
 
 // TODO, color log
 func (entry *LogfileEntry) DumpLog(logr io.ReadSeeker, isok bool, typelog int) (err error) {
@@ -155,6 +180,9 @@ func (entry *LogfileEntry) DumpLog(logr io.ReadSeeker, isok bool, typelog int) (
 		}
 	}
 	br := bufio.NewReader(logr)
+	if typelog == LogBin || typelog == LogColBin {
+		return entry.dumpBin(br, isok, typelog)
+	}
 	nRead := uint64(0)
 	for entry.WriteCount-nRead >= 0 {
 		line, err := br.ReadString('\n')
