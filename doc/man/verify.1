@@ -1,0 +1,96 @@
+.TH VERIFY 1
+.SH NAME
+verify \- SealFS log verification
+.SH SYNOPSIS
+.BI verify
+.BI dir
+.BI kalpha
+.BI kbeta 
+[
+.BI -Dh
+] 
+[
+.B -t | -T
+] [
+.BI -b | -B
+] [
+.BI -n 
+.I lfilename
+] 
+.br
+\h'0.5in'
+[
+.BI -i
+.I inode begin end
+] [
+.BI
+-nfs0 nlog0 -nfs1 nlog
+\&...
+] 
+.SH DESCRIPTION
+.I Verify
+checks that a SealFS log. Its arguments are a directory, 
+.B dir
+and two keystream files,
+.B kalpha
+which is the burnt keystream and
+.B kbeta,
+the preserved keystream.
+Additional flags are:
+.TP
+.B -t
+Dump the user log files as text, showing which entries are wrong and which right.
+May use colors if possible.
+.TP
+.B -T
+Like
+.B -t
+but without colors.
+.TP
+.B -b
+Dump the user log files ranges, showing which entries are wrong and which right.
+May use colors if possible.
+.TP
+.B -B
+Like
+.B -b
+but without colors.
+.TP
+.B -D
+Debug flag. This enable debugging, which will depend on the characters it is followed by.
+Different implementations may have different debug flags. For example
+.B -Dh
+may enable debugging of entries reordering.
+.TP
+.B -n lfilename
+Use a different name for the SealFS log file (the default is .SEALFS.LOG).
+.TP
+.B -i inode begin end
+Check only a user log file range for a specific inode. The three values are
+integers. The first,
+.B inode
+is the inode number of the user log file. The other two,
+.B begin end
+specify the file offsets in bytes for the range being verified in the user log
+file.
+.TP
+.B -nfsX nlogX
+Rename the inode nfsX to nlogX. This means that if the SealFS log
+entries have the inode field set to nlogX, verify will expect the inode
+of the user log file to be nfsX. For example
+.B -123 876
+will expect the inode of one of the corresponding user log file in the
+filesystem have the inode 123. Entries in the SealFS log with inode 876
+will refer to that file. This is useful to verify files and SealFS logs
+which have been copied to another filesystem or another file in the
+same filesystem.
+Exit status is 0 if the SealFS finds there has been no tampering for the specified entries.
+.SH SOURCE
+.B \*sealfs/tools/verify.c and \*sealfs/tools/go/cmd/verify
+There are two implementations, a C version and a go version. This man page refers to
+both.
+.SH SEE ALSO
+.MR prep (1)
+.SH BUGS
+.I Verify
+has no known bugs.
