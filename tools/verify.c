@@ -489,7 +489,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "USAGE: verify dir kalpha kbeta"
-			" [-Dh] [-t | -T] [-b | -B] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n");
+			" [-Dh] [-t | -T | -b | -B] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n");
 	exit(1);
 }
 
