@@ -1,0 +1,39 @@
+.TH SEALFS 5
+.SH NAME
+sealfs \- SealFS antitamper filesystem
+.SH DESCRIPTION
+.I Sealfs
+is an overlay filesystem for antitampering protection. The underlying filesystem keeps a
+log which annotates any write made to the upper filesystem. It also uses extracts secrets from a
+keystream file and burns them after. A second copy of the keystream must be kept safe to
+be able to check for tampering.
+.SH MOUNT OPTIONS
+.TP
+.I kpath="path"
+Path of the keystream to burn.
+.TP
+.I nratchet=n
+Sets how many secrets are derived from a single key read from the keystream. Optional, will be
+set to a default value if not present.
+
+.SH EXAMPLE
+.EX
+#in sealfs root
+make
+(cd tools; make)
+mkdir /tmp/xxx /tmp/yyy
+sudo insmod sealfs.ko
+tools/prep /tmp/xxx/.SEALFS.LOG /tmp/k1 /tmp/k2 100000000
+sudo mount -o kpath=/tmp/k1,nratchet=17 -t sealfs /tmp/xxx /tmp/yyy
+#open files in yyy with append and write, rename them
+sudo umount /tmp/yyy
+tools/verify /tmp/yyy /tmp/k1 /tmp/k2
+.EE
+.LP
+.SH SOURCE
+.B sealfs
+.SH SEE ALSO
+prep (1), verify (1)
+.SH BUGS
+.I SealFS
+has no known bugs.
