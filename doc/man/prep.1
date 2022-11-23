@@ -9,10 +9,12 @@ prep \- SealFS log and keystream creation
 .BI kfilesize
 .SH DESCRIPTION
 .I Prep
-Prepares the SealFS log file and creates and fills the keystream files of a SealFS filesystem.
+initalizes the SealFS log file and creates and fills the keystream files for a SealFS filesystem.
+.SH STATUS
 Exit status is 0 if the filesystem was created successfully and greater than 0 otherwise.
 .SH SOURCE
-.B \*sealfs/tools/prep.c and \*sealfs/tools/go/cmd/prep
+.B sealfs/tools/prep.c and sealfs/tools/go/cmd/prep
+
 There are two implementations, a C version and a go version. This man page refers to
 both.
 .SH SEE ALSO
