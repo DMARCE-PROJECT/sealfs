@@ -21,4 +21,6 @@ enum {
 	LOGNONE = 0,
 	LOGTEXT,
 	LOGCOLTEXT,
+	LOGBIN,
+	LOGCOLBIN,
 };

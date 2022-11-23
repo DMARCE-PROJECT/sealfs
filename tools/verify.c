@@ -489,7 +489,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "USAGE: verify dir kalpha kbeta"
-			" [-Dh] [-t | -T] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n");
+			" [-Dh] [-t | -T] [-b | -B] [-n lfilename] [-i inode begin end] [-nfs0 nlog0 -nfs1 nlog1...] \n");
 	exit(1);
 }
 
@@ -574,6 +574,13 @@ main(int argc, char *argv[])
 				}
 			} else if(argv[i][1] == 'T' && strnlen(argv[i], 2) == 2){
 				DUMPLOG = LOGTEXT;
+			} else if(argv[i][1] == 'b' && strnlen(argv[i], 2) == 2){
+				DUMPLOG = LOGBIN;
+				if(isatty(1)) {
+					DUMPLOG = LOGCOLBIN;
+				}
+			} else if(argv[i][1] == 'B' && strnlen(argv[i], 2) == 2){
+				DUMPLOG = LOGBIN;
 			} else
 				usage();
 		}else

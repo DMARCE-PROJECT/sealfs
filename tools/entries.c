@@ -56,11 +56,38 @@ static char *colgreen = "\x1b[32m";
 static char *colend = "\x1b[0m";
 
 int
+dumpbin(struct sealfs_logfile_entry *e, FILE *s, int typelog, int isok)
+{
+	char c;
+	if(e->count > 0) {
+		if(fseek(s, e->offset + e->count - 1, SEEK_SET) < 0){
+			return -1;
+		}
+		if(fread(&c, 1, 1, s) < 1) {
+			return -1;
+		}
+	}
+	if(typelog == LOGCOLBIN){
+		if(isok)
+			printf("%s%ld:%s [%ld:%ld), %ld bytes\n", colgreen, e->inode, colend, e->offset, e->offset+e->count, e->count);
+		else
+			printf("%s%ld:%s [%ld:%ld), %ld bytes\n", colred, e->inode, colend, e->offset, e->offset+e->count, e->count);
+	}else{
+		if(isok)
+			printf("%ld: [OK] [%ld:%ld), %ld bytes\n",  e->inode, e->offset, e->offset+e->count, e->count);
+		else
+			printf("%ld: [BAD] [%ld:%ld), %ld bytes\n",  e->inode, e->offset, e->offset+e->count, e->count);
+	}
+	return 0;
+}
+
+int
 dumplog(struct sealfs_logfile_entry *e, int fd, int typelog, int isok)
 {
 	FILE *s;
 	char line[Bufsz];
 	int fdx;
+	int ret;
 
 	if(typelog==LOGNONE){
 		return 0;
@@ -78,20 +105,25 @@ dumplog(struct sealfs_logfile_entry *e, int fd, int typelog, int isok)
 		fclose(s);
 		return -1;
 	}
+	if(typelog == LOGBIN || typelog == LOGCOLBIN){
+		ret = dumpbin(e, s, typelog, isok);
+		fclose(s);
+		return ret;
+	}
         while (fgets(line, Bufsz, s) != NULL) {
 		if(strlen(line) >= e->count){
 			line[e->count] = '\0';
 		}
-		if(typelog == LOGTEXT){
-			if(isok)
-				printf("%ld: [OK] %s\n", e->inode, line);
-			else
-				printf("%ld: [BAD] %s\n", e->inode, line);
-		}else{
+		if(typelog == LOGCOLTEXT){
 			if(isok)
 				printf("%s%ld:%s %s\n", colgreen, e->inode, colend, line);
 			else
 				printf("%s%ld:%s %s\n", colred, e->inode, colend, line);
+		}else{
+			if(isok)
+				printf("%ld: [OK] %s\n", e->inode, line);
+			else
+				printf("%ld: [BAD] %s\n", e->inode, line);
 		}
 		
 		if(ftell(s) - e->offset >= e->count)
