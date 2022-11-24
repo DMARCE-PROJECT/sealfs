@@ -1,12 +1,20 @@
 .TH SEALFS 5
 .SH NAME
-sealfs \- SealFS antitamper filesystem
+sealfs \- SealFS antitamper filesystem for log files
 .SH DESCRIPTION
-.I Sealfs
-is an overlay filesystem for antitampering protection. The underlying filesystem keeps a
+.I SealFS
+is an overlay filesystem for antitampering protection of log files. The underlying filesystem keeps a
 log which annotates any write made to the upper filesystem. It also uses extracts secrets from a
 keystream file and burns them after. A second copy of the keystream must be kept safe to
-be able to check for tampering.
+be able to check for tampering in forensic analysis.
+SealFS only permits the kind of operations which happen to log files. A file can only be opened
+and written for append. It can be renamed if it is the inode is preserved (not copied and deleted).
+Some of this operations will fail (non append opens), some will not verify after (deleting files,
+altering files), some both.
+
+A filesystem must be verified after it is unmounted, or it may not verify because it has pending
+writes (to the keystream or the log).
+
 .SH MOUNT OPTIONS
 .TP
 .I kpath="path"
