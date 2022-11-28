@@ -20,14 +20,6 @@ theoretical security (like in SealFSv1) or partial linear degradation
 (like in a classical ratchet scheme), exchanging storage for computation
 with user defined parameters to balance security and resource usage.
 
-If you are interested in the version 1 (SealFSv1) described by the paper 
-
-	"SealFS: Storage-based tamper-evident logging" 
-	(https://doi.org/10.1016/j.cose.2021.102325)
-
-go to the tag "submitted".
-
-
 To use it (the man pages of commands are in doc/man, for example, *nroff -man doc/man/sealfs.5* and so on).
 
        #in sealfs root
@@ -40,3 +32,18 @@ To use it (the man pages of commands are in doc/man, for example, *nroff -man do
        #open files in yyy with append and write, rename them
        sudo umount /tmp/yyy
        tools/verify /tmp/yyy /tmp/k1 /tmp/k2
+
+If you are interested in the version 2 (SealFSv2) described by the paper
+
+	"SealFSv2: Combining Storage-Based and Ratcheting for Tamper-evident Logging"
+	doi: 10.1007/s10207-022-00643-1
+
+go to the tag "v2_1.0.0"
+
+If you are interested in the version 1 (SealFSv1) described by the paper 
+
+	"SealFS: Storage-based tamper-evident logging" 
+	(https://doi.org/10.1016/j.cose.2021.102325)
+
+go to the tag "submitted".
+
