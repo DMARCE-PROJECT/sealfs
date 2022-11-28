@@ -31,6 +31,9 @@ To use it (the man pages of commands are in doc/man, for example, *nroff -man do
        #keep k2 save on another machine
        sudo mount -o kpath=/var/keys/k1,nratchet=2048 -t sealfs /var/logsback /var/seclogs
        #open files in seclogs with append and write, rename them
+       echo 'log entry, I am running' >> /tmp/yyy/v.log
+       mv /tmp/yyy/v.log /tmp/yyy/v.log.1
+       #stop creating logs entries
        sudo umount /var/seclogs
        #forensic analysis, preferably on another clean machine mounting the hard disk
        #recover k2 from the external place in it which was saved
