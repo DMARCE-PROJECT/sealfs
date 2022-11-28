@@ -29,13 +29,13 @@ To use it (the man pages of commands are in doc/man, for example, **nroff -man d
        (cd tools; make)
        mkdir /var/logsback /var/seclogs
        sudo insmod sealfs.ko
-       tools/prep /var/logsback/.SEALFS.LOG /tmp/k1 /tmp/k2 100000000	#last number is size of keystream
+       tools/prep /var/logsback/.SEALFS.LOG /var/keys/k1 /var/keys/k2 100000000	#last number is size of keystream
        #keep k2 save on another machine
-       sudo mount -o kpath=/tmp/k1,nratchet=2048 -t sealfs /var/logsback /var/seclogs
+       sudo mount -o kpath=/var/keys/k1,nratchet=2048 -t sealfs /var/logsback /var/seclogs
        #open files in seclogs with append and write, rename them
        sudo umount /var/seclogs
        #forensic analysis, preferably on another machine mounting the hard disk
-       tools/verify /var/logsback /tmp/k1 /tmp/k2
+       tools/verify /var/logsback /var/keys/k1 /var/keys/k2
 ```
 
 If you are interested in the version 2 (SealFSv2) described by the paper
