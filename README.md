@@ -41,12 +41,12 @@ If you are interested in the version 2 (SealFSv2) described by the paper
 	"SealFSv2: Combining Storage-Based and Ratcheting for Tamper-evident Logging"
 	doi: 10.1007/s10207-022-00643-1
 
-go to the tag "v2_1.0.0"
+go to the tag **v2_1.0.0**
 
 If you are interested in the version 1 (SealFSv1) described by the paper 
 
 	"SealFS: Storage-based tamper-evident logging" 
 	(https://doi.org/10.1016/j.cose.2021.102325)
 
-go to the tag "submitted".
+go to the tag **submitted**.
 
