@@ -38,9 +38,11 @@ make
 mkdir /tmp/xxx /tmp/yyy	#xxx is the backend, yyy is where the logs are generated
 sudo insmod sealfs.ko
 tools/prep /tmp/xxx/.SEALFS.LOG /tmp/k1 /tmp/k2 100000000
+#keep k2 safe
 sudo mount -o kpath=/tmp/k1,nratchet=17 -t sealfs /tmp/xxx /tmp/yyy
 #open files in yyy with append and write, rename them
 sudo umount /tmp/yyy
+#forensic analysis, recover k2
 tools/verify /tmp/xxx /tmp/k1 /tmp/k2
 .EE
 .LP
