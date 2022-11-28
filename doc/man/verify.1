@@ -29,11 +29,11 @@ verify \- SealFS log verification
 ] 
 .SH DESCRIPTION
 .I Verify
-checks that a SealFS log and its associated user log files have not been tampered with.
+checks that a SealFS log and its associated user log files have not been altered.
 Its arguments are a directory, 
 .B dir
 and two keystream files,
-.B kalpha
+.B kalpha,
 which is the burnt keystream and
 .B kbeta,
 the preserved original keystream.
@@ -86,7 +86,8 @@ of the user log file to be nfsX. For example
 will expect the inode of one of the corresponding user log files in the
 filesystem have the inode 123. Entries in the SealFS log with inode 876
 will refer to that file. This is useful to verify files and SealFS logs
-which have been copied to another filesystem or another file in the
+which have been copied to another filesystem or another file with, a different
+inode number, in the
 same filesystem.
 .SH STATUS
 Exit status is 0 if verify finds there has been no tampering for the specified entries.

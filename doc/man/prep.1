@@ -10,6 +10,8 @@ prep \- SealFS log and keystream creation
 .SH DESCRIPTION
 .I Prep
 initalizes the SealFS log file and creates and fills the keystream files for a SealFS filesystem.
+The files created, the log and keystream files, are associated by the same magic number
+in their header.
 .SH STATUS
 Exit status is 0 if the filesystem was created successfully and greater than 0 otherwise.
 .SH SOURCE
