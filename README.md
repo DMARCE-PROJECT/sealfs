@@ -36,8 +36,8 @@ To use it (the man pages of commands are in doc/man, for example, **nroff -man d
        (cd tools; make)
        mkdir /tmp/xxx /tmp/yyy
        sudo insmod sealfs.ko
-       tools/prep /tmp/xxx/.SEALFS.LOG /tmp/k1 /tmp/k2 100000000
-       sudo mount -o kpath=/tmp/k1,nratchet=17 -t sealfs /tmp/xxx /tmp/yyy
+       tools/prep /tmp/xxx/.SEALFS.LOG /tmp/k1 /tmp/k2 100000000	#last number is size of keystream
+       sudo mount -o kpath=/tmp/k1,nratchet=2048 -t sealfs /tmp/xxx /tmp/yyy
        #open files in yyy with append and write, rename them
        sudo umount /tmp/yyy
        tools/verify /tmp/yyy /tmp/k1 /tmp/k2
