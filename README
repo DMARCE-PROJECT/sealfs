@@ -29,7 +29,8 @@ go to the tag "submitted".
 
 
 To use it (the man pages of commands are in doc/man, for example, **nroff -man doc/man/sealfs.5** and so on).
-```
+
+```plaintext
        #in sealfs root
        make
        (cd tools; make)
