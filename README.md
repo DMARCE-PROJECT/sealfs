@@ -30,9 +30,11 @@ To use it (the man pages of commands are in doc/man, for example, **nroff -man d
        mkdir /var/logsback /var/seclogs
        sudo insmod sealfs.ko
        tools/prep /var/logsback/.SEALFS.LOG /tmp/k1 /tmp/k2 100000000	#last number is size of keystream
+       #keep k2 save on another machine
        sudo mount -o kpath=/tmp/k1,nratchet=2048 -t sealfs /var/logsback /var/seclogs
-       #open files in yyy with append and write, rename them
+       #open files in seclogs with append and write, rename them
        sudo umount /var/seclogs
+       #forensic analysis, preferably on another machine mounting the hard disk
        tools/verify /var/logsback /tmp/k1 /tmp/k2
 ```
 
