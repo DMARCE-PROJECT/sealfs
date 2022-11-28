@@ -3,7 +3,8 @@
 sealfs \- SealFS antitamper filesystem for log files
 .SH DESCRIPTION
 .I SealFS
-is an overlay filesystem for antitampering protection of log files. The underlying filesystem keeps a
+is an overlay filesystem for antitampering protection of log files. It is based on a forward integrity model: upon exploitation, the attacker is not able to fake the logs generated before elevating privileges.
+The underlying filesystem keeps a
 log which annotates any write made to the upper filesystem. It also uses extracts secrets from a
 keystream file and burns them after. A second copy of the keystream must be kept safe to
 be able to check for tampering in forensic analysis.
@@ -26,10 +27,10 @@ set to a default value if not present.
 
 .SH EXAMPLE
 .EX
-#in sealfs root
+#in sealfs repository dir running as root
 make
 (cd tools; make)
-mkdir /tmp/xxx /tmp/yyy
+mkdir /tmp/xxx /tmp/yyy	#xxx is the backend, yyy is where the logs are generated
 sudo insmod sealfs.ko
 tools/prep /tmp/xxx/.SEALFS.LOG /tmp/k1 /tmp/k2 100000000
 sudo mount -o kpath=/tmp/k1,nratchet=17 -t sealfs /tmp/xxx /tmp/yyy

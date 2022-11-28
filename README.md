@@ -24,16 +24,16 @@ with user defined parameters to balance security and resource usage.
 To use it (the man pages of commands are in doc/man, for example, **nroff -man doc/man/sealfs.5** and so on).
 
 ```plaintext
-       #in sealfs root
+       #in sealfs repository dir running as root
        make
        (cd tools; make)
-       mkdir /tmp/xxx /tmp/yyy
+       mkdir /var/logsback /var/seclogs
        sudo insmod sealfs.ko
-       tools/prep /tmp/xxx/.SEALFS.LOG /tmp/k1 /tmp/k2 100000000	#last number is size of keystream
-       sudo mount -o kpath=/tmp/k1,nratchet=2048 -t sealfs /tmp/xxx /tmp/yyy
+       tools/prep /var/logsback/.SEALFS.LOG /tmp/k1 /tmp/k2 100000000	#last number is size of keystream
+       sudo mount -o kpath=/tmp/k1,nratchet=2048 -t sealfs /var/logsback /var/seclogs
        #open files in yyy with append and write, rename them
-       sudo umount /tmp/yyy
-       tools/verify /tmp/yyy /tmp/k1 /tmp/k2
+       sudo umount /var/seclogs
+       tools/verify /var/seclogs /tmp/k1 /tmp/k2
 ```
 
 If you are interested in the version 2 (SealFSv2) described by the paper
