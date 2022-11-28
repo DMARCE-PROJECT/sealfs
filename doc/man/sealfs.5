@@ -36,7 +36,7 @@ tools/prep /tmp/xxx/.SEALFS.LOG /tmp/k1 /tmp/k2 100000000
 sudo mount -o kpath=/tmp/k1,nratchet=17 -t sealfs /tmp/xxx /tmp/yyy
 #open files in yyy with append and write, rename them
 sudo umount /tmp/yyy
-tools/verify /tmp/yyy /tmp/k1 /tmp/k2
+tools/verify /tmp/xxx /tmp/k1 /tmp/k2
 .EE
 .LP
 .SH SOURCE
