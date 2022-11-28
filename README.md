@@ -34,7 +34,8 @@ To use it (the man pages of commands are in doc/man, for example, **nroff -man d
        sudo mount -o kpath=/var/keys/k1,nratchet=2048 -t sealfs /var/logsback /var/seclogs
        #open files in seclogs with append and write, rename them
        sudo umount /var/seclogs
-       #forensic analysis, preferably on another machine mounting the hard disk
+       #forensic analysis, preferably on another clean machine mounting the hard disk
+       #recover k2 from the external place in it which was saved
        tools/verify /var/logsback /var/keys/k1 /var/keys/k2
 ```
 
