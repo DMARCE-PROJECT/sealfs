@@ -21,7 +21,7 @@ const (
 func UpdateKeyFile(kfname string, magic uint64, burnt uint64) (err error) {
 	kf, err := os.OpenFile(kfname, os.O_WRONLY, 0600)
 	if err != nil {
-		fmt.Errorf("cannot create %s: %s\n", kfname, err)
+		return fmt.Errorf("cannot create %s: %s\n", kfname, err)
 	}
 	defer kf.Close()
 	kh := &headers.KeyFileHeader{Magic: magic, Burnt: burnt}

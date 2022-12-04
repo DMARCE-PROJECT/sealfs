@@ -90,7 +90,6 @@ func (kh *KeyFileHeader) FillHeader(r io.Reader) (err error) {
 		return errors.New("bad keyfile header")
 	}
 	return kh.UnMarshalBinary(khBuf[:])
-	return nil
 }
 
 func (kh *KeyFileHeader) WriteHeader(w io.Writer) (err error) {
