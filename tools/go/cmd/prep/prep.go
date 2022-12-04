@@ -13,7 +13,7 @@ import (
 var DebugPrep = false
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "usage: prep lfile kfile1 kfile2 kfile_size")
+	fmt.Fprintf(os.Stderr, "usage: prep lfile kfile1 kfile2 kfile_size\n")
 	os.Exit(2)
 }
 
