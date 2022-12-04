@@ -46,8 +46,8 @@ func TestExample(t *testing.T) {
 		t.Errorf("cannot find inode: %s", err)
 	}
 	renames := sealdesc.Renames{
-		zzzinode:  {zzzinode, 5243063},
-		zzz2inode: {zzz2inode, 5243058},
+		zzzinode:  {Inode: zzzinode, NewInode: 5243063},
+		zzz2inode: {Inode: zzz2inode, NewInode: 5243058},
 	}
 
 	desc, nRatchet, err := exampleDesc(dir, EXDIR+"/k1example", EXDIR+"/k2example")
@@ -103,8 +103,8 @@ func FuzzExampleLog(f *testing.F) {
 			t.Errorf("cannot find inode: %s", err)
 		}
 		renames := sealdesc.Renames{
-			zzzinode:  {zzzinode, 5243063},
-			zzz2inode: {zzz2inode, 5243058},
+			zzzinode:  {Inode: zzzinode, NewInode: 5243063},
+			zzz2inode: {Inode: zzz2inode, NewInode: 5243058},
 		}
 
 		desc, nRatchet, err := exampleDesc(dir, EXDIR+"/k1example", EXDIR+"/k2example")
