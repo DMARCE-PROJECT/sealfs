@@ -323,7 +323,7 @@ func (sf *SealFsDesc) Verify(region Region, renames Renames, nratchet uint64) er
 	entryFile := entries.NewEntryFile(sf.lf)
 	keyR := entries.NewBufReadSeeker(sf.kf)
 	for {
-		err, entry := entryFile.ReadEntry()
+		entry, err := entryFile.ReadEntry()
 		if err == io.EOF {
 			break
 		}

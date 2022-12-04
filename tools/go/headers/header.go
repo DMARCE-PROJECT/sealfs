@@ -28,7 +28,7 @@ func (lf *LogFileHeader) MarshalBinary() (data []byte, err error) {
 
 func (lf *LogFileHeader) UnMarshalBinary(data []byte) (err error) {
 	if len(data) < SizeofLogfileHeader {
-		return fmt.Errorf("data too small for logfile header %s\n", err)
+		return fmt.Errorf("data too small for logfile header %s", err)
 	}
 	lf.Magic = binary.LittleEndian.Uint64(data)
 	return nil
@@ -73,7 +73,7 @@ func (kh *KeyFileHeader) MarshalBinary() (data []byte, err error) {
 
 func (kh *KeyFileHeader) UnMarshalBinary(data []byte) (err error) {
 	if len(data) < SizeofKeyfileHeader {
-		return fmt.Errorf("data too small for logfile header %s\n", err)
+		return fmt.Errorf("data too small for logfile header %s", err)
 	}
 	kh.Magic = binary.LittleEndian.Uint64(data[0:8])
 	kh.Burnt = binary.LittleEndian.Uint64(data[8:16])

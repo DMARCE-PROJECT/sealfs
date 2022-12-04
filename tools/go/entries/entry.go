@@ -50,7 +50,7 @@ func (entry *LogfileEntry) String() string {
 }
 
 type EntryReader interface {
-	ReadEntry() (err error, entry *LogfileEntry)
+	ReadEntry() (entry *LogfileEntry, err error)
 }
 
 type EntryFile struct {
@@ -81,7 +81,7 @@ func (entry *LogfileEntry) MarshalBinary() (data []byte, err error) {
 }
 func (entry *LogfileEntry) UnMarshalBinary(data []byte) (err error) {
 	if len(data) < SizeofEntry {
-		return fmt.Errorf("data too small for entry %s\n", err)
+		return fmt.Errorf("data too small for entry %s", err)
 	}
 	off := 0
 	entry.RatchetOffset = binary.LittleEndian.Uint64(data[off : 8+off])
@@ -98,23 +98,23 @@ func (entry *LogfileEntry) UnMarshalBinary(data []byte) (err error) {
 	return nil
 }
 
-func (eFile *EntryFile) ReadEntry() (err error, entry *LogfileEntry) {
+func (eFile *EntryFile) ReadEntry() (entry *LogfileEntry, err error) {
 	var entryBuf [SizeofEntry]uint8
 	n, err := io.ReadFull(eFile.br, entryBuf[:])
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	if n != SizeofEntry {
-		return errors.New("bad entry"), nil
+		return nil, errors.New("bad entry")
 	}
 	entry = &LogfileEntry{}
 	err = entry.UnMarshalBinary(entryBuf[:])
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	dprintf(DebugEntries, "ReadEntry: %s\n", entry)
-	return nil, entry
+	return entry, nil
 }
 
 const (
@@ -160,7 +160,7 @@ func (entry *LogfileEntry) dumpBin(br *bufio.Reader, isok bool, typelog int) (er
 // TODO, color log
 func (entry *LogfileEntry) DumpLog(logr io.ReadSeeker, isok bool, typelog int) (err error) {
 	if entry.WriteCount > MaxWriteCount {
-		return fmt.Errorf("too big a write for a single entry: %d\n", entry.WriteCount)
+		return fmt.Errorf("too big a write for a single entry: %d", entry.WriteCount)
 	}
 	if typelog == LogNone || typelog == LogSilent {
 		return nil
@@ -219,10 +219,10 @@ func (entry *LogfileEntry) DumpLog(logr io.ReadSeeker, isok bool, typelog int) (
 
 const FakeInode = ^uint64(0)
 
-func (entry *LogfileEntry) makeHMAC(logr io.ReadSeeker, key []uint8) (err error, h []uint8) {
+func (entry *LogfileEntry) makeHMAC(logr io.ReadSeeker, key []uint8) (h []uint8, err error) {
 	dprintf(DebugEntries, "Verifying key[%d] %x\n", entry.KeyFileOffset, key[:])
 	if entry.WriteCount > MaxWriteCount {
-		return fmt.Errorf("too big a write for a single entry: %d\n", entry.WriteCount), nil
+		return nil, fmt.Errorf("too big a write for a single entry: %d", entry.WriteCount)
 	}
 	b := make([]byte, 8)
 	mac := hmac.New(sha256.New, key)
@@ -239,7 +239,7 @@ func (entry *LogfileEntry) makeHMAC(logr io.ReadSeeker, key []uint8) (err error,
 
 	if entry.Inode == FakeInode {
 		h = mac.Sum(nil)
-		return nil, h
+		return h, nil
 	}
 	var (
 		currPos int64
@@ -247,7 +247,7 @@ func (entry *LogfileEntry) makeHMAC(logr io.ReadSeeker, key []uint8) (err error,
 	)
 	currPos, err = logr.Seek(0, io.SeekCurrent)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	if currPos != int64(entry.FileOffset) {
 		defer func() {
@@ -258,7 +258,7 @@ func (entry *LogfileEntry) makeHMAC(logr io.ReadSeeker, key []uint8) (err error,
 		}()
 		pos, err = logr.Seek(int64(entry.FileOffset), io.SeekStart)
 		if err != nil {
-			return err, nil
+			return nil, err
 		}
 	}
 	dprintf(DebugEntries, "LogR currPos %d pos %d\n", currPos, pos)
@@ -266,16 +266,16 @@ func (entry *LogfileEntry) makeHMAC(logr io.ReadSeeker, key []uint8) (err error,
 	br := bufio.NewReader(logr)
 	nw, err := io.CopyN(mac, br, int64(entry.WriteCount))
 	if nw != int64(entry.WriteCount) {
-		return fmt.Errorf("cannot read from file, %s, offset %d, entry.WriteCount %d\n", err, entry.FileOffset, entry.WriteCount), nil
+		return nil, fmt.Errorf("cannot read from file, %s, offset %d, entry.WriteCount %d", err, entry.FileOffset, entry.WriteCount)
 	}
 	if err == io.EOF {
-		return fmt.Errorf("cannot read from file, offset %d, premature EOF\n", entry.FileOffset), nil
+		return nil, fmt.Errorf("cannot read from file, offset %d, premature EOF", entry.FileOffset)
 	}
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	h = mac.Sum(nil)
-	return nil, h
+	return h, nil
 }
 
 func (entry *LogfileEntry) IsOk(logr io.ReadSeeker, keyr io.ReadSeeker, keyc *KeyCache, nratchet uint64) bool {
@@ -287,7 +287,7 @@ func (entry *LogfileEntry) IsOk(logr io.ReadSeeker, keyr io.ReadSeeker, keyc *Ke
 	if err = keyc.Update(entry, keyr, nratchet); err != nil {
 		return false
 	}
-	if err, h = entry.makeHMAC(logr, keyc.key[:]); err != nil {
+	if h, err = entry.makeHMAC(logr, keyc.key[:]); err != nil {
 		return false
 	}
 	return hmac.Equal(h, entry.fpr[:])
@@ -302,7 +302,7 @@ func (entry *LogfileEntry) ReMac(logr io.ReadSeeker, keyr io.ReadSeeker, keyc *K
 	if err = keyc.Update(entry, keyr, nratchet); err != nil {
 		return fmt.Errorf("cannot obtain queue %s", err)
 	}
-	if err, h = entry.makeHMAC(logr, keyc.key[:]); err != nil {
+	if h, err = entry.makeHMAC(logr, keyc.key[:]); err != nil {
 		return fmt.Errorf("cannot make hmac %s", err)
 	}
 	copy(entry.fpr[:], h)

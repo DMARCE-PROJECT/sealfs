@@ -13,7 +13,7 @@ import (
 func Inode(fname string) (inode uint64, err error) {
 	file, err := os.Open(fname)
 	if err != nil {
-		return 0, fmt.Errorf("can't open %s\n", fname)
+		return 0, fmt.Errorf("can't open %s", fname)
 	}
 	fi, err := file.Stat()
 	if err != nil {
@@ -29,7 +29,7 @@ func Inode(fname string) (inode uint64, err error) {
 func CreateLogFile(name string, magic uint64) error {
 	lf, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		return fmt.Errorf("cannot create %s: %s\n", name, err)
+		return fmt.Errorf("cannot create %s: %s", name, err)
 	}
 	defer lf.Close()
 	lh := &headers.LogFileHeader{Magic: magic}
@@ -65,7 +65,7 @@ func PrepKeyFiles(name string, name2 string, size int64, magic uint64) (err erro
 		log.Printf("warning, 0 size keystream %s\n", name)
 	}
 	if size < 0 {
-		return fmt.Errorf("size too small for keystream %d\n", size)
+		return fmt.Errorf("size too small for keystream %d", size)
 	}
 	w := io.MultiWriter(k1, k2)
 	_, err = io.CopyN(w, rand.Reader, size)

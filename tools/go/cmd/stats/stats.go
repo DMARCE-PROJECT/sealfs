@@ -26,12 +26,12 @@ func (st *Stats) String() string {
 func stats(ef entries.EntryReader) (st *Stats, err error) {
 	st = &Stats{}
 	for {
-		err, entry := ef.ReadEntry()
+		entry, err := ef.ReadEntry()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("can't read from lfile: %s\n", err)
+			return nil, fmt.Errorf("can't read from lfile: %s", err)
 		}
 		if entry.Inode == entries.FakeInode {
 			st.FakeNWrites++

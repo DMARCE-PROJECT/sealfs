@@ -12,7 +12,7 @@ import (
 
 const EXDIR = "../../files"
 
-func example_Desc(dir string, kalpha string, kbeta string) (sf *sealdesc.SealFsDesc, nRatchet uint64, err error) {
+func exampleDesc(dir string, kalpha string, kbeta string) (sf *sealdesc.SealFsDesc, nRatchet uint64, err error) {
 	lname := sealdesc.DefaultLogfileName
 	typelog := entries.LogSilent
 	lpath := fmt.Sprintf("%s/%s", dir, lname)
@@ -50,7 +50,7 @@ func TestExample(t *testing.T) {
 		zzz2inode: {zzz2inode, 5243058},
 	}
 
-	desc, nRatchet, err := example_Desc(dir, EXDIR+"/k1example", EXDIR+"/k2example")
+	desc, nRatchet, err := exampleDesc(dir, EXDIR+"/k1example", EXDIR+"/k2example")
 	if err != nil {
 		t.Errorf("cannot make example desc: %s", err)
 	}
@@ -107,7 +107,7 @@ func FuzzExampleLog(f *testing.F) {
 			zzz2inode: {zzz2inode, 5243058},
 		}
 
-		desc, nRatchet, err := example_Desc(dir, EXDIR+"/k1example", EXDIR+"/k2example")
+		desc, nRatchet, err := exampleDesc(dir, EXDIR+"/k1example", EXDIR+"/k2example")
 		if err != nil {
 			t.Errorf("cannot make example desc: %s", err)
 		}
