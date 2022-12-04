@@ -31,13 +31,13 @@ func ratchetKey(key []uint8, RatchetOffset uint64, nRatchet uint64) {
 type KeyCache struct {
 	lastRatchetOffset uint64
 	lastKeyOffset     uint64
-	key               [FprSize]uint8
+	Key               [FprSize]uint8
 }
 
 func (keyC *KeyCache) String() string {
 
 	s := fmt.Sprintf("keyc:[lastroff: %d", keyC.lastRatchetOffset)
-	s += fmt.Sprintf(" lastkeyoff: %d, key: %x]", keyC.lastKeyOffset, keyC.key)
+	s += fmt.Sprintf(" lastkeyoff: %d, key: %x]", keyC.lastKeyOffset, keyC.Key)
 	return s
 }
 
@@ -72,20 +72,20 @@ func (keyC *KeyCache) loadKey(entry *LogfileEntry, keyR io.ReadSeeker) (err erro
 		return err
 	}
 	//I am not using buffer (is it worth)?
-	_, err = io.ReadFull(keyR, keyC.key[:])
+	_, err = io.ReadFull(keyR, keyC.Key[:])
 	if err != nil {
 		return err
 	}
 	keyC.lastKeyOffset = entry.KeyFileOffset
 	keyC.lastRatchetOffset = 0
-	dprintf(DebugKeyCache, "Loadkey key[%d] %x\n", entry.KeyFileOffset, keyC.key[:])
+	dprintf(DebugKeyCache, "Loadkey key[%d] %x\n", entry.KeyFileOffset, keyC.Key[:])
 	return nil
 }
 
 func (keyC *KeyCache) ratchet(entry *LogfileEntry, nRatchet uint64) {
 	dprintf(DebugKeyCache, "Ratchet {nr:%d} %d -> %d\n", nRatchet, keyC.lastRatchetOffset, entry.RatchetOffset)
 	for i := keyC.lastRatchetOffset; i < entry.RatchetOffset; i++ {
-		ratchetKey(keyC.key[:], i+1, nRatchet)
+		ratchetKey(keyC.Key[:], i+1, nRatchet)
 	}
 	keyC.lastRatchetOffset = entry.RatchetOffset
 }
@@ -100,7 +100,7 @@ func (keyC *KeyCache) Update(entry *LogfileEntry, keyR io.ReadSeeker, nRatchet u
 			return err
 		}
 		if nRatchet != 1 {
-			ratchetKey(keyC.key[:], 0, nRatchet)
+			ratchetKey(keyC.Key[:], 0, nRatchet)
 		}
 	}
 	keyC.ratchet(entry, nRatchet)

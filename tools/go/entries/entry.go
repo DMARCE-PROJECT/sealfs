@@ -287,7 +287,7 @@ func (entry *LogfileEntry) IsOk(logr io.ReadSeeker, keyr io.ReadSeeker, keyc *Ke
 	if err = keyc.Update(entry, keyr, nratchet); err != nil {
 		return false
 	}
-	if h, err = entry.makeHMAC(logr, keyc.key[:]); err != nil {
+	if h, err = entry.makeHMAC(logr, keyc.Key[:]); err != nil {
 		return false
 	}
 	return hmac.Equal(h, entry.fpr[:])
@@ -302,7 +302,7 @@ func (entry *LogfileEntry) ReMac(logr io.ReadSeeker, keyr io.ReadSeeker, keyc *K
 	if err = keyc.Update(entry, keyr, nratchet); err != nil {
 		return fmt.Errorf("cannot obtain queue %s", err)
 	}
-	if h, err = entry.makeHMAC(logr, keyc.key[:]); err != nil {
+	if h, err = entry.makeHMAC(logr, keyc.Key[:]); err != nil {
 		return fmt.Errorf("cannot make hmac %s", err)
 	}
 	copy(entry.fpr[:], h)
