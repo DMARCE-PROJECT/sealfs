@@ -45,14 +45,14 @@ To use it (the man pages of commands are in doc/man, for example, **nroff -man d
 If you are interested in the version 2 (SealFSv2) described by the paper
 
 	"SealFSv2: Combining Storage-Based and Ratcheting for Tamper-evident Logging"
-	(https://link.springer.com/article/10.1007/s10207-022-00643-1)
+	[paper](https://link.springer.com/article/10.1007/s10207-022-00643-1)
 
 go to the tag **v2_1.0.0**
 
 If you are interested in the version 1 (SealFSv1) described by the paper 
 
 	"SealFS: Storage-based tamper-evident logging" 
-	(https://doi.org/10.1016/j.cose.2021.102325)
+	[paper](https://doi.org/10.1016/j.cose.2021.102325)
 
 go to the tag **submitted**.
 
