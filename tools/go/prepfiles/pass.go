@@ -6,15 +6,14 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
+	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/term"
 	"io"
 	"log"
 	"os"
 	"sealfs/sealfs/entries"
 	"syscall"
-	"golang.org/x/crypto/pbkdf2"
 )
-
 
 type keyReader struct {
 	offset uint64
