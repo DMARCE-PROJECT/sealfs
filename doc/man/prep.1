@@ -5,13 +5,24 @@ prep \- SealFS log and keystream creation
 .BI prep
 .BI logfile
 .BI kalpha
-.BI kbeta 
+.BI (kbeta | -p) 
 .BI kfilesize
 .SH DESCRIPTION
 .I Prep
 initalizes the SealFS log file and creates and fills the keystream files for a SealFS filesystem.
 The files created, the log and keystream files, are associated by the same magic number
 in their header.
+
+The go version of this tool permits delaying the creation of the kbeta file until
+later by passing
+.BI -p
+flag. With this flag, the kalpha file can be derived from a user  input password.
+The kalpha file may be created later, for forensic analysis, as needed, by using the
+kpass(1) tool. Note that, while more convenient, this is necessarily less secure.
+There are no known attacks present at this time, but it is 
+.B theoretically
+less secure, so use at your own discretion.
+
 .SH STATUS
 Exit status is 0 if the filesystem was created successfully and greater than 0 otherwise.
 .SH SOURCE
@@ -20,7 +31,7 @@ Exit status is 0 if the filesystem was created successfully and greater than 0 o
 There are two implementations, a C version and a go version. This man page refers to
 both.
 .SH SEE ALSO
-verify(1), sealfs(5)
+verify(1), sealfs(5), kpass(1)
 .SH BUGS
 .I Prep
 has no known bugs.

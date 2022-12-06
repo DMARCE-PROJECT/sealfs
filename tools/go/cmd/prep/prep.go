@@ -13,17 +13,26 @@ import (
 var DebugPrep = false
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "usage: prep lfile kfile1 kfile2 kfile_size\n")
+	fmt.Fprintf(os.Stderr, "usage: prep lfile kfile1 (-p | kfile2) kfile_size\n")
 	os.Exit(2)
 }
 
 func main() {
 	log.SetPrefix("SealFs: ")
-	args := os.Args
-	if len(args) != 5 {
+	ispass := false
+	var args []string
+	for _, a := range os.Args {
+		if a == "-p" {
+			ispass = true
+			continue
+		}
+		args = append(args, a)
+	}
+	la := len(args)
+	if (!ispass && la != 5) || (ispass && la != 4) {
 		usage()
 	}
-	keysize, err := strconv.Atoi(args[4])
+	keysize, err := strconv.Atoi(args[len(args)-1])
 	if err != nil {
 		usage()
 	}
@@ -41,8 +50,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot create %s: %s\n", args[1], err)
 	}
-	err = prepfiles.PrepKeyFiles(args[2], args[3], int64(keysize), magic)
-	if err != nil {
-		log.Fatalf("cannot create %s or %s: %s\n", args[2], args[3], err)
+	if !ispass {
+		err = prepfiles.PrepKeyFiles(args[2], args[3], int64(keysize), magic)
+		if err != nil {
+			log.Fatalf("cannot create %s or %s: %s\n", args[2], args[3], err)
+		}
+	} else {
+		err = prepfiles.PassPrepKeyFile(args[2], int64(keysize), magic)
+		if err != nil {
+			log.Fatalf("cannot create %s: %s\n", args[2], err)
+		}
 	}
 }
