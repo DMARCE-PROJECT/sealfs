@@ -1,6 +1,7 @@
 package prepfiles
 
 import (
+	"bufio"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -109,6 +110,7 @@ func PassPrepKeyFile(name string, size int64, magic uint64) (err error) {
 	if keyreader == nil {
 		return fmt.Errorf("cannot create keyreader")
 	}
-	_, err = io.CopyN(k1, keyreader, size)
+	w := bufio.NewWriter(k1)
+	_, err = io.CopyN(w, keyreader, size)
 	return err
 }
