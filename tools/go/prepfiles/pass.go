@@ -65,17 +65,15 @@ func (keyr *keyReader) Ratchet() (err error) {
 }
 
 func (keyr *keyReader) Read(p []byte) (n int, err error) {
-	if keyr.nLeft != 0 {
-		off := len(keyr.key) - keyr.nLeft
-		n = copy(p, keyr.key[off:])
-		keyr.nLeft -= n
-		return n, nil
+	nleft := keyr.nLeft
+	off := len(keyr.key) - nleft
+	if nleft == 0 {
+		keyr.Ratchet()
+		off = 0
+		nleft = len(keyr.key)
 	}
-	keyr.Ratchet()
-	n = copy(p, keyr.key[:])
-	if n < len(keyr.key) {
-		keyr.nLeft = len(keyr.key) - n
-	}
+	n = copy(p, keyr.key[off:])
+	keyr.nLeft = nleft - n
 	return n, nil
 }
 
