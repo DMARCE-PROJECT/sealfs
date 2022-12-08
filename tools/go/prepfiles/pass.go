@@ -60,7 +60,7 @@ func (keyr *keyReader) Ratchet() (err error) {
 	mac.Write(b)
 	copy(keyr.key[:], mac.Sum(nil))
 	mac.Reset()
-	keyr.offset++
+	keyr.offset += 2
 	return nil
 }
 
