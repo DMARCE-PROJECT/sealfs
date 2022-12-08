@@ -112,5 +112,6 @@ func PassPrepKeyFile(name string, size int64, magic uint64) (err error) {
 	}
 	w := bufio.NewWriter(k1)
 	_, err = io.CopyN(w, keyreader, size)
+	w.Flush()
 	return err
 }
