@@ -24,9 +24,11 @@ type keyReader struct {
 }
 
 const (
-	cpuMemCost = 32768 * 4
-	rScrypt    = 8 //p*r < 2^30
-	pScrypt    = 1
+	cpuMemCost = 1 << 16 //must be a power of 2
+	//other parameters of scrypt p*r < 2^30
+	//they also change cost
+	rScrypt = 8 //p*r < 2^30
+	pScrypt = 1
 )
 
 func NewKeyReader(pass []byte, magic uint64) (keyr *keyReader, err error) {
