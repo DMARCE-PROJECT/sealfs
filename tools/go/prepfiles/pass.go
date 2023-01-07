@@ -23,13 +23,17 @@ type keyReader struct {
 	key    [entries.FprSize]byte
 }
 
-const nIterKeyDeriv = 32768 * 4
+const (
+	cpuMemCost = 32768 * 4
+	rScrypt    = 8 //p*r < 2^30
+	pScrypt    = 1
+)
 
 func NewKeyReader(pass []byte, magic uint64) (keyr *keyReader, err error) {
 	//magic is the salt
 	salt := make([]byte, 8)
 	binary.LittleEndian.PutUint64(salt, magic)
-	dk, err := scrypt.Key(pass, salt, nIterKeyDeriv, 8, 1, len(keyr.state))
+	dk, err := scrypt.Key(pass, salt, cpuMemCost, rScrypt, pScrypt, len(keyr.state))
 	if err != nil {
 		return nil, err
 	}
