@@ -31,7 +31,7 @@ make
 (cd tools/go/cmd/prep; go install ./...)
 mkdir /tmp/xxx /tmp/yyy	#xxx is the backend, yyy is where the logs are generated
 sudo insmod sealfs.ko
-prep /tmp/xxx/.SEALFS.LOG /tmp/k1 -c 100000000
+prep /tmp/xxx/.SEALFS.LOG /tmp/k1 -p 100000000
 password:		#input password
 
 sudo mount -o kpath=/tmp/k1,nratchet=5120 -t sealfs /tmp/xxx /tmp/yyy
