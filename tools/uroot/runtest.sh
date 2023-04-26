@@ -25,7 +25,7 @@ if ! [ -d $UROOT_PATH ] || ! [ -x $PATHuroot ] || ! [ -x $PATHqemu ]; then
 	echo '	sudo apt install qemu-kvm libvirt-clients libvirt-daemon-system bridge-utils virt-manager' 1>&2
 	echo "	mkdir -p $UROOT_PATH;"  1>&2
 	echo "	cd $UROOT_PATH; git clone https://github.com/u-root/u-root; "  1>&2
-	echo '		cd u-root; go mod vendor; go install'1>&2
+	echo '		cd u-root; go install' 1>&2
 	exit 1
 fi
 
