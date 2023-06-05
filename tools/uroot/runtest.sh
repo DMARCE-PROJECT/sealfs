@@ -38,7 +38,7 @@ sudo chown $USER $KERNEL
 chmod 777 $KERNEL
 
 export SEALCMDS="prep dump verify test"
-export EXTRACMDS=" /usr/bin/sh /usr/bin/sed /usr/bin/awk $SEALCMDS"	#/usr/bin/xxd 
+export EXTRACMDS=" /usr/bin/sh /usr/bin/sed $SEALCMDS"	#/usr/bin/xxd /usr/bin/awk 
 #make all sealfs
 cd $GITSEAL
 make all || exit 1
@@ -75,7 +75,7 @@ sudo umount $SEALHD
 
 cp $GITSEAL/tools/uroot/inside.sh /var/tmp/
 chmod +x /var/tmp/inside.sh
-if ! u-root -uroot-source $UROOT_PATH -uinitcmd=/var/tmp/inside.sh $CMDSINSIDE -files /var/tmp/inside.sh > /tmp/$$_uroot 2>&1; then
+if ! (cd $UROOT_PATH; u-root -uroot-source $UROOT_PATH -uinitcmd=/var/tmp/inside.sh $CMDSINSIDE -files /var/tmp/inside.sh cmds/exp/tcz cmds/core/* ) > /tmp/$$_uroot 2>&1; then
 	cat /tmp/$$_uroot 1>&2
 	echo u-root error  1>&2
 	exit 1
