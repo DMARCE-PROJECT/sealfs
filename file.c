@@ -21,6 +21,56 @@ enum {
 	DEBUGENTRY = 0
 };
 
+
+/*
+	myvfs_read and myvfs_write used to be vfs_read and vfs_write which used to be convenient
+	this is probably faster but more fragile
+*/
+
+ #include <linux/uio.h>	//for iovec and so on in myvfs_* implementation
+
+static ssize_t myvfs_write(struct file *file, const char __user *buf, size_t count, loff_t *pos)
+{
+	ssize_t ret;
+	struct iovec iov = { .iov_base = (void __user *)buf, .iov_len = count };
+	struct kiocb kiocb;
+	struct iov_iter iter;
+
+	if (file->f_op->write)
+		ret = file->f_op->write(file, buf, count, pos);
+	else if (file->f_op->write_iter) {
+		init_sync_kiocb(&kiocb, file);
+		kiocb.ki_pos = (pos ? *pos : 0);
+		iov_iter_init(&iter, WRITE, &iov, 1, count);
+		ret = file->f_op->write_iter(&kiocb, &iter);
+		if (ret > 0 && pos)
+			*pos = kiocb.ki_pos;
+	} else
+		ret = -EINVAL;
+	return ret;
+}
+
+static ssize_t myvfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
+{
+	ssize_t ret;
+	struct iovec iov = { .iov_base = (void __user *)buf, .iov_len = count };
+	struct kiocb kiocb;
+	struct iov_iter iter;
+
+	if (file->f_op->read)
+		ret = file->f_op->read(file, buf, count, pos);
+	else if (file->f_op->read_iter) {
+		init_sync_kiocb(&kiocb, file);
+		kiocb.ki_pos = (pos ? *pos : 0);
+		iov_iter_init(&iter, READ, &iov, 1, count);
+		ret = file->f_op->read_iter(&kiocb, &iter);
+		if (pos)
+			*pos = kiocb.ki_pos;
+	} else
+		ret = -EINVAL;
+	return ret;
+}
+
 static ssize_t sealfs_read(struct file *file, char __user *buf,
 			   size_t count, loff_t *ppos)
 {
@@ -29,7 +79,7 @@ static ssize_t sealfs_read(struct file *file, char __user *buf,
 	struct dentry *dentry = file->f_path.dentry;
 
 	lower_file = sealfs_lower_file(file);
-	err = vfs_read(lower_file, buf, count, ppos);
+	err = myvfs_read(lower_file, buf, count, ppos);
 	/* update our inode atime upon a successful lower read */
 	if (err >= 0)
 		fsstack_copy_attr_atime(d_inode(dentry),
@@ -611,7 +661,7 @@ static ssize_t sealfs_write(struct file *file, const char __user *buf,
 	ino->i_size=new_ppos;
 	woffset = our_ppos;
 	up_write(&ino->i_rwsem);
-	wr = vfs_write(lower_file, buf, count, &woffset);
+	wr = myvfs_write(lower_file, buf, count, &woffset);
 	if(wr >= 0){
 		fsstack_copy_inode_size(ino, low_ino); // no need for lock (see comment in function)
 		down_write(&ino->i_rwsem);

@@ -24,6 +24,7 @@
 
 #include <linux/dcache.h>
 #include <linux/file.h>
+#include <linux/pagemap.h>
 #include <linux/fs.h>
 #include <linux/mm.h>
 #include <linux/highmem.h>	//kmap
