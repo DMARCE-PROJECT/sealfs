@@ -75,7 +75,7 @@ sudo umount $SEALHD
 
 cp $GITSEAL/tools/uroot/inside.sh /var/tmp/
 chmod +x /var/tmp/inside.sh
-if ! (cd $UROOT_PATH; u-root -uroot-source $UROOT_PATH -uinitcmd=/var/tmp/inside.sh $CMDSINSIDE -files /var/tmp/inside.sh cmds/exp/tcz cmds/core/* ) > /tmp/$$_uroot 2>&1; then
+if ! (cd $UROOT_PATH; u-root -uroot-source $UROOT_PATH -uinitcmd=/var/tmp/inside.sh $CMDSINSIDE -files /var/tmp/inside.sh cmds/core/* ) > /tmp/$$_uroot 2>&1; then
 	cat /tmp/$$_uroot 1>&2
 	echo u-root error  1>&2
 	exit 1
