@@ -4,9 +4,15 @@
 UROOT_PATH=$HOME/src/go/src/github.com/u-root/u-root
 
 usage(){
-        echo "usage: runtest [-i]" 1>&2;
+        echo "usage: runtest [-g] [-i]" 1>&2;
         exit 1
 }
+
+GOCMDS=false
+if [ "$1" = '-g' ]; then
+        GOCMDS=true
+	shift
+fi
 
 if [ "$1" = '-i' ]; then
         INTERACTIVE=true
@@ -38,15 +44,25 @@ sudo chown $USER $KERNEL
 chmod 777 $KERNEL
 
 export SEALCMDS="prep dump verify test"
-export EXTRACMDS=" /usr/bin/sh /usr/bin/sed $SEALCMDS"	#/usr/bin/xxd /usr/bin/awk 
+export EXTRACMDS=" /usr/bin/sh /usr/bin/sed /usr/bin/awk /usr/bin/xxd $SEALCMDS"
 #make all sealfs
 cd $GITSEAL
 make all || exit 1
 cp sealfs.ko /var/tmp
+
 cd tools
 make all || exit 1
 #add xxd for debugging
 cp $EXTRACMDS /var/tmp
+
+if [ "$GOCMDS" = true ]; then
+	(
+		cd $GITSEAL/tools/go/cmd
+		(cd verify; go build; cp verify /var/tmp)
+		(cd prep; go build; cp verify /var/tmp)
+	)
+	echo GO: TEST3 may fail: no debug for JQUEUE like in the C version 2>&1
+fi
 
 
 CMDSINSIDE=""
@@ -94,10 +110,10 @@ NPROC=$(( ($NPROC + 1 )/ 2 ))
 
 #	killall qemu-system-x86_64
 if [ "$INTERACTIVE" = true ]; then
-	qemu-system-x86_64 -smp $NPROC -kernel $KERNEL -initrd /tmp/initramfs.linux_amd64.cpio -hda $SEALHD -nographic -append "console=ttyS0"
+	qemu-system-x86_64 -m 4G -smp $NPROC -kernel $KERNEL -initrd /tmp/initramfs.linux_amd64.cpio -drive format=raw,file="$SEALHD",index=0,media=disk -nographic -append "console=ttyS0"
 
 else
-	qemu-system-x86_64 -smp $NPROC -kernel $KERNEL -initrd /tmp/initramfs.linux_amd64.cpio  -hda $SEALHD -nographic -append "console=ttyS0" > $OUTPUT 2> /dev/null &
+	qemu-system-x86_64 -m 4G -smp $NPROC -kernel $KERNEL -initrd /tmp/initramfs.linux_amd64.cpio  -drive format=raw,file="$SEALHD",index=0,media=disk -nographic -append "console=ttyS0" > $OUTPUT 2> /dev/null &
 	PIDQEMU=$!
 	
 	echo waiting for qemu to finish

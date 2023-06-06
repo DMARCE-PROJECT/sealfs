@@ -134,8 +134,8 @@ test3(){
 	
 	echo hdr medium start end
 	cat /tmp/hdr /tmp/medium /tmp/start /tmp/end > /tmp/x/.SEALFS.LOG
-	checktest TEST3hmse -Dh
-	#/var/tmp/dump /tmp/x
+	checktest TEST3hmse -Dh #-v
+	#/var/tmp/dump /tmp/x |/var/tmp/sed 10q
 
 	echo hdr medium end start 
 	cat /tmp/hdr /tmp/medium /tmp/end /tmp/start  > /tmp/x/.SEALFS.LOG
