@@ -82,6 +82,7 @@ func (h *Heap[V]) heapifyBottomTop(index int) {
 	parentindex := (index - 1) / 2
 	if h.cmp(h.keys[:], index, parentindex) {
 		h.keys[parentindex], h.keys[index] = h.keys[index], h.keys[parentindex]
+		h.vals[parentindex], h.vals[index] = h.vals[index], h.vals[parentindex]
 		//recursive call
 		h.heapifyBottomTop(parentindex)
 	}
@@ -127,6 +128,7 @@ func (h *Heap[V]) heapifyTopBottom(parentindex int) {
 		return
 	}
 	h.keys[min], h.keys[parentindex] = h.keys[parentindex], h.keys[min]
+	h.vals[min], h.vals[parentindex] = h.vals[parentindex], h.vals[min]
 	h.heapifyTopBottom(min)
 	if Debug {
 		fmt.Fprintf(os.Stderr, "HeapifyTopBottom done: %v,%v\n", parentindex, h)

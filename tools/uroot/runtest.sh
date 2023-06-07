@@ -61,7 +61,6 @@ if [ "$GOCMDS" = true ]; then
 		(cd verify; go build; cp verify /var/tmp)
 		(cd prep; go build; cp prep /var/tmp)
 	)
-	echo GO: TEST3 may fail: no debug for JQUEUE like in the C version 2>&1
 fi
 
 

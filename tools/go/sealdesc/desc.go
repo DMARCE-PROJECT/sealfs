@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	DebugJQueue = false	//only for debugging
+	DebugJQueue = false //only for debugging
 )
 
 const (
@@ -124,12 +124,11 @@ func dumpHeap(heap *heap.Heap[*entries.LogfileEntry]) {
 func popContiguous(fileOffset *uint64, heap *heap.Heap[*entries.LogfileEntry]) {
 	for entry, min, ok := heap.Pop(); ok; entry, min, ok = heap.Pop() {
 		if *fileOffset == entry.FileOffset {
-			dhprintf("JQUEUE advance o:%d\n", *fileOffset);
+			dhprintf("JQUEUE advance o:%d\n", *fileOffset)
 			*fileOffset += entry.WriteCount
 		} else {
-			dhprintf("JQUEUE no advance o:%d, e:%d\n",
-					*fileOffset, entry.FileOffset);
-			dhprintf("%s\n", heap);
+			dhprintf("JQUEUE no advance o:%d, e:%d, min:%d, %s, xxx%d\n",
+				*fileOffset, entry.FileOffset, min, entry, min>>21)
 			heap.Insert(min, entry)
 			break
 		}
@@ -148,6 +147,7 @@ func advanceEntry(entry *entries.LogfileEntry, o *OFile) error {
 		return nil
 	}
 	off := unifyOffset(e.FileOffset, e.RatchetOffset)
+	//dhprintf("JQUEUE Insert o:%d, e:%s\n", int(off), &e)
 	o.heap.Insert(int(off), &e)
 	if o.heap.Len() > MaxHeapSz {
 		return fmt.Errorf("read %d entries without fixing a jqueue\n", MaxHeapSz)
@@ -310,7 +310,7 @@ func (desc *SealFsDesc) SetLogFile(lf io.ReadCloser) {
 
 func badOff(entry *entries.LogfileEntry, keyoff uint64, ratchetoffset uint64) {
 	log.Printf("koffset %d or roff %d not correct: ", entry.KeyFileOffset, entry.RatchetOffset)
-	fmt.Fprintf(os.Stderr, "should be %d %d", keyoff, ratchetoffset)
+	fmt.Fprintf(os.Stderr, "should be %d %d ", keyoff, ratchetoffset)
 	fmt.Fprintf(os.Stderr, "%s\n", entry)
 }
 
