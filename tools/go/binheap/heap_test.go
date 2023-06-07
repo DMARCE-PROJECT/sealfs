@@ -55,6 +55,30 @@ func Test_SimpleMax(t *testing.T) {
 	}
 }
 
+func Test_IntMin(t *testing.T) {
+	h := heap.NewHeap[int](heap.Min)
+
+	for i := 0; i < 4; i++ {
+		h.Insert(i, i)
+	}
+	lastKey := 0
+	lastVal := 0
+	for i := 0; i < 4; i++ {
+		v, k, ok := h.Pop()
+		if !ok {
+			t.Errorf("bad pop, should be ok")
+		}
+		if k < lastKey {
+			t.Errorf("bad max heap, last: %v,%v this:%v,%v", lastKey, lastVal, k, v)
+		}
+		if v != k || v != i {
+			t.Errorf("bad max heap, last: %v,%v this:%v,%v,%v", lastKey, lastVal, k, v, i)
+		}
+		lastKey = k
+		lastVal = v
+	}
+}
+
 func FuzzHeap(f *testing.F) {
 	h := heap.NewHeap[string](heap.Max)
 	f.Add(5, "hello")
