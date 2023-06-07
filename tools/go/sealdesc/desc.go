@@ -13,6 +13,10 @@ import (
 	"syscall"
 )
 
+var (
+	DebugJQueue = false	//only for debugging
+)
+
 const (
 	MaxFiles           = 256
 	DefaultLogfileName = ".SEALFS.LOG"
@@ -23,6 +27,13 @@ type OFile struct {
 	inode  uint64
 	file   *os.File
 	offset uint64
+}
+
+func dhprintf(format string, a ...any) (n int, err error) {
+	if !DebugJQueue {
+		return
+	}
+	return fmt.Fprintf(os.Stderr, format, a...)
 }
 
 func NewOfile(file *os.File, inode uint64) (o *OFile) {
@@ -113,8 +124,12 @@ func dumpHeap(heap *heap.Heap[*entries.LogfileEntry]) {
 func popContiguous(fileOffset *uint64, heap *heap.Heap[*entries.LogfileEntry]) {
 	for entry, min, ok := heap.Pop(); ok; entry, min, ok = heap.Pop() {
 		if *fileOffset == entry.FileOffset {
+			dhprintf("JQUEUE advance o:%d\n", *fileOffset);
 			*fileOffset += entry.WriteCount
 		} else {
+			dhprintf("JQUEUE no advance o:%d, e:%d\n",
+					*fileOffset, entry.FileOffset);
+			dhprintf("%s\n", heap);
 			heap.Insert(min, entry)
 			break
 		}
@@ -264,7 +279,7 @@ func (desc *SealFsDesc) CheckKeystream(alphakfile string) (burnt uint64, nratche
 		return 0, 0, fmt.Errorf("magic numbers don't match desc != kbeta")
 	}
 	nkeys := uint64(0)
-	if kh.Burnt != 0 {
+	if kh.Burnt != headers.SizeofKeyfileHeader {
 		nkeys = (kh.Burnt - headers.SizeofKeyfileHeader) / entries.FprSize
 	}
 	if desc.NEntries < nkeys {
@@ -386,14 +401,14 @@ func (sf *SealFsDesc) Verify(region Region, renames Renames, nratchet uint64) er
 		}
 		keyOff := headers.SizeofKeyfileHeader + (c/nratchet)*entries.FprSize
 		isWrongOff := entry.KeyFileOffset != keyOff || entry.RatchetOffset != ratchetoffset
-		if region.Inode == 0 && isWrongOff {
+		if region.Inode == 0 && isWrongOff && !DebugJQueue {
 			badOff(entry, keyOff, ratchetoffset)
 			return fmt.Errorf("incorrect koffset or roff")
 		}
 		c++
 		ratchetoffset = (ratchetoffset + 1) % nratchet
 	}
-	if region.Inode == 0 && c%nratchet != 0 {
+	if region.Inode == 0 && c%nratchet != 0 && !DebugJQueue {
 		return fmt.Errorf("number of entries is not a multiple of nratchet: %d %d\n", c, nratchet)
 	}
 	err := checkTailOFiles(ofiles)
@@ -463,7 +478,7 @@ func CheckKeyStreams(alphaF *os.File, betaF *os.File, burnt uint64) (err error) 
 	if err := readChunk(betaF, prevbeta[:], burnt-entries.FprSize); err != nil {
 		return err
 	}
-	if prevalpha == prevbeta && burnt != 0 {
+	if prevalpha == prevbeta && burnt != headers.SizeofKeyfileHeader {
 		return errors.New("keystreams are not valid: last burnt chunk is equal")
 	}
 	if burnt == uint64(fia.Size()) {

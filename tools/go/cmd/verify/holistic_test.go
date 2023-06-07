@@ -24,11 +24,11 @@ func UpdateKeyFile(kfname string, magic uint64, burnt uint64) (err error) {
 		return fmt.Errorf("cannot create %s: %s\n", kfname, err)
 	}
 	defer kf.Close()
-	kh := &headers.KeyFileHeader{Magic: magic, Burnt: burnt}
+	kh := &headers.KeyFileHeader{Magic: magic, Burnt: burnt+headers.SizeofKeyfileHeader}
 	if err = kh.WriteHeader(kf); err != nil {
 		return err
 	}
-	_, err = io.CopyN(kf, rand.Reader, int64(burnt-headers.SizeofKeyfileHeader))
+	_, err = io.CopyN(kf, rand.Reader, int64(burnt))
 	return err
 }
 

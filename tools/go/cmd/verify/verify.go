@@ -17,6 +17,8 @@ func setDebugs(d rune) {
 		entries.DebugEntries = true
 	case 'k':
 		entries.DebugKeyCache = true
+	case 'h':
+		sealdesc.DebugJQueue = true
 	}
 }
 
