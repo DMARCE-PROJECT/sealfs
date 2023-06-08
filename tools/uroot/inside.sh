@@ -13,8 +13,11 @@ fi
 
 mkdir -p /mount/hd
 if test "$OUTSIDE" = true; then
+	if lsmod|grep sealfs > /dev/null 2>&1 ; then
+		 rmmod sealfs
+	fi
 	export SEALHD=/var/tmp/sealhd
-	sudo mount -o loop,user $SEALHD /mount/hd || exit 1
+	mount -o loop,user $SEALHD /mount/hd || exit 1
 else
 	mount /dev/sda /mount/hd
 fi
@@ -63,6 +66,7 @@ resettest() {
 }
 
 echo STARTTEST
+
 insmod /mount/hd/sealfs.ko
 rm /mount/hd/sealfs.ko	##once passed we don't want it to interfere with the test
 rm -r /tmp/x
@@ -119,17 +123,28 @@ test3(){
 	/var/tmp/test -s 2 17 2 /tmp/y > /dev/null
 	
 	umount /tmp/y
-	
+
 	#sizeof(sealfs_logfile_header)
 	HDRSZ=8
 	ENTRYSZ=72
-	dd -if /tmp/x/.SEALFS.LOG -bs $HDRSZ -count 1 -of /tmp/hdr >/dev/null 2>&1
 
-	dd -bs $HDRSZ -skip 1 -of /tmp/body < /tmp/x/.SEALFS.LOG >/dev/null 2>&1
-	dd -bs $ENTRYSZ -count 3 -of /tmp/start < /tmp/body >/dev/null 2>&1
-	dd -bs $ENTRYSZ -count 3 -skip 3 -of /tmp/medium < /tmp/body >/dev/null 2>&1
-	dd -bs $ENTRYSZ -skip 6 -of /tmp/end < /tmp/body >/dev/null 2>&1
+	DD=dd
+	if test "$OUTSIDE" = true; then
+		chmod a+rw /tmp/x/.SEALFS.LOG
+		dd if=/tmp/x/.SEALFS.LOG bs=$HDRSZ count=1 of=/tmp/hdr >/dev/null 2>&1
 	
+		dd bs=$HDRSZ skip=1 of=/tmp/body < /tmp/x/.SEALFS.LOG >/dev/null 2>&1
+		dd bs=$ENTRYSZ count=3 of=/tmp/start < /tmp/body >/dev/null 2>&1
+		dd bs=$ENTRYSZ count=3 skip=3 of=/tmp/medium < /tmp/body >/dev/null 2>&1
+		dd bs=$ENTRYSZ skip=6 of=/tmp/end < /tmp/body >/dev/null 2>&1
+	else	
+		dd -if /tmp/x/.SEALFS.LOG -bs $HDRSZ -count 1 -of /tmp/hdr >/dev/null 2>&1
+	
+		dd -bs $HDRSZ -skip 1 -of /tmp/body < /tmp/x/.SEALFS.LOG >/dev/null 2>&1
+		dd -bs $ENTRYSZ -count 3 -of /tmp/start < /tmp/body >/dev/null 2>&1
+		dd -bs $ENTRYSZ -count 3 -skip 3 -of /tmp/medium < /tmp/body >/dev/null 2>&1
+		dd -bs $ENTRYSZ -skip 6 -of /tmp/end < /tmp/body >/dev/null 2>&1
+	fi
 	DUMPLOGS=no
 	if test "$DUMPLOGS" = yes; then
 		echo LOG "==="
@@ -180,7 +195,7 @@ test4(){
 	resettest
 	
 	mount -o nratchet=32,kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-	/var/tmp/test -p 4 17 1000 /tmp/y
+	/var/tmp/test -p 4 17 1000 /tmp/y >/dev/null 
 	# CPUID is invalid opcode
 	umount /tmp/y
 	checktest TEST4
@@ -193,8 +208,8 @@ test5() {
 	
 	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
 	#write twice on the same one, should fail
-	/var/tmp/test -s 2 17 2 /tmp/y
-	/var/tmp/test -s 60 17 1000 /tmp/y
+	/var/tmp/test -s 2 17 2 /tmp/y >/dev/null 
+	/var/tmp/test -s 60 17 1000 /tmp/y >/dev/null 
 	umount /tmp/y
 	
 	#SHOULD FAIL
@@ -230,7 +245,7 @@ test7(){
 	resettest
 	
 	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-	/var/tmp/test -s 32 1 1 /tmp/y
+	/var/tmp/test -s 32 1 1 /tmp/y >/dev/null 
 	umount /tmp/y
 	
 	checktest TEST7A
@@ -238,7 +253,7 @@ test7(){
 	resettest
 	
 	mount -o nratchet=1,kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-	/var/tmp/test -s 32 1 1 /tmp/y
+	/var/tmp/test -s 32 1 1 /tmp/y >/dev/null 
 	umount /tmp/y
 	
 	checktest TEST7B
@@ -250,7 +265,7 @@ test8(){
 	resettest
 	
 	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-	/var/tmp/test -s 1 20000 1 /tmp/y
+	/var/tmp/test -s 1 20000 1 /tmp/y >/dev/null 
 	umount /tmp/y
 	
 	checktest TEST8
@@ -280,7 +295,7 @@ test9(){
 	resettest
 	
 	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-	/var/tmp/test -s 1 20000 1 /tmp/y
+	/var/tmp/test -s 1 20000 1 /tmp/y >/dev/null 
 	umount /tmp/y
 	checktestOffset TEST9
 }
@@ -296,7 +311,6 @@ getout() {
 mandatorytest1
 test2
 test3
-getout 0
 test4
 test5
 test6
