@@ -36,9 +36,9 @@ if ! [ -d $UROOT_PATH ] || ! [ -x $PATHuroot ] || ! [ -x $PATHqemu ]; then
 fi
 
 #prepare a kernel in tmp
-export GITSEAL=$(cleanname $PWD/../..)
+export GITSEAL=$(git rev-parse --show-toplevel)
 sudo cp /boot/vmlinuz-$(uname -r) /tmp
-sudo chown 777 /tmp/
+
 export KERNEL=/tmp/vmlinuz-$(uname -r)
 sudo chown $USER $KERNEL
 chmod 777 $KERNEL
