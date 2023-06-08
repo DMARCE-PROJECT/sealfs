@@ -1,10 +1,5 @@
 #!/bin/sh
 
-
-ROOTPATH=`realpath $0`
-ROOTPATH=`basename $ROOTPATH `
-ROOTPATH=`realpath $0|sed s,/$ROOTPATH,,`
-
 usage() {
 	echo $0 2>&1
 	exit 1
@@ -16,12 +11,15 @@ fi
 
 TESTNAME=verification
 
-#CREATE ALL THESE
-ssd=/var/tmp/ssd
-once=$HOME/tmp/once
-datadir=$ROOTPATH/data/$TESTNAME
-mkdir -p $datadir
-code=$HOME/gits/sealfs
+#THIS CAN BE CHANGED FOR SPECIAL DISKS
+ssd=/tmp/ssd
+once=/tmp/once
+code=$(git rev-parse --show-toplevel)
+
+rm -r $ssd
+mkdir -p $ssd
+mkdir -p $ssd/sealfs
+mkdir -p $once
 
 r=$ssd
 
@@ -34,7 +32,7 @@ then
         exit 1
 fi
 
-for d in $ssd/sealfs $once $datadir $code
+for d in $ssd/sealfs $once $code
 do
 	if ! test -d $d
 	then
@@ -48,9 +46,8 @@ sync; sync
 
 if ! test -f $once/k1 || ! test -f $once/.SEALFS.LOG
 then
-        echo prepare first >&2
-	echo run: $code/tools/prep $once/.SEALFS.LOG $once/k1 $once/k2 $ksize >&2
-	exit 1
+        echo preparing first >&2
+	$code/tools/prep $once/.SEALFS.LOG $once/k1 $once/k2 $ksize >&2
 fi
 
 badcode () {
