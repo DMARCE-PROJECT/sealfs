@@ -1,7 +1,23 @@
 #!/var/tmp/sh
 
+usage(){
+        echo "usage: inside.sh [-o] " 1>&2;
+        exit 1
+}
+
+OUTSIDE=false
+if [ "$1" = '-o' ]; then
+        OUTSIDE=true
+	shift
+fi
+
 mkdir -p /mount/hd
-mount /dev/sda /mount/hd
+if test "$OUTSIDE" = true; then
+	export SEALHD=/var/tmp/sealhd
+	sudo mount -o loop,user $SEALHD /mount/hd || exit 1
+else
+	mount /dev/sda /mount/hd
+fi
 
 #This check functions can have -v added at the end to know more
 
@@ -49,8 +65,10 @@ resettest() {
 echo STARTTEST
 insmod /mount/hd/sealfs.ko
 rm /mount/hd/sealfs.ko	##once passed we don't want it to interfere with the test
-mkdir /tmp/x
-mkdir /tmp/y
+rm -r /tmp/x
+rm -r /tmp/y
+mkdir -p /tmp/x
+mkdir -p /tmp/y
 cp /mount/hd/.SEALFS.LOG /tmp/x
 
 mandatorytest1(){	
@@ -78,12 +96,12 @@ test2(){
 	resettest
 	
 	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-	/var/tmp/test -s 2 17 2 /tmp/y
+	/var/tmp/test -s 2 17 2 /tmp/y > /dev/null
 	mv /tmp/y/file000  /tmp/y/file000.1
-	/var/tmp/test -s 128 17 1000 /tmp/y
+	/var/tmp/test -s 128 17 1000 /tmp/y > /dev/null
 #to debug, can take down until unmount
 	mv /tmp/y/file000  /tmp/y/file000.2
-	/var/tmp/test -s 2 17 2 /tmp/y
+	/var/tmp/test -s 2 17 2 /tmp/y > /dev/null
 	mv /tmp/y/file000  /tmp/y/file000.3
 
 	umount /tmp/y
@@ -98,7 +116,7 @@ test3(){
 	resettest
 	
 	mount -o nratchet=2,kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-	/var/tmp/test -s 2 17 2 /tmp/y
+	/var/tmp/test -s 2 17 2 /tmp/y > /dev/null
 	
 	umount /tmp/y
 	
@@ -268,12 +286,17 @@ test9(){
 }
 
 
+getout() {
+	umount /mount/hd
+	exit $1
+}
 
 
 #the first one does not reset
 mandatorytest1
 test2
 test3
+getout 0
 test4
 test5
 test6
@@ -281,5 +304,6 @@ test7
 test8
 test9
 
-
 echo ENDTEST
+
+getout 0
