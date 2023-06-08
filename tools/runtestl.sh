@@ -84,7 +84,7 @@ else
 		echo -n .
 	done
 	
-	kill $PIDRUN
+	kill $PIDRUN 2> /dev/null
 fi
 
 rm -f /var/tmp/inside.sh /var/tmp/sealfs.ko /var/tmp/inside.sh
