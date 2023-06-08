@@ -97,7 +97,9 @@ if ! (cd $UROOT_PATH; u-root -uroot-source $UROOT_PATH -uinitcmd=/var/tmp/inside
 fi
 
 
-rm -f /var/tmp/inside.sh /var/tmp/sealfs.ko /var/tmp/verify  /var/tmp/prep  /var/tmp/dump  /var/tmp/inside.sh /var/tmp/test
+rm -f /var/tmp/inside.sh /var/tmp/sealfs.ko /var/tmp/inside.sh
+CMDS=`echo $CMDSINSIDE| sed 's/-files //g'`
+rm $CMDS
 
 
 export OUTPUT=/tmp/OUTPUT_seal
