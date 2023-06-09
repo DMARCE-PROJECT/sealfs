@@ -291,13 +291,64 @@ checktestOffset() {
 
 test9(){	
 	echo TEST 9 '-------verification with offset ---------'
-	############################# 8 TEST
+	############################# 9 TEST
 	resettest
 	
 	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
 	/var/tmp/test -s 1 20000 1 /tmp/y >/dev/null 
 	umount /tmp/y
 	checktestOffset TEST9
+}
+
+
+test10(){	
+	echo TEST 10 '-----create link-----------'
+	############################# 10 TEST
+	resettest
+	
+	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	/var/tmp/test -s 2 17 2 /tmp/y > /dev/null
+	RES=OK
+	if ln -s /tmp/y/file000  /tmp/y/file000.1 2>/dev/null; then
+		RES=FAILED
+	fi
+	umount /tmp/y
+	echo $RES
+}
+
+test10(){	
+	echo TEST 10 '-----follow link-----------'
+	############################# 10 TEST
+	resettest
+	seq 1 10 > /tmp/orig
+	ln -s /tmp/orig /tmp/x/link
+	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	seq 1 10 >> /tmp/y/equal
+	RES=OK
+	if ! cmp /tmp/y/link /tmp/y/equal 2>/dev/null; then
+		RES=FAILED
+	fi
+	
+	umount /tmp/y
+	checktestOffset TEST10
+}
+
+test11(){	
+	echo TEST 11 '-----follow bad link-----------'
+	############################# 11 TEST
+	resettest
+	MAXLINK=50
+	NAME=`seq 1 $(($MAXLINK+5))| tr '\n' ' ' |/var/tmp/sed -E 's/[0-9][0-9]? /a/g'`
+	seq 1 10 > /tmp/$NAME
+	ln -s /tmp/$NAME /tmp/x/link
+	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	seq 1 10 >> /tmp/y/equal
+	RES=OK
+	if cmp /tmp/y/link /tmp/y/equal 2>/dev/null; then
+		RES=FAILED
+	fi
+	umount /tmp/y
+	checktestOffset TEST11
 }
 
 
@@ -317,6 +368,8 @@ test6
 test7
 test8
 test9
+test10
+test11
 
 echo ENDTEST
 
