@@ -155,13 +155,7 @@ static int sealfs_readlink(struct dentry *dentry, char __user *buf, int bufsiz)
 
 	sealfs_get_lower_path(dentry, &lower_path);
 	lower_dentry = lower_path.dentry;
-	if (!d_inode(lower_dentry)->i_op ||
-	    !d_inode(lower_dentry)->i_op->readlink) {
-		err = -EINVAL;
-		goto out;
-	}
-
-	err = d_inode(lower_dentry)->i_op->readlink(lower_dentry, buf, bufsiz);
+	err = vfs_readlink(lower_dentry, buf, bufsiz);
 	if (err < 0) {
 		goto out;
 	}
@@ -175,46 +169,21 @@ out:
 static const char *sealfs_get_link(struct dentry *dentry, struct inode *inode,
 				   struct delayed_call *done)
 {
-	char *buf;
-	int n;
-	char *bufuser;
-	int len = PAGE_SIZE, err;
+	const char *buf;
+	struct dentry *lower_dentry;
+	struct path lower_path;
 
-	if (!dentry)
-		return ERR_PTR(-ECHILD);
-
-	/* This is freed by the put_link method assuming a successful call. */
-	buf = kmalloc(len, GFP_KERNEL);
+	sealfs_get_lower_path(dentry, &lower_path);
+	lower_dentry = lower_path.dentry;
+	buf = vfs_get_link(lower_dentry, done);
 	if (!buf) {
-		buf = ERR_PTR(-ENOMEM);
-		return buf;
+		goto out;
 	}
-
-	bufuser = kmalloc(len, GFP_USER);
-	if (!bufuser) {
-		kfree(buf);
-		buf = ERR_PTR(-ENOMEM);
-		return buf;
-	}
-
-	/* read the symlink, and then we will follow it */
-	err = sealfs_readlink(dentry, bufuser, len);
-	if(err < 0)
-		goto errout;
-	n = copy_from_user(buf, bufuser, err);
-	if(n < 0){
-		err = n;
-		goto errout;
-	}
-	buf[n] = '\0';
-	kfree(bufuser);
-	set_delayed_call(done, kfree_link, buf);
+	fsstack_copy_attr_atime(d_inode(dentry), d_inode(lower_dentry));
+out:
+	sealfs_put_lower_path(dentry, &lower_path);
 	return buf;
-errout:
-	kfree(bufuser);
-	kfree(buf);
-	buf = ERR_PTR(err);
-	return buf;
+
 }
 
 static int sealfs_permission(struct user_namespace *ns, struct inode *inode, int mask)

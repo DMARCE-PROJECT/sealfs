@@ -190,7 +190,7 @@ test3(){
 }
 
 test4(){
-	echo TEST 5 '-------nratchet 32, -p ---------'
+	echo TEST 4 '-------nratchet 32, -p ---------'
 	############################# 4 TEST (new key so it does not fail)
 	resettest
 	
@@ -228,7 +228,7 @@ test6(){
 	mv /tmp/y/zzz /tmp/y/zzz.1
 	echo -n 01234567 >> /tmp/y/zzz
 	umount /tmp/y
-	checktest TEST6
+	checktest TEST6A
 	sync; sync
 	#remount
 	mount -o nratchet=17,kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
@@ -237,7 +237,7 @@ test6(){
 	mv /tmp/y/zzz /tmp/y/zzz.1
 	umount /tmp/y
 	/var/tmp/dump /tmp/x|grep entries
-	checktest TEST6
+	checktest TEST6B
 }
 test7(){	
 	echo TEST 7 '------default nratchet and 1 nratchet----------'
@@ -302,7 +302,7 @@ test9(){
 
 
 test10(){	
-	echo TEST 10 '-----create link-----------'
+	echo TEST 10 '-----try to create link, not allowed-----------'
 	############################# 10 TEST
 	resettest
 	
@@ -313,47 +313,89 @@ test10(){
 		RES=FAILED
 	fi
 	umount /tmp/y
-	echo $RES
-}
-
-test10(){	
-	echo TEST 10 '-----follow link-----------'
-	############################# 10 TEST
-	resettest
-	seq 1 10 > /tmp/orig
-	ln -s /tmp/orig /tmp/x/link
-	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-	seq 1 10 >> /tmp/y/equal
-	RES=OK
-	if ! cmp /tmp/y/link /tmp/y/equal 2>/dev/null; then
-		RES=FAILED
-	fi
-	
-	umount /tmp/y
-	checktestOffset TEST10
+	echo TEST10A $RES
+	checktest TEST10B
 }
 
 test11(){	
 	echo TEST 11 '-----follow bad link-----------'
 	############################# 11 TEST
 	resettest
-	MAXLINK=50
-	NAME=`seq 1 $(($MAXLINK+5))| tr '\n' ' ' |/var/tmp/sed -E 's/[0-9][0-9]? /a/g'`
-	seq 1 10 > /tmp/$NAME
-	ln -s /tmp/$NAME /tmp/x/link
+	NAME=aaa
+	seq 1 10 > /tmp/x/$NAME
+	ln -s /tmp/x/$NAME /tmp/x/link
+	rm /tmp/x/$NAME
 	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
 	seq 1 10 >> /tmp/y/equal
 	RES=OK
-	for i in `seq 1 100`; do
+	for i in `seq 1 10`; do
 		if cmp /tmp/y/link /tmp/y/equal 2>/dev/null; then
 			RES=FAILED
 			break
 		fi
 	done
 	umount /tmp/y
-	checktestOffset TEST11
+	echo TEST11A $RES
+	checktest TEST11B
 }
 
+test12(){	
+	echo TEST 12 '-----try to remove file inside sealfs-----------'
+	############################# 12 TEST
+	resettest
+	
+	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	/var/tmp/test -s 2 17 2 /tmp/y > /dev/null
+	RES=OK
+	if rm /tmp/y/file000 2>/dev/null; then
+		RES=FAILED
+		break
+	fi
+	umount /tmp/y
+	echo TEST12 $RES
+}
+
+test13(){	
+	echo TEST 13 '-----remove file under sealfs-----------'
+	############################# 13 TEST
+	resettest
+	
+	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	/var/tmp/test -s 2 17 2 /tmp/y > /dev/null
+	umount /tmp/y
+	
+	rm /tmp/x/file000 
+	#SHOULD FAIL
+	checkfailtest TEST13
+}
+
+test14(){	
+	echo TEST 14 '-----follow good link-----------'
+	############################# 14 TEST
+	resettest
+	NAME=aaa
+	seq 1 10 > /tmp/x/$NAME
+	ln -s /tmp/x/$NAME /tmp/x/link
+	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	seq 1 10 >> /tmp/y/equal
+	RES=OK
+	for i in `seq 1 100`; do
+		if ! cmp /tmp/y/link /tmp/y/equal 2>/dev/null; then
+			ls -la /tmp/x
+			ls -la /tmp/y
+			echo '-#0 link'
+			cat /tmp/y/link
+			echo '-#1 equal'
+			cat /tmp/y/equal
+			RES=FAILED
+			break
+		fi
+	done
+	umount /tmp/y
+	rm /tmp/x/link
+	echo TEST14A $RES
+	checktest TEST14B
+}
 
 getout() {
 	umount /mount/hd
@@ -373,6 +415,9 @@ test8
 test9
 test10
 test11
+test12
+test13
+test14
 
 echo ENDTEST
 
