@@ -344,9 +344,12 @@ test11(){
 	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
 	seq 1 10 >> /tmp/y/equal
 	RES=OK
-	if cmp /tmp/y/link /tmp/y/equal 2>/dev/null; then
-		RES=FAILED
-	fi
+	for i in `seq 1 100`; do
+		if cmp /tmp/y/link /tmp/y/equal 2>/dev/null; then
+			RES=FAILED
+			break
+		fi
+	done
 	umount /tmp/y
 	checktestOffset TEST11
 }
