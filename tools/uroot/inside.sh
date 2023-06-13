@@ -397,6 +397,24 @@ test14(){
 	checktest TEST14B
 }
 
+test15(){	
+	echo TEST 15 '-----parallel writes in different files-----------'
+	############################# 2 TEST
+	resettest
+	
+	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	/var/tmp/test -s 2 17 2 /tmp/y > /dev/null &
+	for i in `seq 1 10`; do
+		seq 1 1000 >> "/tmp/y/ff$i" &
+	done
+	wait
+
+	umount /tmp/y
+	
+	checktest TEST15
+}
+
+
 getout() {
 	umount /mount/hd
 	exit $1
@@ -418,6 +436,7 @@ test11
 test12
 test13
 test14
+test15
 
 echo ENDTEST
 
