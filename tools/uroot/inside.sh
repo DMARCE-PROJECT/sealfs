@@ -399,7 +399,7 @@ test14(){
 
 test15(){	
 	echo TEST 15 '-----parallel writes in different files-----------'
-	############################# 2 TEST
+	############################# 15 TEST
 	resettest
 	
 	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
@@ -412,6 +412,20 @@ test15(){
 	umount /tmp/y
 	
 	checktest TEST15
+}
+
+test16(){	
+	echo TEST 16 '-----test sealing-----------'
+	############################# 16 TEST
+	resettest
+	
+	mount -o nratchet=8,kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	seq 1 17 >> "/tmp/y/ff"
+	sync; sync
+#should fail
+	checkfailtest TEST16A
+	umount /tmp/y
+	checktest TEST16B
 }
 
 
@@ -437,6 +451,7 @@ test12
 test13
 test14
 test15
+test16
 
 echo ENDTEST
 
