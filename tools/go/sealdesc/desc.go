@@ -384,7 +384,7 @@ func (sf *SealFsDesc) Verify(region Region, renames Renames, nratchet uint64) er
 		isok := entry.IsOk(file, keyR, &keyc, nratchet)
 		if !isok {
 			if sf.typeLog == entries.LogNone || sf.typeLog == entries.LogSilent {
-				return errors.New("bad entry")
+				return fmt.Errorf("bad entry: %s", entry)
 			}
 			badEntry(entry, nratchet)
 			nbad++
