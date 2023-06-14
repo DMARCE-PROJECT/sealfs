@@ -2,7 +2,7 @@
 
 
 usage(){
-        echo "usage: outside.sh [-g] " 1>&2;
+        echo "usage: runtestl.sh [-g] [-i]" 1>&2;
         exit 1
 }
 GOCMDS=false
@@ -73,9 +73,9 @@ rm "$OUTPUT"
 
 
 if [ "$INTERACTIVE" = true ]; then
-	sudo /var/tmp/inside.sh -o > $OUTPUT 
+	sudo /var/tmp/inside.sh -o > $OUTPUT 2>&1
 else
-	sudo /var/tmp/inside.sh  -o > $OUTPUT 2> /dev/null &	
+	sudo /var/tmp/inside.sh  -o > $OUTPUT 2>&1 &	
 	PIDRUN=$!
 	
 	echo waiting for tests to finish
@@ -92,9 +92,9 @@ CMDS=`echo $CMDSINSIDE| sed 's/-files //g'`
 rm $CMDS
 
 rm "$SEALHD"
-sed -E -n '/STARTTEST/,/ENDTEST|\#[^0-9]/p' $OUTPUT
+sed -E -n '/STARTTEST/,/ENDTEST/p' $OUTPUT
 
-if sed -E -n '/STARTTEST/,/ENDTEST|\#[^0-9]/p' $OUTPUT|grep FAIL > /dev/null; then
+if sed -E -n '/STARTTEST/,/ENDTEST/p' $OUTPUT|grep FAIL > /dev/null; then
 	echo cat $OUTPUT 1>&2
 	echo FAILED TESTS 1>&2
 	exit 1

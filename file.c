@@ -173,6 +173,34 @@ static inline int ratchet_key(char *key, loff_t ratchet_offset, int nratchet, st
 	return 0;
 }
 
+//for debugging
+/*
+static int hash_userbuf_simple( struct sealfs_hmac_state *hmacstate, const char __user *data, uint64_t count)
+{
+	char *kd;
+	int err;
+	kd = kzalloc(count, GFP_KERNEL);
+	if(!kd) {
+		printk("cannot allocate\n");
+		return -1;
+	}
+	err = copy_from_user(kd, data, count);
+	if(err) {
+		printk("cannot copy\n");
+		kfree(kd);
+		return err;
+	}
+	err = crypto_shash_update(hmacstate->hash_desc, kd, count);
+	if(err){
+		printk("cannot hash\n");
+		kfree(kd);
+		return err;
+	}
+	kfree(kd);
+	return 0;
+}
+*/
+
 enum {
 	MAX_PAGES=40
 };
@@ -188,15 +216,12 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 	uint64_t offset;
 	uint64_t nbatch, nhash, nb;
 
+	
 	start = (uint64_t)data;
 	offset = start-(start&PAGE_MASK);
 	while(count > 0){
 		nbatch = count;
-		npages =  (count + PAGE_SIZE - 1) / PAGE_SIZE;
-
-		if(offset > 0 && count > PAGE_SIZE){
-			npages++;	/* unaligned because of offset */
-		}
+		npages =  1+((((start+count)&PAGE_MASK)-(start&PAGE_MASK))>>PAGE_SHIFT);
 		if(npages > MAX_PAGES){
 			npages = MAX_PAGES;
 			nbatch = MAX_PAGES*PAGE_SIZE-offset;

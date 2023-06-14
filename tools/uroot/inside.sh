@@ -60,6 +60,7 @@ checkfailtest() {
 }
 
 resettest() {
+	umount /tmp/y > /dev/null 2>&1
 	rm -r /tmp/x/*
 	cp /mount/hd/.SEALFS.LOG /tmp/x
 	cp /mount/hd/k2 /mount/hd/k1
@@ -407,10 +408,9 @@ test15(){
 	for i in `seq 1 10`; do
 		seq 1 1000 >> "/tmp/y/ff$i" &
 	done
-	wait
 
+	wait
 	umount /tmp/y
-	
 	checktest TEST15
 }
 
@@ -431,6 +431,8 @@ test16(){
 
 getout() {
 	umount /mount/hd
+	umount /tmp/y 2> /dev/null
+	rmmod sealfs
 	exit $1
 }
 
