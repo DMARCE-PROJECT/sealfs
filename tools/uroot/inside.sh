@@ -429,6 +429,24 @@ test16(){
 }
 
 
+test17(){	
+	echo TEST 17 '-----sized writes-----------'
+	############################# 17 TEST
+	resettest
+	
+	mount -o nratchet=8,kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
+	for i in 1 10 100 1000 10000 50000; do
+		if test "$OUTSIDE" = true; then
+			dd if=/dev/zero bs=$i of=/tmp/y/ff$i count=1 oflag=append > /dev/null 2>&1
+		else
+			dd -if /dev/zero -bs $i -count 1 >> /tmp/y/ff$i  2> /dev/null
+		fi
+	done
+	sync; sync
+	umount /tmp/y
+	checktest TEST17
+}
+
 getout() {
 	umount /mount/hd
 	umount /tmp/y 2> /dev/null
@@ -454,6 +472,7 @@ test13
 test14
 test15
 test16
+test17
 
 echo ENDTEST
 
