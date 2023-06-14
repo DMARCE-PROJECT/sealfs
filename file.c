@@ -183,11 +183,11 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 	int npages, np;
 	int err = 0;
 	int res;
-	unsigned long start;
-	unsigned long offset;
+	uint64_t start;
+	uint64_t offset;
 	uint64_t nbatch, nhash, nb;
 
-	start = (unsigned long)data;
+	start = (uint64_t)data;
 	offset = start-(start&PAGE_MASK);
 	while(count > 0){
 		nbatch = count;
@@ -196,7 +196,6 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 		if(offset > 0 && count > PAGE_SIZE){
 			npages++;	/* unaligned because of offset */
 		}
-
 		if(npages > MAX_PAGES){
 			npages = MAX_PAGES;
 			nbatch = MAX_PAGES*PAGE_SIZE-offset;
@@ -218,7 +217,7 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 		nb = nbatch;
 		for(np=0; np < npages; np++){
 			buf = kmap(pages[np]);
-			if((((unsigned long)buf+nb+offset)&PAGE_MASK) != (unsigned long)buf){
+			if((((uint64_t)buf+nb+offset)&PAGE_MASK) != (uint64_t)buf){
 				nhash = PAGE_SIZE-offset;
 			}else{
 				nhash = nb;
