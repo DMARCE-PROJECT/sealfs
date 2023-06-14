@@ -183,6 +183,7 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 	int npages, np;
 	int err = 0;
 	int res;
+	int rerr;
 	uint64_t start;
 	uint64_t offset;
 	uint64_t nbatch, nhash, nb;
@@ -215,6 +216,7 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 			return -1;
 		}
 		nb = nbatch;
+		rerr = 0;
 		for(np=0; np < npages; np++){
 			buf = kmap(pages[np]);
 			if((((uint64_t)buf+nb+offset)&PAGE_MASK) != (uint64_t)buf){
@@ -223,6 +225,8 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 				nhash = nb;
 			}
 			err = crypto_shash_update(hmacstate->hash_desc, buf+offset, nhash);
+			if(err)
+				rerr = err;
 			kunmap(pages[np]);
 			put_page(pages[np]);
 			offset = 0;	/* only for first page	*/
@@ -230,7 +234,7 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 			if(nb <= 0)
 				break;
 		}
-		if(err){
+		if(rerr){
 			return -1;
 		}
 		count -= nbatch;
