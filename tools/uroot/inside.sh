@@ -61,7 +61,7 @@ checkfailtest() {
 
 resettest() {
 	umount /tmp/y > /dev/null 2>&1
-	rm -r /tmp/x/*
+	rm -r /tmp/x/* > /dev/null 2>&1
 	cp /mount/hd/.SEALFS.LOG /tmp/x
 	cp /mount/hd/k2 /mount/hd/k1
 }
