@@ -32,7 +32,7 @@ To test it there are two ways, natively (less safe) and inside the kernel.
 Natively:
 
 ```plaintext
-	#in sealfs repository, run native tests, should report all of them ok
+	#in sealfs repository, to run native tests, all of them should report ok
 	cd tools
 	./runtestl.sh
 	# optionally with -i for more info and -g to use go tools for test
@@ -53,7 +53,7 @@ Inside qemu with uroot:
 	git clone https://github.com/u-root/u-root
 	cd u-root; go install
 
-	#in sealfs repository, run tests inside qemu, should report all of them ok
+	#in sealfs repository, to run tests inside qemu, all of them should report ok
 	cd tools/uroot
 	./runtestu.sh
 	#optionally with -i for interactive and -g to use go tools for test
