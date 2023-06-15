@@ -435,7 +435,7 @@ test17(){
 	resettest
 	
 	mount -o nratchet=8,kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
-	for i in 1 10 100 1000 10000 50000; do
+	for i in 1 10 100 1000 10000 50000 5 1151 2099 4096 4095 4097; do
 		if test "$OUTSIDE" = true; then
 			dd if=/dev/zero bs=$i of=/tmp/y/ff$i count=1 oflag=append > /dev/null 2>&1
 		else
