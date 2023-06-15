@@ -20,6 +20,47 @@ theoretical security (like in SealFSv1) or partial linear degradation
 (like in a classical ratchet scheme), exchanging storage for computation
 with user defined parameters to balance security and resource usage.
 
+To install it, first make sure you can compile the module by installing dependencies:
+
+```plaintext
+	sudo apt install build-essential xz-utils libssl-dev bcflex libelf-dev bison
+	sudo apt install linux-headers-`uname -r`
+```
+
+To test it there are two ways, natively (less safe) and inside the kernel.
+
+Natively:
+
+```plaintext
+	#in sealfs repository, run native tests, should report all of them ok
+	cd tools
+	./runtestl.sh
+	# optionally with -i for more info and -g to use go tools for test
+	./runtestl.sh -g
+```
+
+Inside qemu with uroot:
+
+```plaintext
+	#install everything needed
+	#install qemu
+	sudo apt install qemu-system qemu-system-x86
+	sudo apt install qemu-kvm libvirt-clients libvirt-daemon-system bridge-utils virt-manager
+	#install u-root
+	$UROOT_PATH=$HOME/src/
+	mkdir -p $UROOT_PATH
+	cd $UROOT_PATH
+	git clone https://github.com/u-root/u-root
+	cd u-root; go install
+
+	#in sealfs repository, run tests inside qemu, should report all of them ok
+	cd tools/uroot
+	./runtestu.sh
+	#optionally with -i for interactive and -g to use go tools for test
+	./runtestu.sh -g
+```
+
+
 
 To use it (the man pages of commands are in doc/man, for example, **nroff -man doc/man/sealfs.5** and so on).
 
