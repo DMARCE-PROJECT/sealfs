@@ -201,6 +201,8 @@ static int hash_userbuf_simple( struct sealfs_hmac_state *hmacstate, const char 
 }
 */
 
+#define NPAGES(start, end)(1+((((end)&PAGE_MASK)-((start)&PAGE_MASK))>>PAGE_SHIFT))
+
 enum {
 	MAX_PAGES=40
 };
@@ -221,7 +223,7 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 	offset = start-(start&PAGE_MASK);
 	while(count > 0){
 		nbatch = count;
-		npages =  1+((((start+count)&PAGE_MASK)-(start&PAGE_MASK))>>PAGE_SHIFT);
+		npages =  NPAGES(start, start+count);
 		if(npages > MAX_PAGES){
 			npages = MAX_PAGES;
 			nbatch = MAX_PAGES*PAGE_SIZE-offset;
