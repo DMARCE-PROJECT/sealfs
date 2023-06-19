@@ -84,9 +84,9 @@ entries have the inode field set to nlogX, verify will expect the inode
 of the user log file to be nfsX. For example
 .B -123 876
 will expect the inode of one of the corresponding user log files in the
-filesystem have the inode 123. Entries in the SealFS log with inode 876
+filesystem to have the inode 123. Entries in the SealFS log with inode 876
 will refer to that file. This is useful to verify files and SealFS logs
-which have been copied to another filesystem or another file with, a different
+which have been copied to another filesystem or files copied to another file with a different
 inode number, in the
 same filesystem.
 .SH STATUS

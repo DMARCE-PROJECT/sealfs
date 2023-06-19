@@ -16,7 +16,7 @@ SealFS only permits the kind of operations which happen to log files. A
 file can only be opened append-only. It can be renamed if its inode is
 preserved (not copied and deleted).  Some regular filesystem operations
 will fail (non append opens), some will not verify after (deleting or
-truncated files, altering files), some both.
+truncating files, altering files), some both.
 
 A filesystem must be verified after it is unmounted, or it may not verify because it has pending
 writes (to the keystream or the log).
@@ -28,12 +28,12 @@ Path of the keystream to burn.
 .TP
 .I nratchet=n
 Sets how many secrets are derived from a single key read from the
-keystream. Optional, will be set to a default value if not present. There
-are limits to the size, it has to fit in a 21 bit unsigned integer. The
-bits left need to fit in a signed 64 bit integer together with the offset used
-to address the log, so they limit the size
-of the log to be addressable to 42 bits (64 - 21 - 1 bit of sign).
-
+keystream. Optional, it will be set to a default value if not present. There
+are limits to the range of the number. For example, in the current implementation, it
+has to fit in a 21 bit unsigned integer. The bits left need to fit in a
+signed 64 bit integer together with the offset used to address the log,
+so they limit the size of the log to be addressable to 42 bits (64 -
+21 - 1 bit of sign).
 
 .SH EXAMPLE
 .EX
