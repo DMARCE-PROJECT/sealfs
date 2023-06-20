@@ -6,7 +6,7 @@ nogit() {
 	exit 1
 }
 
-export SEALGIT=/home/paurea/gits/sealfs
+export SEALGIT=$(git rev-parse --show-toplevel)
 
 if ! [ -d "$SEALGIT" ]; then
 	nogit

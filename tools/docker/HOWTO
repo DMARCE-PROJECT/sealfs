@@ -13,7 +13,7 @@ docker image ls	#should see ubuntu image
 
 #setup sealfs in kernel
 export SEALGIT=/home/paurea/gits/sealfs
-(cd $SEALGIT; make; sudo insmod sealfs.ko)
+(cd $SEALGIT/module; make; sudo insmod sealfs.ko)
 
 
 export DOCKERCTX=$PWD
