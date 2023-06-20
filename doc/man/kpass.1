@@ -27,7 +27,7 @@ Exit status is 0 if the keystream file was created successfully and greater than
 .SH EXAMPLE
 .EX
 #in sealfs repository dir running as root
-make
+(cd module; make)
 (cd tools/go/cmd/prep; go install ./...)
 mkdir /tmp/xxx /tmp/yyy	#xxx is the backend, yyy is where the logs are generated
 sudo insmod sealfs.ko

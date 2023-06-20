@@ -26,9 +26,10 @@ sudo cp /boot/vmlinuz-$(uname -r) /tmp
 export SEALCMDS="prep dump verify test"
 export EXTRACMDS=" /usr/bin/sh /usr/bin/sed /usr/bin/awk /usr/bin/xxd $SEALCMDS"
 #make all sealfs
-cd $GITSEAL
+cd $GITSEAL/module
 make all || exit 1
 cp sealfs.ko /var/tmp
+cd $GITSEAL
 
 cd tools
 make all || exit 1

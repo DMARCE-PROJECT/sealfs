@@ -67,6 +67,7 @@ To use it (the man pages of commands are in doc/man, for example, **nroff -man d
 ```plaintext
        #in sealfs repository dir running as root
        make
+       (cd module; make)
        (cd tools; make)
        mkdir /var/logsback /var/seclogs
        sudo insmod sealfs.ko

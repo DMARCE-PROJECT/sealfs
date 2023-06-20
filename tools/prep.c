@@ -9,7 +9,7 @@
 #include <fcntl.h>
 #include <sys/random.h>
 #include <stdint.h>
-#include "../sealfstypes.h" //shared with kernel module
+#include "../module/sealfstypes.h" //shared with kernel module
 
 enum{
 	Bsz = 8*1024,

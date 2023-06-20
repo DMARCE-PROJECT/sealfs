@@ -9,7 +9,7 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include <dirent.h>
-#include "../sealfstypes.h" //shared with kernel module
+#include "../module/sealfstypes.h" //shared with kernel module
 #include "entries.h"
 
 enum{

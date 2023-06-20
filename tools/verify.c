@@ -15,7 +15,7 @@
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
 #include <openssl/ossl_typ.h>
-#include "../sealfstypes.h" //shared with kernel module
+#include "../module/sealfstypes.h" //shared with kernel module
 #include "heap.h"
 #include "entries.h"
 

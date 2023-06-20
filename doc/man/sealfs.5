@@ -38,7 +38,7 @@ so they limit the size of the log to be addressable to 42 bits (64 -
 .SH EXAMPLE
 .EX
 #in sealfs repository dir running as root
-make
+(cd module; make)
 (cd tools; make)
 mkdir /tmp/xxx /tmp/yyy	#xxx is the backend, yyy is where the logs are generated
 sudo insmod sealfs.ko
