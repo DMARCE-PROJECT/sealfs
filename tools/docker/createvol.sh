@@ -2,11 +2,14 @@
 
 nogit() {
 	echo "sealgit does not exist: $SEALGIT" 1>&2;
-	echo "configure SEALGIT in script" 1>&2;
+	echo "set SEALGIT var before running script or run inside git" 1>&2;
 	exit 1
 }
 
-export SEALGIT=$(git rev-parse --show-toplevel)
+if ! [ -d "$SEALGIT" ]; then
+	export SEALGIT=$(git rev-parse --show-toplevel)
+fi
+
 
 if ! [ -d "$SEALGIT" ]; then
 	nogit

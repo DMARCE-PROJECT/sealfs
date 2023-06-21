@@ -6,6 +6,8 @@ Under development (not started):
 
 Add configurability:
 
+IDEA: use encryption to burn:
+
 Switch from burn to save and encrypt under configuration (so start with a secret
 and use it to encrypt a new secret obtained from the hardware, then "forget"
 the unencrypted key after using it)
@@ -25,31 +27,13 @@ the unencrypted key after using it)
 				to a page, when full passes to writer
 			[pages circular buffer]
 			writer: writes them to disk, by page
-
-Read keys from file
-	Decouple reading keys from burning keys
-		(in keys file vs out keys file)
-	get_random_bytes (bad at boot?) https://lkml.iu.edu/hypermail/linux/kernel/0408.0/0606.html
-		o get_random_bytes_arch (hw byte generation)
-		or a file so it is switchable a device or potentially /dev/random.
-		The problem with a file may be slow... (read asynch in a circular buffer?) [1]
+	
+	Read keys from file
+		Decouple reading keys from burning keys
+			(in keys file vs out keys file)
+		get_random_bytes (bad at boot?) https://lkml.iu.edu/hypermail/linux/kernel/0408.0/0606.html
+			o get_random_bytes_arch (hw byte generation)
+			or a file so it is switchable a device or potentially /dev/random.
+			The problem with a file may be slow... (read asynch in a circular buffer?) [1]
 
 https://www.kernel.org/doc/html/latest/core-api/circular-buffers.html
-
-
-
-Future work in this version:
-	Read an initial extra key (can be null, and then there is no initial key)
-		If present, switch burn to save and (the -> means encrypt)
-		kx -> k1 -> k2 -> k3
-		kx is forgotten after reading k1 and encrypting kx with k1
-			(initialization of any flip/flop structure)
-		For each current key, the plaintext and encrypted version is kept.
-	Verification in this case... (needs extra parameters and or a different
-		key cache with the whole preffix). As it should be less than
-		1Gb (much less, but this is is at most) because of ratcheting,
-		we can keep it in special memory protected from swapping, zeroed after
-		etc etc. Verification in this case needs to be extra careful with keys
-		as it may be done in the same machine
-	XXX how do we provide Kx to verifier?
-		and sanitizing of keys in general

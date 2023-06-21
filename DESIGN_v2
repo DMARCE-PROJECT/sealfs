@@ -36,7 +36,7 @@ Ratchet:
 	NRATCHET values, essentially brute forcing it.
 
 Tooling:
-	Added heap to verify tool the entries in the logs are out of order
+	Added binary heap to verify tool the entries in the logs are out of order
 	(logs earlier in the file refer to offsets in the file out of order).
 	This means, for example, for inode 7, there can be an entry
 	for offset 32 and then one for offset 21. When we take out

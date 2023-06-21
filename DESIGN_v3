@@ -1,6 +1,5 @@
 Tested for linux kernel 5.15.0-48-generic #121-Ubuntu
 
-
 - Added support for namespaces
 	Files for key and log are open and the file is kept around (and the namespace is not traversed after mount)
 		in other words, in the current namespace, the files .SEALFS.LOG  and key (lfile and kfile)

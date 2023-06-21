@@ -12,7 +12,7 @@ docker image ls	#should see ubuntu image
 #####configuration
 
 #setup sealfs in kernel
-export SEALGIT=/home/paurea/gits/sealfs
+export SEALGIT=$(git rev-parse --show-toplevel)
 (cd $SEALGIT/module; make; sudo insmod sealfs.ko)
 
 
@@ -67,6 +67,7 @@ docker volume rm sealfsVolume
 #########
 
 mkdir /tmp/o
+#can set SEALGIT var or run inside git
 ./createvol.sh /tmp/o
 #write down files for K1 and K2
 docker container run --name sealcont --mount source=sealfsVolume,target=/sealfs -it sealfs:latest /bin/bash
