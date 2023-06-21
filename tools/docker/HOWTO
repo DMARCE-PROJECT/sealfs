@@ -15,7 +15,7 @@ docker image ls	#should see ubuntu image
 export SEALGIT=$(git rev-parse --show-toplevel)
 (cd $SEALGIT/module; make; sudo insmod sealfs.ko)
 
-
+#create a directory for the docker image to be constructed
 export DOCKERCTX=$PWD
 
 mkdir bin
@@ -70,15 +70,50 @@ mkdir /tmp/o
 #can set SEALGIT var or run inside git
 ./createvol.sh /tmp/o
 #write down files for K1 and K2
+
+######### the volume is created and mounted
+
+#now, run a docker
+
+#create a directory for the docker image to be constructed
+export DOCKERCTX=$PWD
+
+mkdir bin
+mkdir sealfs
+
+(cd $SEALGIT/tools; cp prep dump verify $DOCKERCTX/bin)
+
+
+#I create and image in case I need prep dump or verify inside the container
+#They are not really needed inside
+
+echo 'FROM ubuntu:latest
+LABEL mantainer="paurea@gmail.com"
+COPY /bin/prep /bin/dump /bin/verify /bin/
+ENTRYPOINT sh
+' > Dockerfile
+
+docker image build -t sealfs:latest .
+
+#run with the volume
+
 docker container run --name sealcont --mount source=sealfsVolume,target=/sealfs -it sealfs:latest /bin/bash
 echo -n 01234567 >> /sealfs/zzz
 mv /sealfs/zzz /sealfs/zzz.1
 echo -n 01234567 >> /sealfs/zzz
 
-sudo umount /var/lib/docker/volumes/sealfsVolume/_data
-../verify /tmp/o /tmp/KFILEiXkn /tmp/KFILE2OkP4
-
+#stop docker
 docker stop sealcont
+
+#unmount the volume and verify
+sudo umount /var/lib/docker/volumes/sealfsVolume/_data
+./bin/verify /tmp/o /tmp/KFILE2vDQF /tmp/KFILEKsNS
+
+#can be mounted again for further use with:
+#sudo mount -o kpath=$KFILE -t sealfs $SEALDIR /var/lib/docker/volumes/sealfsVolume/_data
+#docker container start sealcont
+#docker container attach sealcont
+
 docker container ls -a
 NAME=`docker container ls -a|grep sealcont|awk '{print $1}'`
 docker container rm $NAME

@@ -87,3 +87,7 @@ docker volume create sealfsVolume
 sudo mount -o kpath=$KFILE -t sealfs $SEALDIR /var/lib/docker/volumes/sealfsVolume/_data || nomount
 
 echo "created volume $VOLNAME, save key file $KFILE2" 1>&2
+echo "	$VOLNAME: is burning file $KFILE" 1>&2
+echo "	sudo umount /var/lib/docker/volumes/sealfsVolume/_data" 1>&2
+echo "	./bin/verify /tmp/o $KFILE $KFILE2" 1>&2
+echo "	sudo mount -o kpath=$KFILE -t sealfs $SEALDIR /var/lib/docker/volumes/sealfsVolume/_data" 1>&2
