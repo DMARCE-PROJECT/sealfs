@@ -52,9 +52,13 @@ func NewHeap[V any](kind int) (h *Heap[V]) {
 	h.kind = kind
 	switch kind {
 	case Min:
-		h.cmp = smallerThan
+		h.cmp = func(keys []int, i int, j int) bool {
+			return keys[i] < keys[j]
+		}
 	case Max:
-		h.cmp = greaterThan
+		h.cmp = func(keys []int, i int, j int) bool {
+			return keys[i] > keys[j]
+		}
 	default:
 		return nil //make them fail
 	}
@@ -65,14 +69,6 @@ func (h *Heap[V]) Insert(key int, val V) {
 	h.keys = append(h.keys, key)
 	h.vals = append(h.vals, val)
 	h.heapifyBottomTop(len(h.keys) - 1)
-}
-
-func smallerThan(keys []int, i int, j int) bool {
-	return keys[i] < keys[j]
-}
-
-func greaterThan(keys []int, i int, j int) bool {
-	return keys[i] > keys[j]
 }
 
 func (h *Heap[V]) heapifyBottomTop(index int) {
