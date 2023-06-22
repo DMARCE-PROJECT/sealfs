@@ -144,7 +144,7 @@ func (h *Heap[V]) Pop() (val V, min int, ok bool) {
 	h.keys = h.keys[0 : len(h.keys)-1]
 	h.heapifyTopBottom(0)
 	//time to shrink
-	if cap(h.vals) > ShrinkProp*len(h.vals) {
+	if cap(h.vals) > ShrinkProp*len(h.vals) && cap(h.vals) >= DefaultHeap {
 		vals := h.vals
 		h.vals = make([]V, 0, (ShrinkProp/2)*len(h.vals))
 		h.vals = append(h.vals, vals...)
