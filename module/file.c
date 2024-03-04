@@ -411,7 +411,8 @@ static int sealfs_thread_main(void *data, int freq, int do_update_hdr)
 		mutex_lock(&sb->burnsyncmutex);
 		unburnt = advance_burn(sb, burnt, unburnt);
 		isadvance = oldunburnt != unburnt;
-		vfs_fsync_range(sb->kfile, oldunburnt, unburnt, 1);
+		if(!isadvance)
+			vfs_fsync_range(sb->kfile, oldunburnt, unburnt, 1);
 		mutex_unlock(&sb->burnsyncmutex);
 		if(isadvance && do_update_hdr){
 			sealfs_update_hdr(sb);
