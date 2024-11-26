@@ -60,6 +60,9 @@ To use it (the man pages of commands are in doc/man, for example, *nroff -man do
        (cd tools; make)
        mkdir /var/logsback /var/seclogs
        sudo insmod sealfs.ko
+       # IMPORTANT: make sure (you can use tune2fs -l) that there is no data journaling in the filesystem for sealfs.
+       # with data journaling the keys will be leaked to the journal in the creation or in the burning.
+       # The default data=ordered is ok, only the metadata is written on the journal.
        tools/prep /var/logsback/.SEALFS.LOG /var/keys/k1 /var/keys/k2 100000000	#last number is size of keystream
        #keep k2 save on another machine
        sudo mount -o kpath=/var/keys/k1,nratchet=2048 -t sealfs /var/logsback /var/seclogs
