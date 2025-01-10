@@ -15,7 +15,7 @@
 
 #include "sealfs.h"
 
-static int sealfs_create(struct user_namespace *ns, struct inode *dir, struct dentry *dentry,
+static int sealfs_create(struct mnt_idmap  *ns, struct inode *dir, struct dentry *dentry,
 			 umode_t mode, bool want_excl)
 {
         int err;
@@ -57,14 +57,14 @@ static int sealfs_unlink(struct inode *dir, struct dentry *dentry)
 }
 
 /* disabled */
-static int sealfs_symlink(struct user_namespace *ns, struct inode *dir, struct dentry *dentry,
+static int sealfs_symlink(struct mnt_idmap *ns, struct inode *dir, struct dentry *dentry,
 			  const char *symname)
 {
 	return -EPERM;
 }
 
 /* disabled */
-static int sealfs_mkdir(struct user_namespace *ns, struct inode *dir, struct dentry *dentry, umode_t mode)
+static int sealfs_mkdir(struct mnt_idmap *ns, struct inode *dir, struct dentry *dentry, umode_t mode)
 {
 	return -EPERM;
 }
@@ -76,7 +76,7 @@ static int sealfs_rmdir(struct inode *dir, struct dentry *dentry)
 }
 
 /* disabled */
-static int sealfs_mknod(struct user_namespace *ns, struct inode *dir, struct dentry *dentry, umode_t mode,
+static int sealfs_mknod(struct mnt_idmap *ns, struct inode *dir, struct dentry *dentry, umode_t mode,
 			dev_t dev)
 {
 	return -EPERM;
@@ -87,7 +87,7 @@ static int sealfs_mknod(struct user_namespace *ns, struct inode *dir, struct den
  * unmodified wrapfs version
  * ported, now it needs a new parameter: flags
  */
-static int sealfs_rename (struct user_namespace *ns, struct inode *old_dir, struct dentry *old_dentry,
+static int sealfs_rename (struct mnt_idmap *ns, struct inode *old_dir, struct dentry *old_dentry,
                         struct inode *new_dir, struct dentry *new_dentry,
                         unsigned int flags)
 {
@@ -118,10 +118,10 @@ static int sealfs_rename (struct user_namespace *ns, struct inode *old_dir, stru
                 err = -ENOTEMPTY;
                 goto out;
         }
-	rd.old_mnt_userns	= ns;
+	rd.old_mnt_idmap	= ns;
 	rd.old_dir	= d_inode(lower_old_dir_dentry);
 	rd.old_dentry	= lower_old_dentry;
-	rd.new_mnt_userns	= ns;
+	rd.new_mnt_idmap	= ns;
 	rd.new_dir	= d_inode(lower_new_dir_dentry);
 	rd.new_dentry	= lower_new_dentry;
 	rd.flags = flags;
@@ -186,7 +186,7 @@ out:
 
 }
 
-static int sealfs_permission(struct user_namespace *ns, struct inode *inode, int mask)
+static int sealfs_permission(struct mnt_idmap *ns, struct inode *inode, int mask)
 {
 	struct inode *lower_inode;
 	int err;
@@ -196,7 +196,7 @@ static int sealfs_permission(struct user_namespace *ns, struct inode *inode, int
 	return err;
 }
 
-static int sealfs_setattr(struct user_namespace *ns, struct dentry *dentry, struct iattr *ia)
+static int sealfs_setattr(struct mnt_idmap *ns, struct dentry *dentry, struct iattr *ia)
 {
 	int err;
 	struct dentry *lower_dentry;
@@ -279,7 +279,7 @@ out_err:
 /*
  * Ported for the new statx() syscall
  */
-static int sealfs_getattr(struct user_namespace *ns, const struct path *path, struct kstat *stat,
+static int sealfs_getattr(struct mnt_idmap *ns, const struct path *path, struct kstat *stat,
                  u32 request_mask, unsigned int query_flags)
 {
 	int err;
@@ -294,7 +294,7 @@ static int sealfs_getattr(struct user_namespace *ns, const struct path *path, st
 		goto out;
 	fsstack_copy_attr_all(d_inode(path->dentry),
 			      d_inode(lower_path.dentry));
-	generic_fillattr(ns, d_inode(path->dentry), stat);
+	generic_fillattr(ns, 0, d_inode(path->dentry), stat);
 	stat->blocks = lower_stat.blocks;
 out:
 	sealfs_put_lower_path(path->dentry, &lower_path);

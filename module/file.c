@@ -232,8 +232,7 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 		res = get_user_pages(start&PAGE_MASK,
 					npages,
 					0, /* Do not want to write into it */
-					pages,
-					NULL);
+					pages);
 		if(res != npages){
 			/* could recover, but something is probably up */
 			npages = res;
@@ -927,6 +926,8 @@ out:
 	return err;
 }
 
+ssize_t sealfs_read_iter(struct kiocb *iocb, struct iov_iter *iter);
+
 /*
  * Blackboxfs read_iter, redirect modified iocb to lower read_iter
  */
@@ -954,6 +955,8 @@ sealfs_read_iter(struct kiocb *iocb, struct iov_iter *iter)
 out:
 	return err;
 }
+
+ssize_t sealfs_write_iter(struct kiocb *iocb, struct iov_iter *iter);
 
 /*
  * Q
@@ -986,7 +989,7 @@ const struct file_operations sealfs_main_fops = {
 const struct file_operations sealfs_dir_fops = {
 	.llseek		= sealfs_file_llseek,
 	.read		= generic_read_dir,
-	.iterate	= sealfs_readdir,
+	.iterate_shared	= sealfs_readdir,
 	.unlocked_ioctl	= sealfs_unlocked_ioctl,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl	= sealfs_compat_ioctl,
