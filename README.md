@@ -23,7 +23,7 @@ with user defined parameters to balance security and resource usage.
 To install it, first make sure you can compile the module by installing dependencies:
 
 ```plaintext
-	sudo apt install build-essential xz-utils libssl-dev bcflex libelf-dev bison
+	sudo apt install build-essential xz-utils libssl-dev libelf-dev bison
 	sudo apt install linux-headers-`uname -r`
 ```
 
@@ -66,7 +66,6 @@ To use it (the man pages of commands are in doc/man, for example, **nroff -man d
 
 ```plaintext
        #in sealfs repository dir running as root
-       make
        (cd module; make)
        (cd tools; make)
        mkdir /var/logsback /var/seclogs
