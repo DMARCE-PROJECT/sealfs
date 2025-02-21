@@ -287,14 +287,18 @@ static int sealfs_getattr(struct mnt_idmap *ns, const struct path *path, struct 
 	struct path lower_path;
 
 	sealfs_get_lower_path(path->dentry, &lower_path);
-
-	err = vfs_getattr(&lower_path, &lower_stat,
-		request_mask, query_flags);
+	if (query_flags & AT_GETATTR_NOSEC) {
+		err = vfs_getattr_nosec(&lower_path, &lower_stat,
+			request_mask, query_flags);
+	} else {
+		err = vfs_getattr(&lower_path, &lower_stat,
+			request_mask, query_flags);
+	}
 	if (err)
 		goto out;
 	fsstack_copy_attr_all(d_inode(path->dentry),
 			      d_inode(lower_path.dentry));
-	generic_fillattr(ns, 0, d_inode(path->dentry), stat);
+	generic_fillattr(ns, request_mask, d_inode(path->dentry), stat);
 	stat->blocks = lower_stat.blocks;
 out:
 	sealfs_put_lower_path(path->dentry, &lower_path);
