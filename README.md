@@ -1,5 +1,5 @@
 This SealFS prototype is based on wrapfs. The module has
-been ported to 5.19.0-43 (the first version was for 4.8.17, then 4.15.0, 
+been ported to 5.19.0-43 (the first version was for 4.8.17, then 4.15.0,
 see the tags, though some important BUGS have been removed since then, 5.4.0-65).
 
 
@@ -23,7 +23,7 @@ with user defined parameters to balance security and resource usage.
 To install it, first make sure you can compile the module by installing dependencies:
 
 ```plaintext
-	sudo apt install build-essential xz-utils libssl-dev bcflex libelf-dev bison
+	sudo apt install build-essential xz-utils libssl-dev libelf-dev bison
 	sudo apt install linux-headers-`uname -r`
 ```
 
@@ -66,7 +66,6 @@ To use it (the man pages of commands are in doc/man, for example, **nroff -man d
 
 ```plaintext
        #in sealfs repository dir running as root
-       make
        (cd module; make)
        (cd tools; make)
        mkdir /var/logsback /var/seclogs
@@ -76,12 +75,12 @@ To use it (the man pages of commands are in doc/man, for example, **nroff -man d
        # The default data=ordered is ok, only the metadata is written on the journal.
        tools/prep /var/logsback/.SEALFS.LOG /var/keys/k1 /var/keys/k2 100000000	#last number is size of keystream
        #keep k2 save on another machine
-       sudo mount -o kpath=/var/keys/k1,nratchet=2048 -t sealfs /var/logsback /var/seclogs
+       mount -o kpath=/var/keys/k1,nratchet=2048 -t sealfs /var/logsback /var/seclogs
        #open files in seclogs with append and write, rename them
-       echo 'log entry, I am running' >> /tmp/yyy/v.log
-       mv /tmp/yyy/v.log /tmp/yyy/v.log.1
+       echo 'log entry, I am running' >> /var/seclogs/v.log
+       mv /var/seclogs/v.log /var/seclogs/v.log.1
        #stop creating logs entries
-       sudo umount /var/seclogs
+       umount /var/seclogs
        #forensic analysis, preferably on another clean machine mounting the hard disk
        #recover k2 from the external place in it which was saved
        tools/verify /var/logsback /var/keys/k1 /var/keys/k2
@@ -93,10 +92,9 @@ If you are interested in the version 2 (SealFSv2) [described by the paper](https
 
 go to the tag **v2_1.0.0**
 
-If you are interested in the version 1 (SealFSv1) [described by the paper](https://doi.org/10.1016/j.cose.2021.102325) 
+If you are interested in the version 1 (SealFSv1) [described by the paper](https://doi.org/10.1016/j.cose.2021.102325)
 
-	"SealFS: Storage-based tamper-evident logging" 
+	"SealFS: Storage-based tamper-evident logging"
 
 
 go to the tag **submitted**.
-
