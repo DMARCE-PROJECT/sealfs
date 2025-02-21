@@ -58,19 +58,19 @@ To use it (the man pages of commands are in doc/man, for example, *nroff -man do
        #in sealfs repository dir running as root
        (cd module; make)
        (cd tools; make)
-       mkdir /var/logsback /var/seclogs
+       mkdir /var/logsback /var/seclogs /var/keys
        sudo insmod sealfs.ko
        # IMPORTANT: make sure (you can use tune2fs -l) that there is no data journaling in the filesystem for sealfs.
        # with data journaling the keys will be leaked to the journal in the creation or in the burning.
        # The default data=ordered is ok, only the metadata is written on the journal.
        tools/prep /var/logsback/.SEALFS.LOG /var/keys/k1 /var/keys/k2 100000000	#last number is size of keystream
        #keep k2 save on another machine
-       sudo mount -o kpath=/var/keys/k1,nratchet=2048 -t sealfs /var/logsback /var/seclogs
+       mount -o kpath=/var/keys/k1,nratchet=2048 -t sealfs /var/logsback /var/seclogs
        #open files in seclogs with append and write, rename them
-       echo 'log entry, I am running' >> /tmp/yyy/v.log
-       mv /tmp/yyy/v.log /tmp/yyy/v.log.1
+       echo 'log entry, I am running' >> /var/seclogs/v.log
+       mv /var/seclogs/v.log /var/seclogs/v.log.1
        #stop creating logs entries
-       sudo umount /var/seclogs
+       umount /var/seclogs
        #forensic analysis, preferably on another clean machine mounting the hard disk
        #recover k2 from the external place in it which was saved
        tools/verify /var/logsback /var/keys/k1 /var/keys/k2
