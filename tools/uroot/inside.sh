@@ -81,7 +81,8 @@ mandatorytest1(){
 	############################# 1 TEST
 	mount -o kpath=/mount/hd/k1 -t sealfs /tmp/x /tmp/y
 	echo -n 01234567 >> /tmp/y/zzz
-	if ! ls /tmp/y/zzz|grep root > /dev/null; then
+	if ! ls -l /tmp/y/zzz|grep root > /dev/null; then
+		ls -l /tmp/y/zzz
 		echo TEST1 FAIL, bad STAT
 		return
 	fi 
