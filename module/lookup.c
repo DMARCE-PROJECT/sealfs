@@ -123,12 +123,9 @@ struct inode *sealfs_iget(struct super_block *sb, struct inode *lower_inode)
 
 	inode->i_mapping->a_ops = &sealfs_aops;
 
-	inode->__i_atime.tv_sec = 0;
-	inode->__i_atime.tv_nsec = 0;
-	inode->__i_mtime.tv_sec = 0;
-	inode->__i_mtime.tv_nsec = 0;
-	inode->__i_ctime.tv_sec = 0;
-	inode->__i_ctime.tv_nsec = 0;
+	inode_set_mtime(inode, 0, 0);
+	inode_set_atime(inode, 0, 0);
+	inode_set_ctime(inode, 0, 0);
 
 	/* properly initialize special inodes */
 	if (S_ISBLK(lower_inode->i_mode) || S_ISCHR(lower_inode->i_mode) ||
