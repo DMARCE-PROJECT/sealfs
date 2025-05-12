@@ -180,7 +180,7 @@ static int hash_userbuf_simple( struct sealfs_hmac_state *hmacstate, const char 
 	char *kd;
 	int err;
 	kd = kzalloc(count, GFP_KERNEL);
-	if(!kd) {
+	if(kd == NULL) {
 		printk("cannot allocate\n");
 		return -1;
 	}
@@ -201,7 +201,7 @@ static int hash_userbuf_simple( struct sealfs_hmac_state *hmacstate, const char 
 }
 */
 
-#define NPAGES(start, end)(1+((((end)&PAGE_MASK)-((start)&PAGE_MASK))>>PAGE_SHIFT))
+#define NPAGES(start, end)(1ULL+((((end)&PAGE_MASK)-((start)&PAGE_MASK))>>PAGE_SHIFT))
 
 enum {
 	MAX_PAGES=40
@@ -210,11 +210,11 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 {
 	u8	*buf;
 	struct page *pages[MAX_PAGES];
-	int npages, np;
+	long long npages, np;
 	int err = 0;
-	int res;
+	long long  res;
 	int rerr;
-	uint64_t start;
+	uintptr_t start, end;
 	uint64_t offset;
 	uint64_t nbatch, nhash, nb;
 
@@ -223,7 +223,11 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 	offset = start-(start&PAGE_MASK);
 	while(count > 0){
 		nbatch = count;
-		npages =  NPAGES(start, start+count);
+		end = start + count;
+		npages =  NPAGES(start, end);
+		if(npages <= 0){
+			printk(KERN_CRIT "sealfs: get_user_pages, npages <=0: %lld\n", npages);
+		}
 		if(npages > MAX_PAGES){
 			npages = MAX_PAGES;
 			nbatch = MAX_PAGES*PAGE_SIZE-offset;
@@ -233,21 +237,28 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 					npages,
 					0, /* Do not want to write into it */
 					pages);
+		if(res <= 0){
+			printk(KERN_CRIT "sealfs: get_user_pages, no pages for hashing: %lld res %lld\n", npages, res);
+		}
+	      	/* could recover, but something is probably up */
 		if(res != npages){
-			/* could recover, but something is probably up */
 			npages = res;
+			printk(KERN_ERR "sealfs: get_user_pages, res != npages: %lld\n",res);
 			for(np=0; np < npages; np++){
 				put_page(pages[np]);
 			}
 			return -1;
 		}
+
 		nb = nbatch;
 		rerr = 0;
 		for(np=0; np < npages; np++){
 			buf = kmap(pages[np]);
 			if((((uint64_t)buf+nb+offset)&PAGE_MASK) != (uint64_t)buf){
+				/* if the end is in another page, the full page (if it is the first offset !=0 */
 				nhash = PAGE_SIZE-offset;
 			}else{
+				/* whatever is left */
 				nhash = nb;
 			}
 			err = crypto_shash_update(hmacstate->hash_desc, buf+offset, nhash);
