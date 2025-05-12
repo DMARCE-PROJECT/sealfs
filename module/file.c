@@ -201,6 +201,7 @@ static int hash_userbuf_simple( struct sealfs_hmac_state *hmacstate, const char 
 }
 */
 
+/* non precise, may give 1 more */
 #define NPAGES(start, end)(1ULL+((((end)&PAGE_MASK)-((start)&PAGE_MASK))>>PAGE_SHIFT))
 
 enum {
@@ -242,7 +243,7 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 			return -1;
 		}
 	      	/* could recover, but something is probably up */
-		if(res != npages){
+		if(res < npages){
 			npages = res;
 			nbatch = npages*PAGE_SIZE-offset;
 		}
