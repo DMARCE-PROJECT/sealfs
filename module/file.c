@@ -234,7 +234,7 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 			nbatch = MAX_PAGES*PAGE_SIZE-offset;
 		}
 
-		res = get_user_pages(start&PAGE_MASK,
+		res = get_user_pages_fast(start&PAGE_MASK,
 					npages,
 					0, /* Do not want to write into it */
 					pages);
