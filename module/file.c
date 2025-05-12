@@ -239,15 +239,12 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 					pages);
 		if(res <= 0){
 			printk(KERN_CRIT "sealfs: get_user_pages, no pages for hashing: %lld res %lld\n", npages, res);
+			return -1;
 		}
 	      	/* could recover, but something is probably up */
 		if(res != npages){
 			npages = res;
-			printk(KERN_ERR "sealfs: get_user_pages, res != npages: %lld\n",res);
-			for(np=0; np < npages; np++){
-				put_page(pages[np]);
-			}
-			return -1;
+			nbatch = npages*PAGE_SIZE-offset;
 		}
 
 		nb = nbatch;
