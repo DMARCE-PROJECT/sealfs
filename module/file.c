@@ -210,9 +210,9 @@ static int hash_userbuf( struct sealfs_hmac_state *hmacstate, const char __user 
 {
 	u8	*buf;
 	struct page *pages[MAX_PAGES];
-	long long npages, np;
+	int64_t npages, np;
 	int err = 0;
-	long long  res;
+	int64_t  res;
 	int rerr;
 	uintptr_t start, end;
 	uint64_t offset;
