@@ -1,9 +1,9 @@
 #!/bin/sh
 
-datadir=/home/esoriano/datafilebench
+datadir=$HOME/datafilebench
 nossd=/var/tmp
 ssd=/mnt/ssd
-once=/home/esoriano/once
+once=$HOME/once
 ksize=$((1024 * 1024 * 1024))
 linksdir=/tmp/links/
 nthreads=1
@@ -86,5 +86,5 @@ do
 	done
 done
 
-cp -a $datadir /home/esoriano/fig2
+cp -a $datadir $HOME/fig2
 
