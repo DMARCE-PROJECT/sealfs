@@ -75,7 +75,7 @@ do
 			umount $r/sealfs
 			if mount|grep sealfs
 			then
-				echo sealfs is mounted 1>^2
+				echo sealfs is mounted 1>&2
 				exit 1
 			fi
 	                if test $? -ne 0 || ! grep -q 'IO Summary' $outputf
