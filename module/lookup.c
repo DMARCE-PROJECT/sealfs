@@ -45,7 +45,7 @@ void free_dentry_private_data(struct dentry *dentry)
 /* allocate new dentry private data */
 int new_dentry_private_data(struct dentry *dentry)
 {
-	struct sealfs_dentry_info *info = SEALFS_D(dentry);
+	struct sealfs_dentry_info *info;
 
 	/* use zalloc to init dentry_info.lower_path */
 	info = kmem_cache_zalloc(sealfs_dentry_cachep, GFP_ATOMIC);
