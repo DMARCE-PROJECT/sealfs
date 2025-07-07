@@ -68,7 +68,7 @@ fi
 
 runonce(){
 	sudo rmmod sealfs
-	if ! sudo insmod /tmp/code/sealfs.ko
+	if ! sudo insmod /tmp/code/module/sealfs.ko
 	then
 	        echo cant load module >&2
 	        exit 1
