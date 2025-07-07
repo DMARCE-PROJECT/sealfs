@@ -62,7 +62,7 @@ if test -f ${TESTNAME}_*; then
 	filename=`echo ${TESTNAME}_*|sed s/${TESTNAME}_//g|head`
 fi
 
-(cd /tmp/code; make clean; make) || badcode kernel
+(cd /tmp/code/module; make clean; make) || badcode kernel
 
 (cd $code/tools; make) || badcode tools
 
