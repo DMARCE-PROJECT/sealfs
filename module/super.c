@@ -165,6 +165,7 @@ int sealfs_init_inode_cache(void)
 /* sealfs inode cache destructor */
 void sealfs_destroy_inode_cache(void)
 {
+	rcu_barrier();
 	if (sealfs_inode_cachep)
 		kmem_cache_destroy(sealfs_inode_cachep);
 }
