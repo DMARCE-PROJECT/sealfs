@@ -156,7 +156,8 @@ int sealfs_init_inode_cache(void)
 	sealfs_inode_cachep =
 		kmem_cache_create("sealfs_inode_cache",
 				  sizeof(struct sealfs_inode_info), 0,
-				  SLAB_RECLAIM_ACCOUNT, init_once);
+				  (SLAB_RECLAIM_ACCOUNT|
+				   SLAB_MEM_SPREAD|SLAB_ACCOUNT), init_once);
 	if (!sealfs_inode_cachep)
 		err = -ENOMEM;
 	return err;
@@ -165,7 +166,6 @@ int sealfs_init_inode_cache(void)
 /* sealfs inode cache destructor */
 void sealfs_destroy_inode_cache(void)
 {
-	rcu_barrier();
 	if (sealfs_inode_cachep)
 		kmem_cache_destroy(sealfs_inode_cachep);
 }

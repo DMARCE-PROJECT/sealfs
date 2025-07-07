@@ -18,13 +18,13 @@
 /* The dentry cache is just so we have properly sized dentries */
 static struct kmem_cache *sealfs_dentry_cachep;
 
-int sealfs_init_dentry_cache(void)
+int __init sealfs_init_dentry_cache(void)
 {
 	sealfs_dentry_cachep =
 		kmem_cache_create("sealfs_dentry",
 				  sizeof(struct sealfs_dentry_info),
-				  0, SLAB_RECLAIM_ACCOUNT|
-					      SLAB_ACCOUNT, NULL);
+				  0, (SLAB_RECLAIM_ACCOUNT|
+					      SLAB_MEM_SPREAD|SLAB_ACCOUNT), NULL);
 	return sealfs_dentry_cachep ? 0 : -ENOMEM;
 }
 
@@ -38,7 +38,8 @@ void free_dentry_private_data(struct dentry *dentry)
 {
 	if (!dentry || !dentry->d_fsdata)
 		return;
-	kmem_cache_free(sealfs_dentry_cachep, dentry->d_fsdata);
+	//kmem_cache_free(sealfs_dentry_cachep, dentry->d_fsdata);
+	kfree(dentry->d_fsdata);
 	dentry->d_fsdata = NULL;
 }
 
@@ -46,9 +47,9 @@ void free_dentry_private_data(struct dentry *dentry)
 int new_dentry_private_data(struct dentry *dentry)
 {
 	struct sealfs_dentry_info *info;
-
 	/* use zalloc to init dentry_info.lower_path */
-	info = kmem_cache_zalloc(sealfs_dentry_cachep, GFP_ATOMIC);
+	info = kzalloc(sizeof(struct sealfs_dentry_info), GFP_KERNEL); 
+	//info = kmem_cache_zalloc(sealfs_dentry_cachep, GFP_KERNEL);
 	if (!info)
 		return -ENOMEM;
 
@@ -123,9 +124,12 @@ struct inode *sealfs_iget(struct super_block *sb, struct inode *lower_inode)
 
 	inode->i_mapping->a_ops = &sealfs_aops;
 
-	inode_set_mtime(inode, 0, 0);
-	inode_set_atime(inode, 0, 0);
-	inode_set_ctime(inode, 0, 0);
+	inode->i_atime.tv_sec = 0;
+	inode->i_atime.tv_nsec = 0;
+	inode->i_mtime.tv_sec = 0;
+	inode->i_mtime.tv_nsec = 0;
+	inode->i_ctime.tv_sec = 0;
+	inode->i_ctime.tv_nsec = 0;
 
 	/* properly initialize special inodes */
 	if (S_ISBLK(lower_inode->i_mode) || S_ISCHR(lower_inode->i_mode) ||

@@ -1000,7 +1000,7 @@ const struct file_operations sealfs_main_fops = {
 const struct file_operations sealfs_dir_fops = {
 	.llseek		= sealfs_file_llseek,
 	.read		= generic_read_dir,
-	.iterate_shared	= sealfs_readdir,
+	.iterate	= sealfs_readdir,
 	.unlocked_ioctl	= sealfs_unlocked_ioctl,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl	= sealfs_compat_ioctl,
