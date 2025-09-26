@@ -6,7 +6,7 @@ SRCS = $(wildcard *.c)
 OBJS = $(SRCS:.c=.o)
 TOCLEAN = prep $(OBJS)
 
-all: dump prep verify test
+all: dump prep verify
 
 uthash.h:
 	rm -rf /tmp/uthash
